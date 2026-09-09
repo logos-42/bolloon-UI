@@ -1,0 +1,8 @@
+.obsidian/
+raw/
+raw_local/
+raw_vault/
+
+# 临时备份(bootstrap --force 覆盖时生成)
+*.bak.*
+*.bak.
