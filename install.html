@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body data-page="install">
 
@@ -25,7 +25,7 @@
     </a>
     <nav class="mast-links" aria-label="主导航">
       <div class="nav-item has-menu">
-        <a href="hibs.html">Hibs</a>
+        <a href="hibs.html" data-zh="Hibs" data-en="Hibs">Hibs</a>
         <div class="nav-menu">
           <span class="nav-menu-note">去中心化团队 · 位于中国</span>
           <a href="hibs.html#about">团队</a>
@@ -36,7 +36,7 @@
         </div>
       </div>
       <div class="nav-item has-menu">
-        <a href="index.html">产品</a>
+        <a href="index.html" data-zh="产品" data-en="Product">产品</a>
         <div class="nav-menu">
           <a href="index.html#intro">序厅</a>
           <a href="index.html#capabilities">能力</a>
@@ -44,7 +44,7 @@
         </div>
       </div>
       <div class="nav-item has-menu">
-        <a href="install.html" class="is-active">安装</a>
+        <a href="install.html" class="is-active" data-zh="安装" data-en="Install">安装</a>
         <div class="nav-menu">
           <a href="install.html#install">安装</a>
           <a href="install.html#start">启动</a>
@@ -52,7 +52,7 @@
         </div>
       </div>
       <div class="nav-item has-menu">
-        <a href="docs.html">文档</a>
+        <a href="docs.html" data-zh="文档" data-en="Docs">文档</a>
         <div class="nav-menu">
           <a href="docs.html#quickstart">快速开始</a>
           <a href="docs.html#commands">命令</a>
@@ -62,20 +62,20 @@
           <a href="docs.html#links">延伸</a>
         </div>
       </div>
-      <a class="nav-item" href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub ↗</a>
+      <a class="nav-item" href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener" data-zh="GitHub ↗" data-en="GitHub ↗">GitHub ↗</a>
     </nav>
-    <span class="version-badge">v<span id="version">0.4.20</span></span>
+    <div class="mast-meta"><span class="lang-toggle" role="group" aria-label="Language"><button type="button" data-lang="zh" class="is-active">中</button><button type="button" data-lang="en">EN</button></span><span class="version-badge">v<span id="version">0.4.20</span></span></div>
   </header>
 </div>
 
 <!-- ◆ 序厅 -->
 <section class="intro" id="intro">
   <div class="intro-inner">
-    <p class="kicker">P2P AI Agent · 本地优先 · 自改进</p>
+    <p class="kicker" data-zh="P2P AI Agent · 本地优先 · 自改进" data-en="P2P AI Agent · Local-first · Self-improving">P2P AI Agent · 本地优先 · 自改进</p>
     <h1 class="display"><span class="line">bolloon</span></h1>
     <p class="lede">
       一个在你的设备上运行的 AI 智能体平台。<br>
-      它通过 DHT 网络发现并连接其他节点——<span class="hl">不靠云端，而是彼此。</span>
+      它通过 DHT 网络发现并连接其他节点——<span class="hl" data-zh="不靠云端，而是彼此。" data-en="Not the cloud — each other.">不靠云端，而是彼此。</span>
     </p>
     <div class="intro-cta">
       <a class="quiet-cta" href="#install">开始安装 <span aria-hidden="true">→</span></a>
@@ -83,7 +83,7 @@
     </div>
   </div>
   <figure class="intro-art" aria-hidden="true">
-    <img src="fig/thumbnail_219.jpg" alt="" loading="eager">
+    <img src="fig/thumbnail_640.jpg" alt="" loading="eager">
   </figure>
 </section>
 
@@ -194,6 +194,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

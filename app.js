@@ -128,6 +128,28 @@
     revealEls.forEach(function (el) { el.classList.add('reveal'); io.observe(el); });
   }
 
+  // ——— 语言切换（中 / EN）———
+  var LANG_KEY = 'bolloon-lang';
+  var langButtons = Array.prototype.slice.call(document.querySelectorAll('.lang-toggle [data-lang]'));
+  function applyLang(lang) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-zh][data-en]'), function (el) {
+      var attr = lang === 'en' ? 'data-en' : 'data-zh';
+      var val = el.getAttribute(attr);
+      if (val) el.textContent = val;
+    });
+    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+    langButtons.forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-lang') === lang); });
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+  }
+  langButtons.forEach(function (b) {
+    b.addEventListener('click', function () { applyLang(b.getAttribute('data-lang')); });
+  });
+  if (langButtons.length) {
+    var storedLang = null;
+    try { storedLang = localStorage.getItem(LANG_KEY); } catch (e) {}
+    applyLang(storedLang === 'en' ? 'en' : 'zh');
+  }
+
   // ——— 安装框：栏目切换 ———
   var installTabs = Array.prototype.slice.call(document.querySelectorAll('.install-tab'));
   var installPanes = Array.prototype.slice.call(document.querySelectorAll('.install-pane'));

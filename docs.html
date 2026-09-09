@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bolloon — 文档</title>
-<meta name="description" content="Bolloon 文档：快速开始、命令一览、配置项、从源码构建。">
+<meta name="description" content="Bolloon 文档：用户故事、快速开始、使用、功能、消息平台、集成、指南、开发者指南与参考。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body data-page="docs">
 
@@ -21,131 +21,188 @@
   <header class="masthead">
     <a class="brand" href="index.html" aria-label="Bolloon 首页">
       <span class="brand-mark" aria-hidden="true">◍</span>
-      <span class="brand-word">bolloon</span>
+      <span class="brand-word" data-zh="bolloon" data-en="bolloon">bolloon</span>
     </a>
     <nav class="mast-links" aria-label="主导航">
       <div class="nav-item has-menu">
-        <a href="hibs.html">Hibs</a>
+        <a href="hibs.html" data-zh="Hibs" data-en="Hibs">Hibs</a>
         <div class="nav-menu">
-          <span class="nav-menu-note">去中心化团队 · 位于中国</span>
-          <a href="hibs.html#about">团队</a>
-          <a href="hibs.html#work">研究工作</a>
+          <span class="nav-menu-note" data-zh="去中心化团队 · 位于中国" data-en="Decentralized team · China">去中心化团队 · 位于中国</span>
+          <a href="hibs.html#about" data-zh="团队" data-en="Team">团队</a>
+          <a href="hibs.html#work" data-zh="研究工作" data-en="Research">研究工作</a>
           <a href="https://github.com/logos-42/Hibs-Physics" target="_blank" rel="noopener">Hibs-Physics</a>
           <a href="https://github.com/logos-42/RiemannHIBS" target="_blank" rel="noopener">RiemannHIBS</a>
           <a href="https://github.com/logos-42/Lean_HIBS" target="_blank" rel="noopener">Lean_HIBS</a>
         </div>
       </div>
       <div class="nav-item has-menu">
-        <a href="index.html">产品</a>
+        <a href="index.html" data-zh="产品" data-en="Product">产品</a>
         <div class="nav-menu">
-          <a href="index.html#intro">序厅</a>
-          <a href="index.html#capabilities">能力</a>
-          <a href="index.html#about">关于</a>
+          <a href="index.html#intro" data-zh="序厅" data-en="Intro">序厅</a>
+          <a href="index.html#capabilities" data-zh="能力" data-en="Capabilities">能力</a>
+          <a href="index.html#about" data-zh="关于" data-en="About">关于</a>
         </div>
       </div>
       <div class="nav-item has-menu">
-        <a href="install.html">安装</a>
+        <a href="install.html" data-zh="安装" data-en="Install">安装</a>
         <div class="nav-menu">
-          <a href="install.html#install">安装</a>
-          <a href="install.html#start">启动</a>
-          <a href="install.html#capabilities">能力</a>
+          <a href="install.html#install" data-zh="安装" data-en="Install">安装</a>
+          <a href="install.html#start" data-zh="启动" data-en="Start">启动</a>
+          <a href="install.html#capabilities" data-zh="能力" data-en="Capabilities">能力</a>
         </div>
       </div>
       <div class="nav-item has-menu">
-        <a href="docs.html" class="is-active">文档</a>
+        <a href="docs.html" class="is-active" data-zh="文档" data-en="Docs">文档</a>
         <div class="nav-menu">
-          <a href="docs.html#quickstart">快速开始</a>
-          <a href="docs.html#commands">命令</a>
-          <a href="docs.html#env">配置</a>
-          <a href="docs.html#build">构建</a>
-          <a href="docs.html#features">功能</a>
-          <a href="docs.html#links">延伸</a>
+          <a href="#stories" data-zh="用户故事" data-en="Stories">用户故事</a>
+          <a href="#getting-started" data-zh="快速开始" data-en="Getting Started">快速开始</a>
+          <a href="#using" data-zh="使用" data-en="Using">使用</a>
+          <a href="#features" data-zh="功能" data-en="Features">功能</a>
+          <a href="#messaging" data-zh="消息平台" data-en="Messaging">消息平台</a>
+          <a href="#integrations" data-zh="集成" data-en="Integrations">集成</a>
+          <a href="#guides" data-zh="指南" data-en="Guides">指南</a>
+          <a href="#developer" data-zh="开发者" data-en="Developer">开发者</a>
+          <a href="#reference" data-zh="参考" data-en="Reference">参考</a>
         </div>
       </div>
-      <a class="nav-item" href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub ↗</a>
+      <a class="nav-item" href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener" data-zh="GitHub ↗" data-en="GitHub ↗">GitHub ↗</a>
     </nav>
-    <span class="version-badge">v<span id="version">0.4.20</span></span>
+    <div class="mast-meta">
+      <span class="lang-toggle" role="group" aria-label="语言 / Language">
+        <button type="button" data-lang="zh" class="is-active">中</button>
+        <button type="button" data-lang="en">EN</button>
+      </span>
+      <span class="version-badge">v<span id="version">0.4.20</span></span>
+    </div>
   </header>
 </div>
 
-<section class="doc intro-doc">
-  <p class="kicker">Documentation · 文档</p>
-  <h1 class="section-title">把主动权交还给设备</h1>
-  <p class="section-lede">Bolloon 是命令行优先的本地智能体。这份手册覆盖安装后的每一步：启动、配置、命令，以及从源码构建。</p>
-</section>
-
-<section class="doc" id="quickstart">
-  <div class="section-head"><p class="kicker">— 01 · Quick Start</p><h2 class="section-title">快速开始</h2></div>
-  <p class="doc-body">先安装（见 <a href="install.html">安装页</a>），然后直接运行：</p>
-  <div class="cmd-line">
-    <span class="prompt">$</span><code class="cmd">bolloon</code>
-    <button class="copy" data-copy="start1" aria-label="复制命令">复制</button>
+<!-- ◆ 文档序厅（配图，不与产品页重复） -->
+<section class="intro doc-intro" id="intro">
+  <div class="intro-inner">
+    <p class="kicker" data-zh="Documentation · 文档" data-en="Documentation">Documentation · 文档</p>
+    <h1 class="display"><span class="line" data-zh="文档" data-en="Docs">文档</span></h1>
+    <p class="lede" data-zh="把主动权交还给运行它的那台设备。" data-en="Hand the initiative back to the device that runs it.">把主动权交还给运行它的那台设备。</p>
   </div>
-  <p class="doc-body">首次启动会自动配置 LLM。需要设置一个环境变量（见 <a href="#env">配置</a>）。</p>
+  <figure class="intro-art" aria-hidden="true">
+    <img src="fig/thumbnail_157.jpg" alt="" loading="eager">
+  </figure>
 </section>
 
-<section class="doc" id="commands">
-  <div class="section-head"><p class="kicker">— 02 · Commands</p><h2 class="section-title">命令一览</h2></div>
-  <div class="cmd-grid">
-    <article class="cmd-plate mini"><h3 class="cmd-title">CLI 交互模式（默认）</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon</code><button class="copy" data-copy="start1" aria-label="复制命令">复制</button></div></article>
-    <article class="cmd-plate mini"><h3 class="cmd-title">Web UI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --web</code><button class="copy" data-copy="start2" aria-label="复制命令">复制</button></div></article>
-    <article class="cmd-plate mini"><h3 class="cmd-title">强制 CLI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --cli</code><button class="copy" data-copy="start4" aria-label="复制命令">复制</button></div></article>
-    <article class="cmd-plate mini"><h3 class="cmd-title">查看全部命令</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --help</code><button class="copy" data-copy="start3" aria-label="复制命令">复制</button></div></article>
-  </div>
-</section>
+<div class="doc-layout">
+  <aside class="sidenav">
+    <p class="sidenav-title" data-zh="目录" data-en="Contents">目录</p>
+    <a href="#stories" data-zh="用户故事与使用场景" data-en="User Stories &amp; Use Cases">用户故事与使用场景</a>
+    <a href="#getting-started" data-zh="快速开始" data-en="Getting Started">快速开始</a>
+    <a href="#using" data-zh="使用 Bolloon" data-en="Using Bolloon">使用 Bolloon</a>
+    <a href="#features" data-zh="功能" data-en="Features">功能</a>
+    <a href="#messaging" data-zh="消息平台" data-en="Messaging Platforms">消息平台</a>
+    <a href="#integrations" data-zh="集成" data-en="Integrations">集成</a>
+    <a href="#guides" data-zh="指南与教程" data-en="Guides &amp; Tutorials">指南与教程</a>
+    <a href="#developer" data-zh="开发者指南" data-en="Developer Guide">开发者指南</a>
+    <a href="#reference" data-zh="参考" data-en="Reference">参考</a>
+  </aside>
 
-<section class="doc" id="env">
-  <div class="section-head"><p class="kicker">— 03 · Configuration</p><h2 class="section-title">配置</h2></div>
-  <p class="doc-body">通过环境变量配置 LLM 提供商。设置 <code>OPENAI_API_KEY</code>、<code>DEEPSEEK_API_KEY</code> 或 <code>ANTHROPIC_API_KEY</code> 之一即可。</p>
-  <table class="doc-table">
-    <thead><tr><th>变量</th><th>说明</th></tr></thead>
-    <tbody>
-      <tr><td><code>OPENAI_API_KEY</code></td><td>OpenAI 提供商（可选）</td></tr>
-      <tr><td><code>DEEPSEEK_API_KEY</code></td><td>DeepSeek 提供商（可选）</td></tr>
-      <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Anthropic 提供商（可选）</td></tr>
-      <tr><td><code>BOLLOON_LLM_PROVIDER</code></td><td>指定 LLM 提供商</td></tr>
-      <tr><td><code>BOLLOON_VERSION</code></td><td>安装脚本：指定版本</td></tr>
-      <tr><td><code>BOLLOON_INSTALL_DIR</code></td><td>安装目录，默认 <code>/usr/local/bin</code></td></tr>
-    </tbody>
-  </table>
-</section>
+  <main class="doc-main">
 
-<section class="doc" id="build">
-  <div class="section-head"><p class="kicker">— 04 · From Source</p><h2 class="section-title">从源码构建</h2></div>
-  <div class="cmd-plate">
-    <div class="cmd-meta"><span class="cmd-badge">Build</span><h3 class="cmd-title">克隆并构建</h3></div>
-    <div class="cmd-line"><span class="prompt">$</span><code class="cmd">git clone https://github.com/logos-42/bolloon.git && cd bolloon && npm install && npm run build:all && npm start</code><button class="copy" data-copy="build" aria-label="复制命令">复制</button></div>
-  </div>
-  <p class="doc-body">构建产物位于 <code>dist/</code>。核心代码在 <code>src/agents</code>（智能体）、<code>src/cli</code>（Ink 界面）、<code>src/network</code>（P2P）、<code>src/web</code>（Web UI）。</p>
-</section>
+    <!-- 用户故事与使用场景 -->
+    <section class="doc" id="stories">
+      <div class="section-head"><p class="kicker">— 01</p><h2 class="section-title" data-zh="用户故事与使用场景" data-en="User Stories &amp; Use Cases">用户故事与使用场景</h2></div>
+      <p class="doc-body" data-zh="在你的设备上运行一个本地智能体，并让它与网络中的其他节点协作。" data-en="Run a local agent on your own device and let it collaborate with other nodes in the network.">在你的设备上运行一个本地智能体，并让它与网络中的其他节点协作。</p>
+      <p class="doc-body" data-zh="常见场景：个人助手、文档整理、代码分析、多设备 P2P 协作。" data-en="Common scenarios: personal assistant, document organization, code analysis, and multi-device P2P collaboration.">常见场景：个人助手、文档整理、代码分析、多设备 P2P 协作。</p>
+    </section>
 
-<section class="doc" id="features">
-  <div class="section-head"><p class="kicker">— 05 · Features</p><h2 class="section-title">功能</h2></div>
-  <ol class="cap-list">
-    <li><span class="cap-no">01</span><div class="cap-body"><h3>AI 对话</h3><p>本地运行的智能体，支持多轮对话与流式回复。</p></div></li>
-    <li><span class="cap-no">02</span><div class="cap-body"><h3>P2P 网络</h3><p>通过 DHT 自动发现并连接其他节点。</p></div></li>
-    <li><span class="cap-no">03</span><div class="cap-body"><h3>文档处理</h3><p>接收和管理文档，支持 DID 签名验证。</p></div></li>
-    <li><span class="cap-no">04</span><div class="cap-body"><h3>工具调用</h3><p>shell、文件、代码分析，由安全闸门守卫。</p></div></li>
-    <li><span class="cap-no">05</span><div class="cap-body"><h3>自我改进</h3><p>自动检查更新、质量门控。</p></div></li>
-  </ol>
-</section>
+    <!-- 快速开始 -->
+    <section class="doc" id="getting-started">
+      <div class="section-head"><p class="kicker">— 02</p><h2 class="section-title" data-zh="快速开始" data-en="Getting Started">快速开始</h2></div>
+      <p class="doc-body" data-zh="先安装（见安装页），然后直接运行：" data-en="Install first (see the install page), then run:">先安装（见安装页），然后直接运行：</p>
+      <div class="cmd-line">
+        <span class="prompt">$</span><code class="cmd">bolloon</code>
+        <button class="copy" data-copy="start1" aria-label="复制命令">复制</button>
+      </div>
+      <p class="doc-body" data-zh="首次启动自动配置 LLM，需设置一个环境变量（见配置）。" data-en="First launch auto-configures the LLM; set an environment variable (see Configuration).">首次启动自动配置 LLM，需设置一个环境变量（见配置）。</p>
+    </section>
 
-<section class="doc" id="links">
-  <div class="section-head"><p class="kicker">— 06 · Links</p><h2 class="section-title">延伸</h2></div>
-  <p class="doc-body">
-    <a href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub 仓库</a> ·
-    <a href="https://github.com/logos-42/bolloon/blob/master/README.md" target="_blank" rel="noopener">README · 中文</a> ·
-    <a href="install.html">安装页</a>
-  </p>
-</section>
+    <!-- 使用 Bolloon -->
+    <section class="doc" id="using">
+      <div class="section-head"><p class="kicker">— 03</p><h2 class="section-title" data-zh="使用 Bolloon" data-en="Using Bolloon">使用 Bolloon</h2></div>
+      <div class="cmd-grid">
+        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="CLI 交互模式（默认）" data-en="CLI interactive (default)">CLI 交互模式（默认）</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon</code><button class="copy" data-copy="start1">复制</button></div></article>
+        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="Web UI 模式" data-en="Web UI mode">Web UI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --web</code><button class="copy" data-copy="start2">复制</button></div></article>
+        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="强制 CLI 模式" data-en="Force CLI mode">强制 CLI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --cli</code><button class="copy" data-copy="start4">复制</button></div></article>
+        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="查看全部命令" data-en="All commands">查看全部命令</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --help</code><button class="copy" data-copy="start3">复制</button></div></article>
+      </div>
+    </section>
+
+    <!-- 功能 -->
+    <section class="doc" id="features">
+      <div class="section-head"><p class="kicker">— 04</p><h2 class="section-title" data-zh="功能" data-en="Features">功能</h2></div>
+      <ol class="cap-list">
+        <li><span class="cap-no">01</span><div class="cap-body"><h3 data-zh="AI 对话" data-en="AI Chat">AI 对话</h3><p data-zh="本地运行的智能体，支持多轮对话与流式回复。" data-en="A local agent with multi-turn conversation and streaming replies.">本地运行的智能体，支持多轮对话与流式回复。</p></div></li>
+        <li><span class="cap-no">02</span><div class="cap-body"><h3 data-zh="P2P 网络" data-en="P2P Network">P2P 网络</h3><p data-zh="通过 DHT 自动发现并连接其他节点。" data-en="Auto-discover and connect to other nodes via DHT.">通过 DHT 自动发现并连接其他节点。</p></div></li>
+        <li><span class="cap-no">03</span><div class="cap-body"><h3 data-zh="文档处理" data-en="Documents">文档处理</h3><p data-zh="接收和管理文档，支持 DID 签名验证。" data-en="Receive and manage documents with DID signature verification.">接收和管理文档，支持 DID 签名验证。</p></div></li>
+        <li><span class="cap-no">04</span><div class="cap-body"><h3 data-zh="工具调用" data-en="Tool Calls">工具调用</h3><p data-zh="shell、文件、代码分析，由安全闸门守卫。" data-en="Shell, files, and code analysis, guarded by a safety gate.">shell、文件、代码分析，由安全闸门守卫。</p></div></li>
+        <li><span class="cap-no">05</span><div class="cap-body"><h3 data-zh="自我改进" data-en="Self-Improvement">自我改进</h3><p data-zh="自动检查更新、质量门控。" data-en="Automatic update checks and quality gating.">自动检查更新、质量门控。</p></div></li>
+      </ol>
+    </section>
+
+    <!-- 消息平台 -->
+    <section class="doc" id="messaging">
+      <div class="section-head"><p class="kicker">— 05</p><h2 class="section-title" data-zh="消息平台" data-en="Messaging Platforms">消息平台</h2></div>
+      <p class="doc-body" data-zh="通过消息平台与你的节点对话，让智能体驻留在你常用的入口。具体接入方式见仓库。" data-en="Talk to your node through messaging platforms, keeping your agent where you live. See the repo for integration details.">通过消息平台与你的节点对话，让智能体驻留在你常用的入口。具体接入方式见仓库。</p>
+    </section>
+
+    <!-- 集成 -->
+    <section class="doc" id="integrations">
+      <div class="section-head"><p class="kicker">— 06</p><h2 class="section-title" data-zh="集成" data-en="Integrations">集成</h2></div>
+      <p class="doc-body" data-zh="Bolloon 通过环境变量接入不同 LLM 提供商，并通过 DIAP 与世界其他节点互连。" data-en="Bolloon plugs into different LLM providers via env vars and connects to other nodes through DIAP.">Bolloon 通过环境变量接入不同 LLM 提供商，并通过 DIAP 与世界其他节点互连。</p>
+      <p class="doc-body" data-zh="提供方：OpenAI / DeepSeek / Anthropic。" data-en="Providers: OpenAI / DeepSeek / Anthropic.">提供方：OpenAI / DeepSeek / Anthropic。</p>
+    </section>
+
+    <!-- 指南与教程 -->
+    <section class="doc" id="guides">
+      <div class="section-head"><p class="kicker">— 07</p><h2 class="section-title" data-zh="指南与教程" data-en="Guides &amp; Tutorials">指南与教程</h2></div>
+      <p class="doc-body" data-zh="从源码构建、接入 LLM、发现并连接节点——逐步指南见仓库 README 与 docs。" data-en="Build from source, connect an LLM, discover and join nodes — step-by-step guides live in the repo README and docs.">从源码构建、接入 LLM、发现并连接节点——逐步指南见仓库 README 与 docs。</p>
+    </section>
+
+    <!-- 开发者指南 -->
+    <section class="doc" id="developer">
+      <div class="section-head"><p class="kicker">— 08</p><h2 class="section-title" data-zh="开发者指南" data-en="Developer Guide">开发者指南</h2></div>
+      <div class="cmd-plate">
+        <div class="cmd-meta"><span class="cmd-badge">Build</span><h3 class="cmd-title" data-zh="克隆并构建" data-en="Clone &amp; build">克隆并构建</h3></div>
+        <div class="cmd-line"><span class="prompt">$</span><code class="cmd">git clone https://github.com/logos-42/bolloon.git &amp;&amp; cd bolloon &amp;&amp; npm install &amp;&amp; npm run build:all &amp;&amp; npm start</code><button class="copy" data-copy="build">复制</button></div>
+      </div>
+      <p class="doc-body" data-zh="核心代码：src/agents（智能体）、src/cli（Ink 界面）、src/network（P2P）、src/web（Web UI）。" data-en="Core code: src/agents (agent), src/cli (Ink UI), src/network (P2P), src/web (Web UI).">核心代码：src/agents（智能体）、src/cli（Ink 界面）、src/network（P2P）、src/web（Web UI）。</p>
+    </section>
+
+    <!-- 参考 -->
+    <section class="doc" id="reference">
+      <div class="section-head"><p class="kicker">— 09</p><h2 class="section-title" data-zh="参考" data-en="Reference">参考</h2></div>
+      <table class="doc-table">
+        <thead><tr><th data-zh="变量" data-en="Variable">变量</th><th data-zh="说明" data-en="Description">说明</th></tr></thead>
+        <tbody>
+          <tr><td><code>OPENAI_API_KEY</code></td><td data-zh="OpenAI 提供商（可选）" data-en="OpenAI provider (optional)">OpenAI 提供商（可选）</td></tr>
+          <tr><td><code>DEEPSEEK_API_KEY</code></td><td data-zh="DeepSeek 提供商（可选）" data-en="DeepSeek provider (optional)">DeepSeek 提供商（可选）</td></tr>
+          <tr><td><code>ANTHROPIC_API_KEY</code></td><td data-zh="Anthropic 提供商（可选）" data-en="Anthropic provider (optional)">Anthropic 提供商（可选）</td></tr>
+          <tr><td><code>BOLLOON_LLM_PROVIDER</code></td><td data-zh="指定 LLM 提供商" data-en="Select the LLM provider">指定 LLM 提供商</td></tr>
+          <tr><td><code>BOLLOON_VERSION</code></td><td data-zh="安装脚本：指定版本" data-en="Install script: pinned version">安装脚本：指定版本</td></tr>
+          <tr><td><code>BOLLOON_INSTALL_DIR</code></td><td data-zh="安装目录，默认 /usr/local/bin" data-en="Install dir, default /usr/local/bin">安装目录，默认 /usr/local/bin</td></tr>
+        </tbody>
+      </table>
+      <p class="doc-body" data-zh="延伸：" data-en="Links:">延伸：</p>
+      <p class="doc-body"><a href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub 仓库</a> · <a href="https://github.com/logos-42/bolloon/blob/master/README.md" target="_blank" rel="noopener" data-zh="README · 中文" data-en="README">README · 中文</a> · <a href="install.html" data-zh="安装页" data-en="Install page">安装页</a></p>
+    </section>
+
+  </main>
+</div>
 
 <footer class="foot">
   <span>© <span id="year">2026</span> bolloon</span>
   <span class="foot-sep">·</span>
-  <span>MIT License</span>
-  <span class="foot-right">◍ 由节点与节点相连</span>
+  <span data-zh="MIT License" data-en="MIT License">MIT License</span>
+  <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
