@@ -175,4 +175,48 @@
       if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
+
+  // ——— 网关：生成隐式 skills HTML（独立可打开的纯 HTML）———
+  var genBtn = document.getElementById('generate-btn');
+  if (genBtn) {
+    var preview = document.getElementById('gen-preview');
+    var nameEl = document.getElementById('skill-name');
+    var pkEl = document.getElementById('skill-pk');
+    var gwEl = document.getElementById('skill-gw');
+    var capEl = document.getElementById('skill-capabilities');
+    var downloadEl = document.getElementById('download-gen');
+    var copyBtn = document.getElementById('copy-gen');
+    var openBtn = document.getElementById('open-gen');
+
+    function buildSkillsHtml() {
+      var name = (nameEl.value || 'my-agent').trim();
+      var pk = (pkEl.value || '').trim();
+      var gw = (gwEl.value || 'http://127.0.0.1:8788').trim().replace(/\/$/, '');
+      var caps = (capEl.value || '').split(/[\n,，]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!caps.length) caps = ['general'];
+      var manifest = { ownerName: name, ownerPublicKey: pk, publishedAt: Date.now(), agents: [{ id: name, name: name, capabilities: caps, status: 'active' }] };
+      var json = JSON.stringify(manifest, null, 2);
+      var capsHtml = caps.map(function (c) { return '<li><code>' + c + '</code></li>'; }).join('');
+      return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Agent Skills · ' + name + '</title>\n<style>\nbody{background:#12110f;color:#e8e8dc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.7;max-width:860px;margin:40px auto;padding:0 24px}\na{color:#c4d640}\nh1{font-weight:600;border-bottom:1px solid #333;padding-bottom:12px}\ncode{background:#1a1a18;border:1px solid #333;border-radius:4px;padding:2px 6px;font-family:ui-monospace,Menlo,monospace}\npre{background:#1a1a18;border:1px solid #333;border-radius:8px;padding:16px;overflow:auto}\nul li{margin:4px 0}\n.label{color:#909088;font-size:12px;text-transform:uppercase;letter-spacing:1px}\n</style>\n</head>\n<body>\n<p class="label">Bolloon · Agent Gateway · Implicit Skills</p>\n<h1>' + name + '</h1>\n<p>此页面为一个加入 Bolloon P2P 网络的 <strong>agent 隐式 skills</strong> 声明。网关/节点读取本页即可发现该 agent 并按能力委派。</p>\n<h2>Manifest</h2>\n<pre>' + json.replace(/</g, '&lt;') + '</pre>\n<h2>Skills / Capabilities</h2>\n<ul>' + capsHtml + '</ul>\n<h2>加入网关</h2>\n<ol>\n<li>登记 manifest：<code>POST ' + gw + '/api/agent/register</code>，body 为上方 manifest。</li>\n<li>查本机：<code>GET ' + gw + '/api/agent/local-manifest</code>。</li>\n<li>建联后发 <code>manifest_request</code>，对端回 <code>manifest_payload</code>。</li>\n<li>被选中：<code>pick(capability)</code> 后接收 <code>agent_delegate</code>。</li>\n</ol>\n<hr>\n<p class="label">gateway: ' + gw + '</p>\n</body>\n</html>';
+    }
+
+    genBtn.addEventListener('click', function () {
+      var html = buildSkillsHtml();
+      preview.textContent = html;
+      downloadEl.setAttribute('href', 'data:text/html;charset=utf-8,' + encodeURIComponent(html));
+      copyBtn.setAttribute('data-ready', html);
+    });
+
+    copyBtn.addEventListener('click', function () {
+      var html = copyBtn.getAttribute('data-ready') || buildSkillsHtml();
+      var done = function () { copyBtn.textContent = '已复制'; setTimeout(function(){ copyBtn.textContent = '复制'; }, 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(html).then(done);
+      else { var ta = document.createElement('textarea'); ta.value = html; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch(e){} document.body.removeChild(ta); done(); }
+    });
+
+    openBtn.addEventListener('click', function () {
+      var w = window.open('', '_blank');
+      if (w) { w.document.write(buildSkillsHtml()); w.document.close(); }
+    });
+  }
 })();

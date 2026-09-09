@@ -396,3 +396,29 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 @media (max-width: 820px) {
   .install-tab { padding: 13px 10px; font-size: 14px; }
 }
+
+/* —— 网关页 —— */
+.gateway-intro { min-height: auto; padding-bottom: 40px; }
+.skills-form { display: flex; flex-direction: column; gap: 16px; margin: 8px 0 22px; }
+.skill-field { display: flex; flex-direction: column; gap: 6px; }
+.skill-field > span { font-family: var(--mono); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); }
+.skill-field input, .skill-field textarea {
+  width: 100%; padding: 12px 14px; background: var(--bg-2);
+  border: 1px solid var(--hairline-strong); border-radius: 3px;
+  color: var(--ink); font-size: 14px; font-family: var(--mono);
+  outline: none; transition: border-color 0.18s, box-shadow 0.18s;
+}
+.skill-field input:focus, .skill-field textarea:focus { border-color: var(--lime); box-shadow: 0 0 0 3px var(--lime-glow); }
+.skill-field textarea { font-family: var(--sans); resize: vertical; min-height: 120px; }
+.generate-btn { align-self: flex-start; margin-top: 4px; }
+.gen-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0 18px; }
+.gen-preview {
+  background: rgba(0,0,0,0.3); border: 1px solid var(--hairline);
+  border-radius: 3px; padding: 16px; overflow: auto; max-height: 420px;
+  font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+  white-space: pre-wrap; word-break: break-all;
+}
+.cmd-desc-inline { font-family: var(--sans); color: var(--ink-2); font-size: 0.9em; border: 1px solid var(--hairline); border-radius: 3px; padding: 2px 8px; }
+@media (max-width: 820px) {
+  .cmd-desc-inline { display: none; }
+}

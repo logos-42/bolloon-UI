@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bolloon — Agent 网关 · Gateway</title>
+<meta name="description" content="Bolloon Agent 网关：把 agent 接入 P2P 网络的隐式 skills 页。粘贴 capabilities 生成可独立打开的 HTML 加入协议。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/png" href="icons/favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
+<link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css?v=6">
+</head>
+<body data-page="gateway">
+
+<div class="topnav">
+  <header class="masthead">
+    <a class="brand" href="index.html" aria-label="Bolloon 首页">
+      <span class="brand-mark" aria-hidden="true">◍</span>
+      <span class="brand-word" data-zh="bolloon" data-en="bolloon">bolloon</span>
+    </a>
+    <nav class="mast-links" aria-label="主导航">
+      <div class="nav-item has-menu">
+        <a href="hibs.html" data-zh="Hibs" data-en="Hibs">Hibs</a>
+        <div class="nav-menu">
+          <span class="nav-menu-note" data-zh="去中心化团队 · 位于中国" data-en="Decentralized team · China">去中心化团队 · 位于中国</span>
+          <a href="hibs.html#about" data-zh="团队" data-en="Team">团队</a>
+          <a href="hibs.html#work" data-zh="研究工作" data-en="Research">研究工作</a>
+          <a href="https://github.com/logos-42/Hibs-Physics" target="_blank" rel="noopener">Hibs-Physics</a>
+          <a href="https://github.com/logos-42/RiemannHIBS" target="_blank" rel="noopener">RiemannHIBS</a>
+          <a href="https://github.com/logos-42/Lean_HIBS" target="_blank" rel="noopener">Lean_HIBS</a>
+        </div>
+      </div>
+      <div class="nav-item has-menu">
+        <a href="index.html" data-zh="产品" data-en="Product">产品</a>
+        <div class="nav-menu">
+          <a href="index.html#intro" data-zh="序厅" data-en="Intro">序厅</a>
+          <a href="index.html#capabilities" data-zh="能力" data-en="Capabilities">能力</a>
+          <a href="index.html#about" data-zh="关于" data-en="About">关于</a>
+        </div>
+      </div>
+      <div class="nav-item has-menu">
+        <a href="install.html" data-zh="安装" data-en="Install">安装</a>
+        <div class="nav-menu">
+          <a href="install.html#install" data-zh="安装" data-en="Install">安装</a>
+          <a href="install.html#start" data-zh="启动" data-en="Start">启动</a>
+          <a href="install.html#capabilities" data-zh="能力" data-en="Capabilities">能力</a>
+        </div>
+      </div>
+      <div class="nav-item has-menu">
+        <a href="docs.html" data-zh="文档" data-en="Docs">文档</a>
+        <div class="nav-menu">
+          <a href="#stories" data-zh="用户故事" data-en="Stories">用户故事</a>
+          <a href="#getting-started" data-zh="快速开始" data-en="Getting Started">快速开始</a>
+          <a href="#using" data-zh="使用" data-en="Using">使用</a>
+          <a href="#features" data-zh="功能" data-en="Features">功能</a>
+          <a href="#messaging" data-zh="消息平台" data-en="Messaging">消息平台</a>
+          <a href="#integrations" data-zh="集成" data-en="Integrations">集成</a>
+          <a href="#guides" data-zh="指南" data-en="Guides">指南</a>
+          <a href="#developer" data-zh="开发者" data-en="Developer">开发者</a>
+          <a href="#reference" data-zh="参考" data-en="Reference">参考</a>
+        </div>
+      </div>
+      <div class="nav-item has-menu">
+        <a href="gateway.html" class="is-active" data-zh="网关" data-en="Gateway">网关</a>
+        <div class="nav-menu">
+          <a href="#join" data-zh="如何加入" data-en="How to join">如何加入</a>
+          <a href="#endpoints" data-zh="端点" data-en="Endpoints">端点</a>
+          <a href="#skills" data-zh="生成隐式 skills" data-en="Implicit skills">生成隐式 skills</a>
+        </div>
+      </div>
+      <a class="nav-item" href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener" data-zh="GitHub ↗" data-en="GitHub ↗">GitHub ↗</a>
+    </nav>
+    <div class="mast-meta">
+      <span class="lang-toggle" role="group" aria-label="Language">
+        <button type="button" data-lang="zh" class="is-active">中</button>
+        <button type="button" data-lang="en">EN</button>
+      </span>
+      <span class="version-badge">v<span id="version">0.4.20</span></span>
+    </div>
+  </header>
+</div>
+
+<!-- 网关序厅（工具页，无 fig）-->
+<section class="intro gateway-intro" id="intro">
+  <div class="intro-inner">
+    <p class="kicker" data-zh="Agent Gateway · 网关" data-en="Agent Gateway">Agent Gateway · 网关</p>
+    <h1 class="display"><span class="line" data-zh="网关" data-en="Gateway">网关</span></h1>
+    <p class="lede" data-zh="把 agent 接入 Bolloon 的 P2P 网络。粘贴它的 skills，生成一段可独立打开的隐式 HTML 加入协议。" data-en="Bring an agent into Bolloon's P2P network. Paste its skills to generate a standalone implicit-HTML join protocol.">把 agent 接入 Bolloon 的 P2P 网络。粘贴它的 skills，生成一段可独立打开的隐式 HTML 加入协议。</p>
+  </div>
+</section>
+
+<!-- 如何加入 -->
+<section class="doc" id="join">
+  <div class="section-head"><p class="kicker">— 01</p><h2 class="section-title" data-zh="如何加入" data-en="How to join">如何加入</h2></div>
+  <p class="doc-body" data-zh="一个 agent 通过声明 manifest 加入节点，之后按 capability 被全网发现并委派。" data-en="An agent joins a node by declaring a manifest, then becomes discoverable &amp; delegable by capability across the network.">一个 agent 通过声明 manifest 加入节点，之后按 capability 被全网发现并委派。</p>
+  <ol class="cap-list">
+    <li><span class="cap-no">01</span><div class="cap-body"><h3 data-zh="声明身份" data-en="Declare identity">声明身份</h3><p data-zh="提供 ownerName 与 ownerPublicKey，作为节点在网络中的身份。" data-en="Provide ownerName and ownerPublicKey as your identity in the network.">提供 ownerName 与 ownerPublicKey，作为节点在网络中的身份。</p></div></li>
+    <li><span class="cap-no">02</span><div class="cap-body"><h3 data-zh="登记 agent" data-en="Register agents">登记 agent</h3><p data-zh="每个 agent 声明 id、name、capabilities 与 status。这是被发现的唯一依据。" data-en="Each agent declares id, name, capabilities and status — the only basis for discovery.">每个 agent 声明 id、name、capabilities 与 status。这是被发现的唯一依据。</p></div></li>
+    <li><span class="cap-no">03</span><div class="cap-body"><h3 data-zh="互换 manifest" data-en="Exchange manifests">互换 manifest</h3><p data-zh="建联后立即发 manifest_request，对端回 manifest_payload，写入本地 registry。" data-en="On connect, send manifest_request; the peer replies manifest_payload into your local registry.">建联后立即发 manifest_request，对端回 manifest_payload，写入本地 registry。</p></div></li>
+    <li><span class="cap-no">04</span><div class="cap-body"><h3 data-zh="按能力委派" data-en="Delegate by capability">按能力委派</h3><p data-zh="任何一方可用 pick(capability) 选中你的 agent，再发 agent_delegate 委派任务。" data-en="Anyone can pick(capability) your agent, then delegate a task via agent_delegate.">任何一方可用 pick(capability) 选中你的 agent，再发 agent_delegate 委派任务。</p></div></li>
+  </ol>
+</section>
+
+<!-- 端点 -->
+<section class="doc" id="endpoints">
+  <div class="section-head"><p class="kicker">— 02</p><h2 class="section-title" data-zh="端点 / 协议" data-en="Endpoints / Protocol">端点 / 协议</h2></div>
+  <p class="doc-body" data-zh="HTTP（挂在 Bolloon 服务 /api/agent）：" data-en="HTTP (mounted at /api/agent on the Bolloon server):">HTTP（挂在 Bolloon 服务 /api/agent）：</p>
+  <table class="doc-table">
+    <thead><tr><th>method</th><th data-zh="路径" data-en="path">路径</th><th data-zh="说明" data-en="desc">说明</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST</code></td><td><code>/api/agent/register</code></td><td data-zh="登记本地 manifest" data-en="Register local manifest">登记本地 manifest</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/agent/local-manifest</code></td><td data-zh="本节点 agent 清单" data-en="Local agent list">本节点 agent 清单</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/agent/remote-manifests</code></td><td data-zh="远端 manifest 缓存" data-en="Cached remote manifests">远端 manifest 缓存</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/agent/pick</code></td><td data-zh="按 capability 选 agent" data-en="Pick by capability">按 capability 选 agent</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/agent/delegate</code></td><td data-zh="委派任务给对端" data-en="Delegate to a peer">委派任务给对端</td></tr>
+    </tbody>
+  </table>
+  <p class="doc-body" data-zh="P2P 帧（经 Hyperswarm / iroh 传输）：" data-en="P2P frames (over Hyperswarm / iroh):">P2P 帧（经 Hyperswarm / iroh 传输）：</p>
+  <div class="cmd-line"><span class="prompt">→</span><code class="cmd">manifest_request</code></div>
+  <div class="cmd-line"><span class="prompt">←</span><code class="cmd">manifest_payload</code> <code class="cmd-desc-inline">ownerName · ownerPublicKey · agents[] · publishedAt</code></div>
+  <div class="cmd-line"><span class="prompt">→</span><code class="cmd">agent_delegate</code> <code class="cmd-desc-inline">capability · instruction</code></div>
+  <div class="cmd-line"><span class="prompt">←</span><code class="cmd">agent_response</code></div>
+</section>
+
+<!-- skills 粘贴栏 -->
+<section class="doc" id="skills">
+  <div class="section-head"><p class="kicker">— 03</p><h2 class="section-title" data-zh="生成隐式 skills" data-en="Generate implicit skills">生成隐式 skills</h2></div>
+  <p class="doc-body" data-zh="粘贴 agent 的 capabilities（一行一个，或逗号分隔），填名称与公钥，生成一段可独立打开的纯 HTML 隐式 skills 页。" data-en="Paste the agent's capabilities (one per line or comma-separated), fill name &amp; public key, and generate a standalone implicit-HTML skills page.">粘贴 agent 的 capabilities（一行一个，或逗号分隔），填名称与公钥，生成一段可独立打开的纯 HTML 隐式 skills 页。</p>
+
+  <div class="skills-form">
+    <label class="skill-field">
+      <span data-zh="agent 名称" data-en="Agent name">agent 名称</span>
+      <input type="text" id="skill-name" placeholder="my-agent" value="my-agent">
+    </label>
+    <label class="skill-field">
+      <span data-zh="owner 公钥" data-en="Owner public key">owner 公钥</span>
+      <input type="text" id="skill-pk" placeholder="did:key:z6Mk… 或 iroh nodeId" value="did:key:z6Mk-example">
+    </label>
+    <label class="skill-field">
+      <span data-zh="gateway 地址（可选）" data-en="Gateway URL (optional)">gateway 地址（可选）</span>
+      <input type="text" id="skill-gw" placeholder="http://127.0.0.1:8788" value="http://127.0.0.1:8788">
+    </label>
+    <label class="skill-field">
+      <span data-zh="skills / capabilities（每行一个）" data-en="Skills / capabilities (one per line)">skills / capabilities（每行一个）</span>
+      <textarea id="skill-capabilities" rows="5" placeholder="code-review&#10;file-edit&#10;web-search">code-review
+file-edit
+web-search</textarea>
+    </label>
+    <button class="quiet-cta generate-btn" type="button" id="generate-btn" data-zh="生成隐式 skills →" data-en="Generate implicit skills →">生成隐式 skills →</button>
+  </div>
+
+  <p class="doc-body" data-zh="生成的 HTML（可独立打开 / 托管，作为 agent 的隐式 skills 声明）：" data-en="Generated HTML (open or host it standalone — the agent's implicit skills declaration):">生成的 HTML（可独立打开 / 托管，作为 agent 的隐式 skills 声明）：</p>
+  <div class="gen-actions">
+    <button class="quiet-cta ghost" type="button" id="copy-gen" data-zh="复制" data-en="Copy">复制</button>
+    <a class="quiet-cta" id="download-gen" download="agent-skills.html" href="#" data-zh="下载 .html" data-en="Download .html">下载 .html</a>
+    <button class="quiet-cta ghost" type="button" id="open-gen" data-zh="预览" data-en="Preview">预览</button>
+  </div>
+  <pre class="gen-preview" id="gen-preview">// 填写上方 skills 后点「生成」</pre>
+</section>
+
+<footer class="foot">
+  <span>© <span id="year">2026</span> bolloon</span>
+  <span class="foot-sep">·</span>
+  <span data-zh="MIT License" data-en="MIT License">MIT License</span>
+  <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
+</footer>
+
+<script src="app.js?v=6"></script>
+</body>
+</html>
