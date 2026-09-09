@@ -3,19 +3,24 @@
   'use strict';
   document.documentElement.classList.add('js');
 
-  // ——— 版本号：fetch GitHub latest, 失败回退本地常量 ———
+  // ——— 版本号：优先跟随 npm 包最新版（registry 自带 CORS），失败回退 GitHub release，最后常量 ———
   var VERSION_FALLBACK = '0.4.20';
   var versionEl = document.getElementById('version');
   if (versionEl) {
     versionEl.textContent = VERSION_FALLBACK;
-    fetch('https://api.github.com/repos/logos-42/bolloon/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+    fetch('https://registry.npmjs.org/@bolloon/bolloon-agent/latest')
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
-        if (data && data.tag_name) {
-          versionEl.textContent = String(data.tag_name).replace(/^v/, '');
-        }
+        if (data && data.version) versionEl.textContent = String(data.version);
       })
-      .catch(function () { /* 静默，用回退值 */ });
+      .catch(function () {
+        return fetch('https://api.github.com/repos/logos-42/bolloon/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (d && d.tag_name) versionEl.textContent = String(d.tag_name).replace(/^v/, '');
+          })
+          .catch(function () { /* 静默，用回退值 */ });
+      });
   }
 
   document.getElementById('year').textContent = new Date().getFullYear();
