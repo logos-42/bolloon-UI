@@ -1,0 +1,258 @@
+/* ============================================================
+   Bolloon · 安装/下载页
+   设计语言：炭黑 + lime（Bolloon 官方色令牌），编辑式展览排版
+   ============================================================ */
+
+:root {
+  /* —— Bolloon 官方色令牌 (来自 src/web/style.css) —— */
+  --bg: #12110f;          /* 页面深底 */
+  --bg-2: #1a1a18;        /* 应用炭黑 */
+  --bg-3: #222220;        /* 侧栏 */
+  --bg-hover: #2a2a26;
+  --ink: #e8e8dc;         /* 主文字 (暖米白) */
+  --ink-2: #909088;       /* 次级 */
+  --ink-3: #5c5c54;       /* 弱 */
+  --lime: #c4d640;        /* 品牌强调 */
+  --lime-hover: #d4e650;
+  --lime-deep: #8a9430;
+  --lime-glow: rgba(196, 214, 64, 0.25);
+  --hairline: rgba(216, 216, 200, 0.14);
+  --hairline-strong: rgba(216, 216, 200, 0.28);
+  --paper: #f2efe6;       /* 暖纸 (用于反白小块) */
+
+  --serif: "Noto Serif SC", "Songti SC", Georgia, serif;
+  --sans: "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+
+  --maxw: 1180px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+  font-weight: 300;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a { color: var(--lime); text-decoration: none; }
+a:hover { color: var(--lime-hover); }
+code { font-family: var(--mono); }
+
+/* —— 顶部静默行 —— */
+.masthead {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px clamp(24px, 5vw, 64px);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--hairline);
+}
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-family: var(--mono); }
+.brand-mark { color: var(--lime); font-size: 18px; line-height: 1; text-shadow: 0 0 12px var(--lime-glow); }
+.brand-word { font-weight: 500; letter-spacing: 0.5px; }
+.mast-meta { display: flex; align-items: center; gap: 22px; }
+.version-badge {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+  padding: 3px 10px; border: 1px solid var(--hairline); border-radius: 2px;
+}
+.mast-links { display: flex; gap: 18px; }
+.mast-links a { color: var(--ink-2); font-size: 13px; letter-spacing: 0.3px; }
+.mast-links a:hover { color: var(--lime); }
+
+/* —— 序厅 —— */
+.intro {
+  position: relative;
+  min-height: calc(100vh - 70px);
+  display: flex; align-items: center;
+  padding: clamp(40px, 8vh, 120px) clamp(24px, 6vw, 80px);
+  overflow: hidden;
+}
+.intro-inner { max-width: 720px; position: relative; z-index: 2; }
+.kicker {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--lime);
+  margin-bottom: 28px;
+}
+.display {
+  font-family: var(--serif); font-weight: 300;
+  font-size: clamp(4rem, 15vw, 12rem);
+  line-height: 0.9; letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.display .line { display: block; }
+.lede {
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 2.2vw, 1.65rem);
+  color: var(--ink-2); margin-top: 30px; max-width: 30em;
+}
+.lede .hl { color: var(--lime); }
+.intro-cta { display: flex; align-items: center; gap: 22px; margin-top: 44px; }
+.quiet-cta {
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.5px;
+  color: var(--bg); background: var(--lime);
+  padding: 12px 26px; border-radius: 2px;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.quiet-cta:hover { background: var(--lime-hover); transform: translateY(-1px); box-shadow: 0 6px 24px var(--lime-glow); color: var(--bg); }
+.intro-note { font-family: var(--mono); font-size: 12px; color: var(--ink-3); letter-spacing: 1px; }
+
+/* 序厅书法作品——偏移的展品 */
+.intro-art {
+  position: absolute; right: clamp(-80px, -4vw, -28px); top: 10%;
+  width: clamp(220px, 30vw, 400px); z-index: 1; opacity: 0.92;
+  pointer-events: none;
+}
+.intro-art img {
+  width: 100%; border-radius: 2px;
+  border: 1px solid var(--hairline);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  filter: saturate(1.05);
+  transform: rotate(2deg);
+}
+
+/* —— 通用 section 头 —— */
+section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1240px; margin: 0 auto; }
+.section-head { margin-bottom: 56px; }
+.section-head .kicker { margin-bottom: 18px; }
+.section-title {
+  font-family: var(--serif); font-weight: 300;
+  font-size: clamp(2rem, 5vw, 3.6rem); letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.section-lede { color: var(--ink-2); margin-top: 16px; font-size: 1.05rem; max-width: 42em; }
+.section-lede strong { color: var(--lime); font-weight: 500; }
+
+/* —— 安装 —— */
+.install { border-top: 1px solid var(--hairline); }
+.os-switch {
+  display: inline-flex; gap: 4px; margin-bottom: 28px;
+  border: 1px solid var(--hairline); padding: 4px; border-radius: 3px;
+}
+.os-tab {
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.3px;
+  color: var(--ink-2); background: transparent; border: none;
+  padding: 8px 18px; border-radius: 2px; cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.os-tab:hover { color: var(--ink); }
+.os-tab.is-active { background: var(--lime); color: var(--bg); font-weight: 500; }
+
+.cmd-plate {
+  border: 1px solid var(--hairline); border-radius: 3px;
+  padding: 24px 26px; margin-bottom: 20px;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.cmd-plate:hover { border-color: var(--hairline-strong); box-shadow: 0 0 0 1px var(--lime-glow); }
+.cmd-meta { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.cmd-badge {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--lime);
+}
+.cmd-title { font-family: var(--serif); font-weight: 400; font-size: 1.3rem; }
+.cmd-desc { color: var(--ink-2); font-size: 0.95rem; }
+
+.cmd-line {
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+}
+.prompt { font-family: var(--mono); color: var(--lime); font-weight: 600; }
+.cmd {
+  font-family: var(--mono); font-size: 0.95rem; flex: 1 1 auto; min-width: 200px;
+  color: var(--ink); background: rgba(0,0,0,0.28);
+  border: 1px solid var(--hairline); border-radius: 2px;
+  padding: 12px 16px; word-break: break-all;
+}
+.copy {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.5px;
+  color: var(--ink-2); background: transparent;
+  border: 1px solid var(--hairline); border-radius: 2px;
+  padding: 10px 16px; cursor: pointer; flex-shrink: 0;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.copy:hover { color: var(--lime); border-color: var(--lime); }
+.copy.is-copied { color: var(--lime); border-color: var(--lime); background: var(--lime-glow); }
+
+.prereq {
+  margin-top: 26px; color: var(--ink-2); font-size: 0.92rem;
+  padding-left: 16px; border-left: 2px solid var(--lime-deep);
+}
+.prereq code { color: var(--ink); font-size: 0.85em; }
+
+/* —— 启动 —— */
+.start { border-top: 1px solid var(--hairline); }
+.cmd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+.cmd-plate.mini { margin-bottom: 0; }
+.cmd-plate.mini .cmd-line { margin-top: 0; }
+
+/* —— 能力（编辑式列表）—— */
+.capabilities { border-top: 1px solid var(--hairline); }
+.cap-list { list-style: none; }
+.cap-list li {
+  display: flex; gap: clamp(20px, 4vw, 48px); align-items: baseline;
+  padding: 30px 0; border-bottom: 1px solid var(--hairline);
+}
+.cap-list li:first-child { border-top: 1px solid var(--hairline); }
+.cap-no {
+  font-family: var(--mono); font-size: 13px; color: var(--lime);
+  letter-spacing: 2px; flex-shrink: 0; width: 2.5em;
+}
+.cap-body {}
+.cap-body h3 {
+  font-family: var(--serif); font-weight: 400; font-size: clamp(1.3rem, 3vw, 2rem);
+  margin-bottom: 6px;
+}
+.cap-body p { color: var(--ink-2); max-width: 38em; }
+
+/* —— 关于/尾声 —— */
+.about { border-top: 1px solid var(--hairline); }
+.about-grid {
+  display: grid; grid-template-columns: minmax(200px, 0.9fr) 1.4fr;
+  gap: clamp(28px, 6vw, 80px); align-items: center;
+}
+.exhibit img {
+  width: 100%; border-radius: 2px; border: 1px solid var(--hairline);
+  box-shadow: 0 30px 70px rgba(0,0,0,0.5);
+}
+.about-text p { color: var(--ink-2); margin-bottom: 18px; max-width: 36em; }
+.about-text strong { color: var(--ink); font-weight: 500; }
+.about-links { margin-top: 8px; font-family: var(--mono); font-size: 0.85rem; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.about-links code { color: var(--ink); }
+.dot { color: var(--ink-3); }
+
+/* —— 页脚 —— */
+.foot {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 28px clamp(24px, 6vw, 80px);
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-3); font-family: var(--mono); font-size: 12px;
+}
+.foot-sep { color: var(--ink-3); }
+.foot-right { margin-left: auto; color: var(--ink-3); }
+.foot .foot-right::after { content: " ◍"; color: var(--lime); }
+
+/* —— 滚动揭示（reduced-motion 会降级）—— */
+.js .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.9s ease, transform 0.9s ease; }
+.js .reveal.in { opacity: 1; transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .js .reveal { opacity: 1; transform: none; transition: none; }
+  .intro-art img { transform: none; }
+}
+
+/* —— 响应式 —— */
+@media (max-width: 820px) {
+  .intro-art { position: static; width: min(70vw, 300px); margin-top: 34px; opacity: 0.9; }
+  .intro { flex-direction: column; align-items: flex-start; }
+  .cap-list li { flex-direction: column; gap: 8px; }
+  .about-grid { grid-template-columns: 1fr; }
+  .mast-links { gap: 12px; }
+}
