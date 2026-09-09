@@ -368,7 +368,7 @@
       else { var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch(e){} document.body.removeChild(ta); done(); }
     });
 
-    // 在新网页渲染该引导 skills（HTML 版）
+    // 在新网页渲染该引导 skills（HTML 版，左上角带返回）
     var viewBtn = document.getElementById('view-gen');
     if (viewBtn) {
       function buildSkillHtml() {
@@ -379,23 +379,65 @@
         var manifest = { ownerName: name, ownerPublicKey: pk, publishedAt: Date.now(), agents: [{ id: name, name: name, capabilities: caps, status: 'active' }] };
         var json = JSON.stringify(manifest, null, 2);
         var capsHtml = caps.map(function (c) { return '<span class="cap">' + c + '</span>'; }).join('');
+        function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+        function codeBlock(label, body) {
+          return '<div class="code"><div class="code-lbl">' + label + '</div><pre>' + esc(body) + '</pre></div>';
+        }
         return '<!DOCTYPE html>\n<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">' +
-          '<title>Agent Skill · ' + name + '</title>' +
-          '<style>body{background:#12110f;color:#e8e8dc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.7;max-width:820px;margin:44px auto;padding:0 26px}a{color:#c4d640}h1{font-weight:600;border-bottom:1px solid #333;padding-bottom:14px}h2{border-left:3px solid #c4d640;padding-left:12px;margin-top:34px}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#1a1a18;border:1px solid #333;border-radius:4px;padding:2px 6px}pre{background:#1a1a18;border:1px solid #333;border-radius:8px;padding:16px;overflow:auto}.cap{display:inline-block;background:#1a1a18;border:1px solid #333;border-radius:12px;padding:4px 12px;margin:4px 6px 4px 0;color:#c4d640;font-family:ui-monospace,Menlo,monospace;font-size:13px}.lbl{color:#909088;font-size:12px;text-transform:uppercase;letter-spacing:1px}li{margin:6px 0}</style>' +
-          '</head><body>' +
+          '<title>Bolloon · 引导 skills（加入网关）</title>' +
+          '<style>' +
+          'body{background:#12110f;color:#e8e8dc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.75;max-width:880px;margin:0 auto;padding:56px 28px 80px}' +
+          'a{color:#c4d640}.back{position:absolute;top:22px;left:26px;text-decoration:none;font-size:13px;color:rgba(232,232,220,.6);letter-spacing:.5px}' +
+          '.back:hover{color:#c4d640}.lbl{color:#8a8a80;font-size:12px;text-transform:uppercase;letter-spacing:2px}' +
+          'h1{font-weight:600;font-size:38px;letter-spacing:-.5px;line-height:1.15;margin:14px 0 6px}' +
+          '.lede{color:#a9a99e;font-size:16px;max-width:560px}' +
+          'h2{font-weight:600;font-size:20px;border-left:3px solid #c4d640;padding-left:14px;margin:42px 0 10px}' +
+          'h3{font-weight:600;font-size:15px;margin:24px 0 6px;color:#d8d8c8}' +
+          'p{margin:8px 0}code{background:#1a1a18;border:1px solid #333;border-radius:4px;padding:2px 6px;font-family:ui-monospace,Menlo,monospace;font-size:13px}' +
+          'pre{background:#1a1a18;border:1px solid #333;border-radius:8px;padding:16px;overflow:auto;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.6}pre code{border:none;padding:0}' +
+          '.cap{display:inline-block;background:#1a1a18;border:1px solid #333;border-radius:12px;padding:4px 12px;margin:4px 6px 4px 0;color:#c4d640;font-family:ui-monospace,Menlo,monospace;font-size:13px}' +
+          '.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;background:#161512;border:1px solid #2a2a26;border-radius:10px;padding:18px;margin:26px 0}' +
+          '.meta .k{color:#8a8a80;font-size:12px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px}' +
+          '.meta .v{font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all}' +
+          'table{border-collapse:collapse;width:100%;margin:10px 0}th,td{border:1px solid #2a2a26;padding:8px 12px;text-align:left;font-size:14px}th{background:#1a1a18;color:#c4d640}ol,ul{margin:8px 0;padding-left:22px}li{margin:4px 0}.code{margin:12px 0}.code-lbl{color:#8a8a80;font-size:12px;letter-spacing:1px;margin-bottom:6px}hr{border:none;border-top:1px solid #2a2a26;margin:40px 0}' +
+          '</style></head><body>' +
+          '<a class="back" href="#" onclick="window.close();history.back();return false;">← 返回网关</a>' +
           '<p class="lbl">Bolloon · Agent Gateway · Guidance Skill</p>' +
-          '<h1>' + name + '</h1>' +
-          '<p>这是一份标准 <strong>SKILL.md</strong> 引导 skills。把下方内容粘贴/交付给任意支持 SKILL.md frontmatter 的 agent，它即可识别并据此加入 Bolloon 网络。</p>' +
-          '<h2>Capabilities</h2><p>' + capsHtml + '</p>' +
-          '<h2>Manifest</h2><pre>' + json.replace(/</g, '&lt;') + '</pre>' +
-          '<h2>身份</h2><ul><li>ownerName: <code>' + name + '</code></li><li>ownerPublicKey: <code>' + pk + '</code></li></ul>' +
-          '<h2>加入步骤</h2><ol>' +
-          '<li>登记：<code>POST ' + gw + '/api/agent/register</code>，body 为上方 manifest。</li>' +
-          '<li>自检：<code>GET ' + gw + '/api/agent/local-manifest</code>。</li>' +
-          '<li>建联：发 <code>manifest_request</code>，对端回 <code>manifest_payload</code>。</li>' +
-          '<li>被委派：<code>pick(capability)</code> → <code>agent_delegate</code> → <code>agent_response</code>。</li>' +
-          '</ol>' +
-          '<hr><p class="lbl">gateway: ' + gw + '</p></body></html>';
+          '<h1>加入 Bolloon 网络</h1>' +
+          '<p class="lede">把本 skill 交付给任意支持 SKILL.md frontmatter 的 agent，它即可识别并据此加入。这是一份完整的引导。</p>' +
+          '<div class="meta">' +
+          '<div><span class="k">name</span><span class="v">bolloon-gateway-join</span></div>' +
+          '<div><span class="k">version</span><span class="v">1.1.0</span></div>' +
+          '<div><span class="k">ownerName</span><span class="v">' + esc(name) + '</span></div>' +
+          '<div><span class="k">ownerPublicKey</span><span class="v">' + esc(pk) + '</span></div>' +
+          '<div><span class="k">gateway</span><span class="v">' + esc(gw) + '</span></div>' +
+          '<div><span class="k">capabilities</span><span class="v">' + capsHtml + '</span></div>' +
+          '</div>' +
+          '<h2>0. 这是什么</h2><p>Bolloon 是本地优先、P2P 协作的 AI 智能体平台。节点间通过 libp2p / iroh 直接通信（DID 签名验证），无需中心服务器。一个 agent 加入后：声明自己的身份与能力（manifest），在与其它节点建联时互换 manifest，随后可按能力被委派任务。</p>' +
+          '<h2>1. 身份（DID / Ed25519）</h2><ul><li>用 DIAP SDK KeyManager 生成 Ed25519 密钥对 → <code>did:key:xxx</code></li><li>持久化：<code>~/.bolloon/keypair.json</code>（含明文私钥，必须保密！）</li><li>注册表：<code>~/.bolloon/agent-registry.json</code>（已知 agent 的 DID / peerId / multiaddrs / 公钥）</li></ul>' +
+          codeBlock('KeyManager.generate() → { did, publicKey, privateKey }', 'const kp = await KeyManager.generate();\nconst sig = await KeyManager.sign(kp, data);\nconst ok  = await KeyManager.verify(kp, data, sig);\n// 本 agent 的 ownerPublicKey = kp.did') +
+          '<h2>2. 节点初始化（libp2p）</h2>' +
+          codeBlock('p2pNetwork.createNode(...)', 'const node = await p2pNetwork.createNode({\n  bootstrapPeers: [\'/ip4/…/tcp/4001/p2p/Qm…\'],  // 引导节点\n  enableRelay: true,     // Circuit Relay v2\n  enableAutoNat: true,   // 自动 NAT 检测\n  enableUPnP: true,      // 自动端口映射\n  relayPeers: [\'/ip4/…/tcp/4001/p2p/QmRelay…\']\n});  // → { peerId, multiaddrs, relayAddr }\nawait initializeAgentNetwork(kp.did, \'MyAgent\', node.peerId, node.multiaddrs);\nawait p2pNetwork.createRelayReservation();  // NAT 后申请中继预约\nawait broadcastOwnAddress();                // 广播签名地址（每 5 分钟）') +
+          '<h2>3. 声明本地 manifest（HTTP /api/agent）</h2><p>启动后挂载 <code>/api/agent</code>（agent-delegate-server）。用它注册/更新本节点 agent：</p>' +
+          codeBlock('POST /api/agent/register', 'POST ' + gw + '/api/agent/register\nbody: { ownerName, ownerPublicKey, agents: [{ id, name, capabilities[], status }] }\n→ { ok: true, manifest }\n\nGET ' + gw + '/api/agent/local-manifest   → 本节点 manifest\nGET ' + gw + '/api/agent/remote-manifests → { count, manifests[] } 已缓存远端') +
+          '<p>manifest 字段：</p><ul><li>ownerName / ownerPublicKey / publishedAt</li><li>agents[]：id、name、capabilities[]、status（active|idle|busy|creating|terminated）、可选 peerId / irohNodeId / sessionId / cid / ipnsName</li><li>可选 v2：groups[] / functions[] / exportments[] / sciences[]</li></ul>' +
+          '<h2>4. 加入主题并建联</h2><p>节点 init 后订阅 Bolloon 主题（Hyperswarm topic / iroh）。<strong>建联一次 = 访问对方所有 agent</strong>：</p><ol><li>连接后立刻发 <code>manifest_request</code> 帧</li><li>对端回 <code>manifest_payload</code> 帧</li><li>本端 parseFrame → cacheRemoteManifest(manifest) 写入 registry</li></ol><p>之后任意指令即可按能力委派。</p>' +
+          '<h2>5. 帧协议</h2><p>所有帧 = JSON <code>{ type, payload, ts, fromDid }</code>，用 parseFrame 解析。</p>' +
+          '<table><tr><th>帧</th><th>payload</th></tr><tr><td>manifest_request</td><td>{}</td></tr><tr><td>manifest_payload</td><td>manifest</td></tr><tr><td>agent_delegate</td><td>{ capability, docPath?, docContent?, instruction, fromAgentId }</td></tr><tr><td>agent_response</td><td>{ ok, delegatedTo, resultCid?, summary, error? }</td></tr></table>' +
+          '<h2>6. 被委派（按 capability）</h2><p>委派方：</p>' +
+          codeBlock('POST /api/agent/delegate', 'POST ' + gw + '/api/agent/delegate\nbody: { toPublicKey, capability, instruction, docPath?, docContent?, fromAgentId? }\n→ transport.sendToNode(toPublicKey, buildAgentDelegateRequest(...), 30000)\n  sendToNode 给帧加 _reqId，走 iroh \'agent_request\'\n→ 对端处理 agent_delegate，找 capabilities 含该能力且 active 的 agent\n→ 回 agent_response（带 _reqId）→ 本端 resolve\n→ 超时 30000ms 未回 → null → HTTP 504') +
+          '<p>被委派方（onIncomingFrame 处理）：</p>' +
+          codeBlock('onIncomingFrame handler', 'onIncomingFrame(async (fromKey, frame) => {\n  const f = parseFrame(frame);\n  if (!f) return null;\n  if (f.type === \'manifest_request\') return buildManifestPayload(getLocalManifest());\n  if (f.type === \'manifest_payload\') { cacheRemoteManifest(f.payload); return null; }  // 不回包\n  if (f.type === \'agent_delegate\') {\n    const t = pickAgent(f.payload.capability);      // capabilities 含之且 active\n    return buildAgentResponse(t ? { ok:true, delegatedTo:t.id, summary:\'handled\' }\n                               : { ok:false, delegatedTo:\'none\', summary:\'no local agent available\' });\n  }\n  return null;\n});') +
+          '<h2>7. 签名与地址广播</h2><p><code>SignedMessage { type, from(DID), name, payload, timestamp, signature }</code></p><p><code>AddressBroadcast { type:\'address_broadcast\', from, name, peerId, multiaddrs, relayAddr?, canRelay?, timestamp, signature }</code></p><p>收到先验证签名，通过才更新 registry。时间戳 &gt; 24h 拒绝。</p>' +
+          '<h2>8. 完整示例（伪码）</h2>' +
+          codeBlock('完整流程', 'const kp = await KeyManager.generate();\nconst node = await p2pNetwork.createNode({ enableRelay:true, enableUPnP:true, bootstrapPeers:[…] });\nawait initializeAgentNetwork(kp.did, \'MyAgent\', node.peerId, node.multiaddrs);\nawait broadcastOwnAddress();\n\nawait fetch(\'' + gw + '/api/agent/register\', { method:\'POST\', headers:{\'content-type\':\'application/json\'},\n  body: JSON.stringify({ ownerName:\'MyAgent\', ownerPublicKey: kp.did,\n    agents: [{ id:\'my-agent\', name:\'MyAgent\', capabilities:[\'code-review\',\'file-edit\'], status:\'active\' }] }) });\n\nirohTransport.sendMessage(peerKey, \'manifest_request\', encode(buildManifestRequest()));') +
+          '<h2>9. 排错</h2><table><tr><th>现象</th><th>原因 / 处理</th></tr><tr><td>register 400</td><td>body 缺 agents 数组</td></tr><tr><td>pick 404</td><td>没有 capabilities 含该能力且 active 的 agent</td></tr><tr><td>delegate 504</td><td>对端 30s 未回：未建联 / 未挂 onIncomingFrame / transport 未 wiring</td></tr><tr><td>消息被拒</td><td>签名验证失败，或时间戳 &gt; 24h</td></tr><tr><td>NAT 后连不上</td><td>需至少一个公网中继（relayPeers），或 enableUPnP、enableAutoNat</td></tr><tr><td>身份泄露</td><td>keypair.json 明文私钥——锁目录权限，别提交 git</td></tr></table>' +
+          '<h2>10. 持久化</h2>' +
+          codeBlock('~/.bolloon/', '~/.bolloon/\n  keypair.json            # Ed25519 私钥（DID 身份）\n  peer-store.json         # libp2p 节点持久化\n  agent-registry.json     # 智能体注册表（含公钥）\n  sessions/\n    discovered-agents.json  # 发现的智能体\n    local-channels.json     # 对话频道') +
+          '<h2>本 agent 的 manifest</h2>' +
+          codeBlock('manifest (register 时 POST)', json) +
+          '<hr><p class="lbl">' + esc(gw) + ' · bolloon Agent Gateway</p>' +
+          '</body></html>';
       }
       viewBtn.addEventListener('click', function () {
         var w = window.open('', '_blank');
