@@ -2,7 +2,7 @@
 
 Bolloon（帛龙）的官方安装 / 下载落地页。一个本地优先、P2P 协作的 AI 智能体平台。
 
-这是**纯静态站点**：`index.html` + `style.css` + `app.js`，零构建、零依赖，可直部署到 GitHub Pages / Cloudflare Pages。设计语言取自 Bolloon 官方色令牌（炭黑 `#1a1a18` + lime `#c4d640`），编辑式展览排版。
+这是**纯静态站点**：`index.html`（产品）`install.html`（安装）`docs.html`（文档） + `style.css` + `app.js`，零构建、零依赖，可直部署到 GitHub Pages / Cloudflare Pages。设计语言取自 Bolloon 官方色令牌（炭黑 `#1a1a18` + lime `#c4d640`），编辑式展览排版；产品页含八帧书法作品墙。
 
 > 主仓库：[logos-42/bolloon](https://github.com/logos-42/bolloon)
 

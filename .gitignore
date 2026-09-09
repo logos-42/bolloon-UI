@@ -2,6 +2,7 @@
 raw/
 raw_local/
 raw_vault/
+.wrangler/
 
 # 临时备份(bootstrap --force 覆盖时生成)
 *.bak.*

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bolloon — 文档</title>
+<meta name="description" content="Bolloon 文档：快速开始、命令一览、配置项、从源码构建。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/png" href="icons/favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
+<link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="docs">
+
+<header class="masthead">
+  <a class="brand" href="index.html" aria-label="Bolloon 首页">
+    <span class="brand-mark" aria-hidden="true">◍</span>
+    <span class="brand-word">bolloon</span>
+  </a>
+  <div class="mast-meta">
+    <span class="version-badge">v<span id="version">0.4.20</span></span>
+    <nav class="mast-links" aria-label="主导航">
+      <a href="index.html">产品</a>
+      <a href="install.html">安装</a>
+      <a href="docs.html" class="is-active">文档</a>
+      <a href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<section class="doc intro-doc">
+  <p class="kicker">Documentation · 文档</p>
+  <h1 class="section-title">把主动权交还给设备</h1>
+  <p class="section-lede">Bolloon 是命令行优先的本地智能体。这份手册覆盖安装后的每一步：启动、配置、命令，以及从源码构建。</p>
+</section>
+
+<section class="doc" id="quickstart">
+  <div class="section-head"><p class="kicker">— 01 · Quick Start</p><h2 class="section-title">快速开始</h2></div>
+  <p class="doc-body">先安装（见 <a href="install.html">安装页</a>），然后直接运行：</p>
+  <div class="cmd-line">
+    <span class="prompt">$</span><code class="cmd">bolloon</code>
+    <button class="copy" data-copy="start1" aria-label="复制命令">复制</button>
+  </div>
+  <p class="doc-body">首次启动会自动配置 LLM。需要设置一个环境变量（见 <a href="#env">配置</a>）。</p>
+</section>
+
+<section class="doc" id="commands">
+  <div class="section-head"><p class="kicker">— 02 · Commands</p><h2 class="section-title">命令一览</h2></div>
+  <div class="cmd-grid">
+    <article class="cmd-plate mini"><h3 class="cmd-title">CLI 交互模式（默认）</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon</code><button class="copy" data-copy="start1" aria-label="复制命令">复制</button></div></article>
+    <article class="cmd-plate mini"><h3 class="cmd-title">Web UI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --web</code><button class="copy" data-copy="start2" aria-label="复制命令">复制</button></div></article>
+    <article class="cmd-plate mini"><h3 class="cmd-title">强制 CLI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --cli</code><button class="copy" data-copy="start4" aria-label="复制命令">复制</button></div></article>
+    <article class="cmd-plate mini"><h3 class="cmd-title">查看全部命令</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --help</code><button class="copy" data-copy="start3" aria-label="复制命令">复制</button></div></article>
+  </div>
+</section>
+
+<section class="doc" id="env">
+  <div class="section-head"><p class="kicker">— 03 · Configuration</p><h2 class="section-title">配置</h2></div>
+  <p class="doc-body">通过环境变量配置 LLM 提供商。设置 <code>OPENAI_API_KEY</code>、<code>DEEPSEEK_API_KEY</code> 或 <code>ANTHROPIC_API_KEY</code> 之一即可。</p>
+  <table class="doc-table">
+    <thead><tr><th>变量</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><code>OPENAI_API_KEY</code></td><td>OpenAI 提供商（可选）</td></tr>
+      <tr><td><code>DEEPSEEK_API_KEY</code></td><td>DeepSeek 提供商（可选）</td></tr>
+      <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Anthropic 提供商（可选）</td></tr>
+      <tr><td><code>BOLLOON_LLM_PROVIDER</code></td><td>指定 LLM 提供商</td></tr>
+      <tr><td><code>BOLLOON_VERSION</code></td><td>安装脚本：指定版本</td></tr>
+      <tr><td><code>BOLLOON_INSTALL_DIR</code></td><td>安装目录，默认 <code>/usr/local/bin</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="doc" id="build">
+  <div class="section-head"><p class="kicker">— 04 · From Source</p><h2 class="section-title">从源码构建</h2></div>
+  <div class="cmd-plate">
+    <div class="cmd-meta"><span class="cmd-badge">Build</span><h3 class="cmd-title">克隆并构建</h3></div>
+    <div class="cmd-line"><span class="prompt">$</span><code class="cmd">git clone https://github.com/logos-42/bolloon.git && cd bolloon && npm install && npm run build:all && npm start</code><button class="copy" data-copy="build" aria-label="复制命令">复制</button></div>
+  </div>
+  <p class="doc-body">构建产物位于 <code>dist/</code>。核心代码在 <code>src/agents</code>（智能体）、<code>src/cli</code>（Ink 界面）、<code>src/network</code>（P2P）、<code>src/web</code>（Web UI）。</p>
+</section>
+
+<section class="doc" id="features">
+  <div class="section-head"><p class="kicker">— 05 · Features</p><h2 class="section-title">功能</h2></div>
+  <ol class="cap-list">
+    <li><span class="cap-no">01</span><div class="cap-body"><h3>AI 对话</h3><p>本地运行的智能体，支持多轮对话与流式回复。</p></div></li>
+    <li><span class="cap-no">02</span><div class="cap-body"><h3>P2P 网络</h3><p>通过 DHT 自动发现并连接其他节点。</p></div></li>
+    <li><span class="cap-no">03</span><div class="cap-body"><h3>文档处理</h3><p>接收和管理文档，支持 DID 签名验证。</p></div></li>
+    <li><span class="cap-no">04</span><div class="cap-body"><h3>工具调用</h3><p>shell、文件、代码分析，由安全闸门守卫。</p></div></li>
+    <li><span class="cap-no">05</span><div class="cap-body"><h3>自我改进</h3><p>自动检查更新、质量门控。</p></div></li>
+  </ol>
+</section>
+
+<section class="doc" id="links">
+  <div class="section-head"><p class="kicker">— 06 · Links</p><h2 class="section-title">延伸</h2></div>
+  <p class="doc-body">
+    <a href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub 仓库</a> ·
+    <a href="https://github.com/logos-42/bolloon/blob/master/README.md" target="_blank" rel="noopener">README · 中文</a> ·
+    <a href="install.html">安装页</a>
+  </p>
+</section>
+
+<footer class="foot">
+  <span>© <span id="year">2026</span> bolloon</span>
+  <span class="foot-sep">·</span>
+  <span>MIT License</span>
+  <span class="foot-right">◍ 由节点与节点相连</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

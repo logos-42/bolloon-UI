@@ -47,10 +47,10 @@
   }
 
   function applyOS(os) {
-    scriptCmd.textContent = CMD.script[os];
-    scriptPrompt.textContent = CMD.prompt[os];
-    scriptDesc.textContent = CMD.scriptDesc[os];
-    osName.textContent = os === 'windows' ? 'Windows' : 'macOS / Linux';
+    if (scriptCmd) scriptCmd.textContent = CMD.script[os];
+    if (scriptPrompt) scriptPrompt.textContent = CMD.prompt[os];
+    if (scriptDesc) scriptDesc.textContent = CMD.scriptDesc[os];
+    if (osName) osName.textContent = os === 'windows' ? 'Windows' : 'macOS / Linux';
   }
 
   tabs.forEach(function (tab) {
@@ -78,7 +78,9 @@
     'npm-cmd': 'npm install -g @bolloon/bolloon-agent',
     'start1': 'bolloon',
     'start2': 'bolloon --web',
-    'start3': 'bolloon --help'
+    'start3': 'bolloon --help',
+    'start4': 'bolloon --cli',
+    'build': 'git clone https://github.com/logos-42/bolloon.git && cd bolloon && npm install && npm run build:all && npm start'
   };
 
   Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (btn) {
@@ -110,7 +112,7 @@
 
   // ——— 滚动揭示 ———
   var revealEls = Array.prototype.slice.call(document.querySelectorAll(
-    '.section-head, .cmd-plate, .os-switch, .prereq, .cap-list li, .about-grid, .intro-inner, .intro-art'
+    '.section-head, .cmd-plate, .os-switch, .prereq, .cap-list li, .about-grid, .intro-inner, .intro-art, .doc, .works-grid, .doc-table'
   ));
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (entries) {
@@ -119,5 +121,29 @@
       });
     }, { threshold: 0.12 });
     revealEls.forEach(function (el) { el.classList.add('reveal'); io.observe(el); });
+  }
+
+  // ——— 作品墙放大（lightbox）———
+  var lightbox = document.getElementById('lightbox');
+  var lightboxImg = document.getElementById('lightbox-img');
+  var lightboxClose = document.getElementById('lightbox-close');
+  if (lightbox && lightboxImg) {
+    Array.prototype.forEach.call(document.querySelectorAll('.work'), function (figure) {
+      figure.addEventListener('click', function () {
+        var img = figure.querySelector('img');
+        lightboxImg.src = figure.getAttribute('data-fig') || (img ? img.src : '');
+        lightbox.hidden = false;
+        document.body.style.overflow = 'hidden';
+      });
+    });
+    function closeLightbox() {
+      lightbox.hidden = true;
+      document.body.style.overflow = '';
+    }
+    if (lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', function (e) { if (e.target === lightbox) closeLightbox(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
+    });
   }
 })();
