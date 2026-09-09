@@ -127,4 +127,30 @@
     }, { threshold: 0.12 });
     revealEls.forEach(function (el) { el.classList.add('reveal'); io.observe(el); });
   }
+
+  // ——— 安装框：栏目切换 ———
+  var installTabs = Array.prototype.slice.call(document.querySelectorAll('.install-tab'));
+  var installPanes = Array.prototype.slice.call(document.querySelectorAll('.install-pane'));
+  function activatePane(pane) {
+    installTabs.forEach(function (t) {
+      var on = t.getAttribute('data-pane') === pane;
+      t.classList.toggle('is-active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    installPanes.forEach(function (p) { p.classList.toggle('is-active', p.getAttribute('data-pane') === pane); });
+  }
+  installTabs.forEach(function (tab) {
+    tab.addEventListener('click', function () { activatePane(tab.getAttribute('data-pane')); });
+  });
+  // 安卓子栏：跳到对应安装栏目（并滚动到安装区）
+  Array.prototype.forEach.call(document.querySelectorAll('[data-goto-pane]'), function (a) {
+    a.addEventListener('click', function (e) {
+      var pane = a.getAttribute('data-goto-pane');
+      if (!pane) return;
+      e.preventDefault();
+      activatePane(pane);
+      var sec = document.getElementById('install');
+      if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
 })();

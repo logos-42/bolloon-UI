@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bolloon — 安装</title>
-<meta name="description" content="安装 Bolloon：本地优先、P2P 协作的 AI 智能体平台。macOS / Linux / Windows 一键安装与 npm 方式。">
+<meta name="description" content="安装 Bolloon：本地优先、P2P 协作的 AI 智能体平台。macOS / Linux / Windows 一键安装，npm 方式，以及 Android 下载。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body data-page="install">
 
@@ -79,7 +79,7 @@
     </p>
     <div class="intro-cta">
       <a class="quiet-cta" href="#install">开始安装 <span aria-hidden="true">→</span></a>
-      <span class="intro-note">macOS · Linux · Windows</span>
+      <span class="intro-note">macOS · Linux · Windows · Android</span>
     </div>
   </div>
   <figure class="intro-art" aria-hidden="true">
@@ -87,44 +87,54 @@
   </figure>
 </section>
 
-<!-- ⓐ 安装——核心 -->
+<!-- ⓐ 安装——一个框，框内切换栏目 -->
 <section class="install" id="install">
   <div class="section-head">
     <p class="kicker">— 01 · Installation</p>
     <h2 class="section-title">安装</h2>
-    <p class="section-lede">三种方式。检测到你的系统是 <strong id="os-name">macOS / Linux</strong>，下面命令可直接复制运行。</p>
+    <p class="section-lede">选择一个方式。检测到你的系统是 <strong id="os-name">macOS / Linux</strong>，命令可直接复制运行。</p>
   </div>
 
-  <div class="os-switch" role="tablist" aria-label="选择操作系统">
-    <button class="os-tab is-active" data-os="unix" role="tab" aria-selected="true">macOS / Linux</button>
-    <button class="os-tab" data-os="windows" role="tab" aria-selected="false">Windows</button>
-  </div>
+  <div class="install-box">
+    <div class="install-tabs" role="tablist" aria-label="安装方式">
+      <button class="install-tab is-active" data-pane="script" role="tab" aria-selected="true">一键脚本</button>
+      <button class="install-tab" data-pane="npm" role="tab" aria-selected="false">npm</button>
+      <button class="install-tab" data-pane="android" role="tab" aria-selected="false">手机 · Android</button>
+    </div>
 
-  <article class="cmd-plate">
-    <div class="cmd-meta">
-      <span class="cmd-badge">方式一</span>
-      <h3 class="cmd-title">一键脚本</h3>
+    <!-- 栏目：一键脚本 -->
+    <div class="install-pane is-active" data-pane="script" role="tabpanel">
+      <div class="os-switch" role="group" aria-label="选择操作系统">
+        <button class="os-tab is-active" data-os="unix" aria-pressed="true">macOS / Linux</button>
+        <button class="os-tab" data-os="windows" aria-pressed="false">Windows</button>
+      </div>
+      <div class="cmd-line">
+        <span class="prompt" id="script-prompt">$</span>
+        <code class="cmd" id="script-cmd">curl -fsSL https://raw.githubusercontent.com/logos-42/bolloon/master/scripts/install.sh | sh</code>
+        <button class="copy" data-copy="script-cmd" aria-label="复制命令">复制</button>
+      </div>
       <p class="cmd-desc" id="script-desc">从 GitHub 拉取安装并下载预编译包，失败自动回退 npm。</p>
     </div>
-    <div class="cmd-line">
-      <span class="prompt" id="script-prompt">$</span>
-      <code class="cmd" id="script-cmd">curl -fsSL https://raw.githubusercontent.com/logos-42/bolloon/master/scripts/install.sh | sh</code>
-      <button class="copy" data-copy="script-cmd" aria-label="复制命令">复制</button>
-    </div>
-  </article>
 
-  <article class="cmd-plate">
-    <div class="cmd-meta">
-      <span class="cmd-badge">方式二</span>
-      <h3 class="cmd-title">npm（需 Node.js ≥ 18）</h3>
-      <p class="cmd-desc">全局安装为命令，首次启动自动配置 LLM。</p>
+    <!-- 栏目：npm -->
+    <div class="install-pane" data-pane="npm" role="tabpanel">
+      <div class="cmd-line">
+        <span class="prompt">$</span>
+        <code class="cmd">npm install -g @bolloon/bolloon-agent</code>
+        <button class="copy" data-copy="npm-cmd" aria-label="复制命令">复制</button>
+      </div>
+      <p class="cmd-desc">需 Node.js ≥ 18。全局安装为命令，首次启动自动配置 LLM。</p>
     </div>
-    <div class="cmd-line">
-      <span class="prompt">$</span>
-      <code class="cmd">npm install -g @bolloon/bolloon-agent</code>
-      <button class="copy" data-copy="npm-cmd" aria-label="复制命令">复制</button>
+
+    <!-- 栏目：Android -->
+    <div class="install-pane" data-pane="android" role="tabpanel">
+      <p class="cmd-desc">在 Android 上安装 Bolloon：下载安装包后打开安装。</p>
+      <div class="android-actions">
+        <a class="quiet-cta" href="https://github.com/logos-42/bolloon/releases" target="_blank" rel="noopener">下载安装包 (APK) ↗</a>
+        <span class="intro-note">开源分发</span>
+      </div>
     </div>
-  </article>
+  </div>
 
   <p class="prereq">
     前提 —— Node.js ≥ 18（<a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a>）· LLM 密钥（<code>OPENAI_API_KEY</code> / <code>DEEPSEEK_API_KEY</code> / <code>ANTHROPIC_API_KEY</code>，可选 <code>BOLLOON_LLM_PROVIDER</code>）
@@ -184,6 +194,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

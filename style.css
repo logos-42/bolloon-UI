@@ -326,3 +326,31 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 @media (max-width: 820px) {
   .cap-list li { flex-direction: column; gap: 8px; }
 }
+
+/* —— 安装框（栏目切换） —— */
+.install-box {
+  border: 1px solid var(--hairline); border-radius: 3px;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
+  overflow: hidden;
+}
+.install-tabs { display: flex; border-bottom: 1px solid var(--hairline); }
+.install-tab {
+  flex: 1; padding: 14px 16px;
+  background: transparent; border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-2); font-size: 15px; letter-spacing: 0.3px;
+  cursor: pointer; font-family: inherit;
+  transition: color 0.18s, border-color 0.18s, background 0.18s;
+}
+.install-tab:hover { color: var(--ink); background: var(--bg-hover); }
+.install-tab.is-active { color: var(--lime); border-bottom-color: var(--lime); }
+.install-pane { display: none; padding: 22px 24px; }
+.install-pane.is-active { display: block; }
+.install-pane .os-switch { margin-bottom: 18px; }
+.install-pane .cmd-line { margin-bottom: 6px; }
+.install-pane .cmd-desc { color: var(--ink-2); margin-top: 14px; font-size: 0.95rem; }
+.android-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+
+@media (max-width: 820px) {
+  .install-tab { padding: 13px 10px; font-size: 14px; }
+}
