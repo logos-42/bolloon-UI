@@ -112,7 +112,7 @@
 
   // ——— 滚动揭示 ———
   var revealEls = Array.prototype.slice.call(document.querySelectorAll(
-    '.section-head, .cmd-plate, .os-switch, .prereq, .cap-list li, .about-grid, .intro-inner, .intro-art, .doc, .works-grid, .doc-table'
+    '.section-head, .cmd-plate, .os-switch, .prereq, .cap-list li, .about-grid, .intro-inner, .intro-art, .doc, .doc-table'
   ));
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (entries) {
@@ -121,29 +121,5 @@
       });
     }, { threshold: 0.12 });
     revealEls.forEach(function (el) { el.classList.add('reveal'); io.observe(el); });
-  }
-
-  // ——— 作品墙放大（lightbox）———
-  var lightbox = document.getElementById('lightbox');
-  var lightboxImg = document.getElementById('lightbox-img');
-  var lightboxClose = document.getElementById('lightbox-close');
-  if (lightbox && lightboxImg) {
-    Array.prototype.forEach.call(document.querySelectorAll('.work'), function (figure) {
-      figure.addEventListener('click', function () {
-        var img = figure.querySelector('img');
-        lightboxImg.src = figure.getAttribute('data-fig') || (img ? img.src : '');
-        lightbox.hidden = false;
-        document.body.style.overflow = 'hidden';
-      });
-    });
-    function closeLightbox() {
-      lightbox.hidden = true;
-      document.body.style.overflow = '';
-    }
-    if (lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
-    lightbox.addEventListener('click', function (e) { if (e.target === lightbox) closeLightbox(); });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
-    });
   }
 })();

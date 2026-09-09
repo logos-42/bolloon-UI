@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bolloon — 本地优先 · P2P 协作的 AI 智能体平台</title>
-<meta name="description" content="Bolloon 是一个本地优先、P2P 协作的 AI 智能体平台。在你的设备上运行，通过 DHT 网络发现并连接其他节点。">
+<title>HiBS — 去中心化团队 · 位于中国</title>
+<meta name="description" content="HiBS —— 一个去中心化的团队，位于中国。Hidden Number System、三公理数学框架与相关研究。">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
@@ -15,7 +16,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
-<body data-page="product">
+<body data-page="hibs">
 
 <div class="topnav">
   <header class="masthead">
@@ -25,18 +26,17 @@
     </a>
     <nav class="mast-links" aria-label="主导航">
       <div class="nav-item has-menu">
-        <a href="hibs.html">Hibs</a>
+        <a href="hibs.html" class="is-active">Hibs</a>
         <div class="nav-menu">
           <span class="nav-menu-note">去中心化团队 · 位于中国</span>
           <a href="hibs.html#about">团队</a>
-          <a href="hibs.html#work">研究工作</a>
           <a href="https://github.com/logos-42/Hibs-Physics" target="_blank" rel="noopener">Hibs-Physics</a>
           <a href="https://github.com/logos-42/RiemannHIBS" target="_blank" rel="noopener">RiemannHIBS</a>
           <a href="https://github.com/logos-42/Lean_HIBS" target="_blank" rel="noopener">Lean_HIBS</a>
         </div>
       </div>
       <div class="nav-item has-menu">
-        <a href="index.html" class="is-active">产品</a>
+        <a href="index.html">产品</a>
         <div class="nav-menu">
           <a href="index.html#intro">序厅</a>
           <a href="index.html#capabilities">能力</a>
@@ -62,70 +62,69 @@
           <a href="docs.html#links">延伸</a>
         </div>
       </div>
-      <a class="nav-item" href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub ↗</a>
+      <a class="nav-item" href="https://github.com/logos-42" target="_blank" rel="noopener">GitHub ↗</a>
     </nav>
     <span class="version-badge">v<span id="version">0.4.20</span></span>
   </header>
 </div>
 
-<!-- ◆ 序厅 -->
+<!-- 序厅 -->
 <section class="intro" id="intro">
   <div class="intro-inner">
-    <p class="kicker">P2P AI Agent · 本地优先 · 自改进</p>
-    <h1 class="display"><span class="line">bolloon</span></h1>
+    <p class="kicker">HiBS · 去中心化 · 位于中国</p>
+    <h1 class="display"><span class="line">HiBS</span></h1>
     <p class="lede">
-      一个在你的设备上运行的 AI 智能体平台。<br>
-      它通过 DHT 网络发现并连接其他节点——<span class="hl">不靠云端，而是彼此。</span>
+      我们致力于建立<span class="hl">去中心化的 AI 资源流动系统</span>——让计算与智能像能量一样，在节点间自由流动、彼此协作。
     </p>
     <div class="intro-cta">
-      <a class="quiet-cta" href="install.html">开始安装 <span aria-hidden="true">→</span></a>
-      <a class="quiet-cta ghost" href="docs.html">阅读文档</a>
+      <a class="quiet-cta" href="#about">认识团队 <span aria-hidden="true">→</span></a>
+      <a class="quiet-cta ghost" href="#work">研究工作</a>
     </div>
   </div>
   <figure class="intro-art" aria-hidden="true">
-    <img src="fig/thumbnail_219.jpg" alt="" loading="eager">
+    <img src="fig/thumbnail_375.jpg" alt="" loading="eager">
   </figure>
 </section>
 
-<!-- ◆ 它能做什么 -->
-<section class="capabilities" id="capabilities">
+<!-- 关于团队 -->
+<section class="capabilities" id="about">
   <div class="section-head">
-    <p class="kicker">— 01 · Capabilities</p>
-    <h2 class="section-title">它能做什么</h2>
+    <p class="kicker">— 01 · Team</p>
+    <h2 class="section-title">一个去中心化的团队</h2>
   </div>
+  <p class="section-lede">我们的使命——<strong>建立去中心化的 AI 资源流动系统</strong>。不依赖单一中心，让计算与智能的资源在节点间自由流动；团队位于中国，面向世界。</p>
   <ol class="cap-list">
-    <li><span class="cap-no">01</span><div class="cap-body"><h3>AI 对话</h3><p>本地运行的智能体，支持多轮对话与流式回复。</p></div></li>
-    <li><span class="cap-no">02</span><div class="cap-body"><h3>P2P 网络</h3><p>通过 DHT 自动发现并连接其他 Bolloon 节点，无需中心服务器。</p></div></li>
-    <li><span class="cap-no">03</span><div class="cap-body"><h3>文档处理</h3><p>接收和管理文档，支持 DID 签名验证归属。</p></div></li>
-    <li><span class="cap-no">04</span><div class="cap-body"><h3>工具调用</h3><p>shell 命令、文件操作、代码分析等，由安全闸门守卫。</p></div></li>
-    <li><span class="cap-no">05</span><div class="cap-body"><h3>自我改进</h3><p>自动检查更新、质量门控，持续进化。</p></div></li>
+    <li><span class="cap-no">01</span><div class="cap-body"><h3>使命</h3><p>建立去中心化的 AI 资源流动系统。</p></div></li>
+    <li><span class="cap-no">02</span><div class="cap-body"><h3>去中心化</h3><p>没有单一控制点——共识、贡献、归属都由分布式的节点与成员共同构成。</p></div></li>
+    <li><span class="cap-no">03</span><div class="cap-body"><h3>位于中国</h3><p>扎根于中国，研究与作品从这里生长，面向全球分享。</p></div></li>
+    <li><span class="cap-no">04</span><div class="cap-body"><h3>数学与物理基础</h3><p>关注基础问题：隐数系统、三公理、几何化物理。</p></div></li>
+    <li><span class="cap-no">05</span><div class="cap-body"><h3>开放的贡献</h3><p>研究公开发布，欢迎协作与质疑。</p></div></li>
   </ol>
 </section>
 
-<!-- ◆ 尾声 / 关于 -->
-<section class="about" id="about">
+<!-- 研究工作 -->
+<section class="capabilities" id="work">
   <div class="section-head">
-    <p class="kicker">— 02 · Colophon</p>
-    <h2 class="section-title">关于</h2>
+    <p class="kicker">— 02 · Work</p>
+    <h2 class="section-title">研究工作</h2>
   </div>
-  <div class="about-grid">
-    <figure class="exhibit"><img src="fig/thumbnail_950.jpg" alt="书法作品" loading="lazy"></figure>
-    <div class="about-text">
-      <p>Bolloon（帛龙）—— 一个本地优先、P2P 协作的 AI 智能体平台。它把主动权交还给运行它的那台设备，用 DHT 让节点彼此发现，用 DID 让归属可验证。</p>
-      <p>项目开源协议 <strong>MIT</strong>，可自由使用、修改、分发，需保留版权与许可声明。</p>
-      <p class="about-links">
-        <a href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub：logos-42/bolloon ↗</a>
-        <span class="dot">·</span>
-        <a href="docs.html">文档</a>
-      </p>
-    </div>
+  <div class="cmd-grid">
+    <a class="cmd-plate mini" href="https://github.com/logos-42/Hibs-Physics" target="_blank" rel="noopener">
+      <h3 class="cmd-title">Hibs-Physics ↗</h3><p class="cmd-desc">三公理代数涌现物理：表示完备性、核零。</p>
+    </a>
+    <a class="cmd-plate mini" href="https://github.com/logos-42/RiemannHIBS" target="_blank" rel="noopener">
+      <h3 class="cmd-title">RiemannHIBS ↗</h3><p class="cmd-desc">通过隐数算术构造黎曼 ζ/η 函数。</p>
+    </a>
+    <a class="cmd-plate mini" href="https://github.com/logos-42/Lean_HIBS" target="_blank" rel="noopener">
+      <h3 class="cmd-title">Lean_HIBS ↗</h3><p class="cmd-desc">Lean 4 形式化三公理与相关证明。</p>
+    </a>
   </div>
 </section>
 
 <footer class="foot">
-  <span>© <span id="year">2026</span> bolloon</span>
+  <span>© <span id="year">2026</span> HiBS</span>
   <span class="foot-sep">·</span>
-  <span>MIT License</span>
+  <span>去中心化 AI 资源流动系统 · 中国</span>
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
