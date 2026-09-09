@@ -176,47 +176,95 @@
     });
   });
 
-  // ——— 网关：生成隐式 skills HTML（独立可打开的纯 HTML）———
+  // ——— 网关：引导 skills（标准 SKILL.md，复制给 agent 可识别）———
   var genBtn = document.getElementById('generate-btn');
   if (genBtn) {
-    var preview = document.getElementById('gen-preview');
+    var out = document.getElementById('skill-capabilities');
     var nameEl = document.getElementById('skill-name');
     var pkEl = document.getElementById('skill-pk');
     var gwEl = document.getElementById('skill-gw');
-    var capEl = document.getElementById('skill-capabilities');
-    var downloadEl = document.getElementById('download-gen');
     var copyBtn = document.getElementById('copy-gen');
-    var openBtn = document.getElementById('open-gen');
 
-    function buildSkillsHtml() {
+    function buildSkill() {
       var name = (nameEl.value || 'my-agent').trim();
       var pk = (pkEl.value || '').trim();
       var gw = (gwEl.value || 'http://127.0.0.1:8788').trim().replace(/\/$/, '');
-      var caps = (capEl.value || '').split(/[\n,，]+/).map(function (s) { return s.trim(); }).filter(Boolean);
-      if (!caps.length) caps = ['general'];
+      var caps = ['gateway-join', 'agent-manifest', 'p2p-delegate'];
       var manifest = { ownerName: name, ownerPublicKey: pk, publishedAt: Date.now(), agents: [{ id: name, name: name, capabilities: caps, status: 'active' }] };
       var json = JSON.stringify(manifest, null, 2);
-      var capsHtml = caps.map(function (c) { return '<li><code>' + c + '</code></li>'; }).join('');
-      return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Agent Skills · ' + name + '</title>\n<style>\nbody{background:#12110f;color:#e8e8dc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.7;max-width:860px;margin:40px auto;padding:0 24px}\na{color:#c4d640}\nh1{font-weight:600;border-bottom:1px solid #333;padding-bottom:12px}\ncode{background:#1a1a18;border:1px solid #333;border-radius:4px;padding:2px 6px;font-family:ui-monospace,Menlo,monospace}\npre{background:#1a1a18;border:1px solid #333;border-radius:8px;padding:16px;overflow:auto}\nul li{margin:4px 0}\n.label{color:#909088;font-size:12px;text-transform:uppercase;letter-spacing:1px}\n</style>\n</head>\n<body>\n<p class="label">Bolloon · Agent Gateway · Implicit Skills</p>\n<h1>' + name + '</h1>\n<p>此页面为一个加入 Bolloon P2P 网络的 <strong>agent 隐式 skills</strong> 声明。网关/节点读取本页即可发现该 agent 并按能力委派。</p>\n<h2>Manifest</h2>\n<pre>' + json.replace(/</g, '&lt;') + '</pre>\n<h2>Skills / Capabilities</h2>\n<ul>' + capsHtml + '</ul>\n<h2>加入网关</h2>\n<ol>\n<li>登记 manifest：<code>POST ' + gw + '/api/agent/register</code>，body 为上方 manifest。</li>\n<li>查本机：<code>GET ' + gw + '/api/agent/local-manifest</code>。</li>\n<li>建联后发 <code>manifest_request</code>，对端回 <code>manifest_payload</code>。</li>\n<li>被选中：<code>pick(capability)</code> 后接收 <code>agent_delegate</code>。</li>\n</ol>\n<hr>\n<p class="label">gateway: ' + gw + '</p>\n</body>\n</html>';
+      return [
+        '---',
+        'name: bolloon-gateway-join',
+        'description: 将本 agent 加入 Bolloon P2P 网关：声明 manifest、POST /api/agent/register 登记、建联互换 manifest_request→manifest_payload、按 capability 被 pick→agent_delegate 委派。',
+        'capabilities: [' + caps.join(', ') + ']',
+        'version: 1.0.0',
+        '---',
+        '',
+        '# Bolloon Agent · 加入网关',
+        '',
+        '把此 skill 粘贴给任意支持 SKILL.md frontmatter 的 agent，它即可识别并据此加入网络。',
+        '',
+        '## 身份',
+        '- ownerName: ' + name,
+        '- ownerPublicKey: ' + pk,
+        '',
+        '## Manifest（登记时 POST）',
+        '```json',
+        json,
+        '```',
+        '',
+        '## 加入步骤',
+        '1. 登记：POST ' + gw + '/api/agent/register，body 为上方 manifest。',
+        '2. 自检：GET ' + gw + '/api/agent/local-manifest。',
+        '3. 建联：建联后发 manifest_request，对端回 manifest_payload，写入本地 registry。',
+        '4. 被委派：pick(capability) → agent_delegate(capability, instruction) → agent_response。'
+      ].join('\n');
     }
 
-    genBtn.addEventListener('click', function () {
-      var html = buildSkillsHtml();
-      preview.textContent = html;
-      downloadEl.setAttribute('href', 'data:text/html;charset=utf-8,' + encodeURIComponent(html));
-      copyBtn.setAttribute('data-ready', html);
-    });
+    if (out) out.value = buildSkill();
+
+    genBtn.addEventListener('click', function () { if (out) out.value = buildSkill(); });
 
     copyBtn.addEventListener('click', function () {
-      var html = copyBtn.getAttribute('data-ready') || buildSkillsHtml();
-      var done = function () { copyBtn.textContent = '已复制'; setTimeout(function(){ copyBtn.textContent = '复制'; }, 1500); };
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(html).then(done);
-      else { var ta = document.createElement('textarea'); ta.value = html; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch(e){} document.body.removeChild(ta); done(); }
+      var text = (out && out.value) || buildSkill();
+      var done = function () { copyBtn.textContent = '已复制'; setTimeout(function(){ copyBtn.textContent = copyBtn.getAttribute('data-zh') || '复制 skills'; }, 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done);
+      else { var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch(e){} document.body.removeChild(ta); done(); }
     });
 
-    openBtn.addEventListener('click', function () {
-      var w = window.open('', '_blank');
-      if (w) { w.document.write(buildSkillsHtml()); w.document.close(); }
-    });
+    // 在新网页渲染该引导 skills（HTML 版）
+    var viewBtn = document.getElementById('view-gen');
+    if (viewBtn) {
+      function buildSkillHtml() {
+        var name = (nameEl.value || 'my-agent').trim();
+        var pk = (pkEl.value || '').trim();
+        var gw = (gwEl.value || 'http://127.0.0.1:8788').trim().replace(/\/$/, '');
+        var caps = ['gateway-join', 'agent-manifest', 'p2p-delegate'];
+        var manifest = { ownerName: name, ownerPublicKey: pk, publishedAt: Date.now(), agents: [{ id: name, name: name, capabilities: caps, status: 'active' }] };
+        var json = JSON.stringify(manifest, null, 2);
+        var capsHtml = caps.map(function (c) { return '<span class="cap">' + c + '</span>'; }).join('');
+        return '<!DOCTYPE html>\n<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">' +
+          '<title>Agent Skill · ' + name + '</title>' +
+          '<style>body{background:#12110f;color:#e8e8dc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.7;max-width:820px;margin:44px auto;padding:0 26px}a{color:#c4d640}h1{font-weight:600;border-bottom:1px solid #333;padding-bottom:14px}h2{border-left:3px solid #c4d640;padding-left:12px;margin-top:34px}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#1a1a18;border:1px solid #333;border-radius:4px;padding:2px 6px}pre{background:#1a1a18;border:1px solid #333;border-radius:8px;padding:16px;overflow:auto}.cap{display:inline-block;background:#1a1a18;border:1px solid #333;border-radius:12px;padding:4px 12px;margin:4px 6px 4px 0;color:#c4d640;font-family:ui-monospace,Menlo,monospace;font-size:13px}.lbl{color:#909088;font-size:12px;text-transform:uppercase;letter-spacing:1px}li{margin:6px 0}</style>' +
+          '</head><body>' +
+          '<p class="lbl">Bolloon · Agent Gateway · Guidance Skill</p>' +
+          '<h1>' + name + '</h1>' +
+          '<p>这是一份标准 <strong>SKILL.md</strong> 引导 skills。把下方内容粘贴/交付给任意支持 SKILL.md frontmatter 的 agent，它即可识别并据此加入 Bolloon 网络。</p>' +
+          '<h2>Capabilities</h2><p>' + capsHtml + '</p>' +
+          '<h2>Manifest</h2><pre>' + json.replace(/</g, '&lt;') + '</pre>' +
+          '<h2>身份</h2><ul><li>ownerName: <code>' + name + '</code></li><li>ownerPublicKey: <code>' + pk + '</code></li></ul>' +
+          '<h2>加入步骤</h2><ol>' +
+          '<li>登记：<code>POST ' + gw + '/api/agent/register</code>，body 为上方 manifest。</li>' +
+          '<li>自检：<code>GET ' + gw + '/api/agent/local-manifest</code>。</li>' +
+          '<li>建联：发 <code>manifest_request</code>，对端回 <code>manifest_payload</code>。</li>' +
+          '<li>被委派：<code>pick(capability)</code> → <code>agent_delegate</code> → <code>agent_response</code>。</li>' +
+          '</ol>' +
+          '<hr><p class="lbl">gateway: ' + gw + '</p></body></html>';
+      }
+      viewBtn.addEventListener('click', function () {
+        var w = window.open('', '_blank');
+        if (w) { w.document.write(buildSkillHtml()); w.document.close(); }
+      });
+    }
   }
 })();
