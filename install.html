@@ -108,6 +108,7 @@
       <button class="install-tab is-active" data-pane="script" role="tab" aria-selected="true">一键脚本</button>
       <button class="install-tab" data-pane="npm" role="tab" aria-selected="false">npm</button>
       <button class="install-tab" data-pane="android" role="tab" aria-selected="false">手机 · Android</button>
+      <button class="install-tab" data-pane="ios" role="tab" aria-selected="false">手机 · iOS</button>
     </div>
 
     <!-- 栏目：一键脚本 -->
@@ -142,6 +143,17 @@
         <span class="intro-note">开源分发</span>
       </div>
     </div>
+    <!-- 栏目：iOS -->
+    <div class="install-pane" data-pane="ios" role="tabpanel">
+      <p class="cmd-desc">在 iPhone / iPad 上安装 Bolloon App：用 Safari 打开本页 → 点下面的按钮 → 弹窗选「安装」。</p>
+      <div class="android-actions">
+        <a class="quiet-cta" id="ios-install" href="itms-services://?action=download-manifest&amp;url=https://logos-42.github.io/bolloon-UI/ios/manifest.plist">安装 iOS App</a>
+        <span class="intro-note" id="ios-note">开发版签名 · 需已登记设备</span>
+      </div>
+      <p class="cmd-desc" style="margin-top:12px;opacity:.78">当前用 Apple 个人开发者账号（免费）签名，属于<strong>开发版分发</strong>：只能在已登记 UDID 的设备上安装，且描述文件 <strong>7 天</strong>后过期，过期后重装本页即可。面向所有人的正式分发需 Apple Developer Program（$99/年）+ App Store 或 TestFlight。</p>
+      <p class="cmd-desc" id="ios-version" style="opacity:.6"></p>
+    </div>
+
   </div>
 
   <p class="prereq">

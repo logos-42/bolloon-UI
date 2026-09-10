@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Bolloon iOS OTA 安装清单 (itms-services)
+    install.html 的「安装 iOS App」按钮 → itms-services://?action=download-manifest&url=<本文件 URL>
+    software-package 指向 GitHub Release 资产 (脚本 scripts/ios-release.sh 自动更新版本号与 URL)
+
+  注意: 当前为 Apple 个人开发者账号(免费)签名的开发版 → 仅已登记 UDID 的设备可装, 描述文件 7 天过期.
+-->
+<plist version="1.0">
+<dict>
+  <key>items</key>
+  <array>
+    <dict>
+      <key>assets</key>
+      <array>
+        <dict>
+          <key>kind</key>
+          <string>software-package</string>
+          <key>url</key>
+          <string>https://github.com/logos-42/bolloon-UI/releases/download/ios-v0.4.20/Bolloon.ipa</string>
+        </dict>
+        <dict>
+          <key>kind</key>
+          <string>display-image</string>
+          <key>needs-shine</key>
+          <true/>
+          <key>url</key>
+          <string>https://logos-42.github.io/bolloon-UI/icons/favicon-192x192.png</string>
+        </dict>
+        <dict>
+          <key>kind</key>
+          <string>full-size-image</string>
+          <key>needs-shine</key>
+          <true/>
+          <key>url</key>
+          <string>https://logos-42.github.io/bolloon-UI/icons/favicon-512x512.png</string>
+        </dict>
+      </array>
+      <key>metadata</key>
+      <dict>
+        <key>bundle-identifier</key>
+        <string>com.bolloon.agent</string>
+        <key>bundle-version</key>
+        <string>0.4.20</string>
+        <key>kind</key>
+        <string>software</string>
+        <key>title</key>
+        <string>Bolloon</string>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>
