@@ -145,15 +145,26 @@
     </div>
     <!-- 栏目：iOS -->
     <div class="install-pane" data-pane="ios" role="tabpanel">
-      <p class="cmd-desc">在 iPhone / iPad 上安装 Bolloon App：用 Safari 打开本页 → 点下面的按钮 → 弹窗选「安装」。</p>
+      <p class="cmd-desc">在 iPhone / iPad 上安装 Bolloon App。<strong>用手机上的 Safari 打开本页</strong>，按下面任一方式安装。</p>
+
       <div class="android-actions">
+        <a class="quiet-cta" href="https://github.com/logos-42/bolloon-UI/releases/download/ios-v0.4.20-unsigned/Bolloon-unsigned.ipa" target="_blank" rel="noopener">下载安装包 .ipa (9.1 MB) ↗</a>
+        <span class="intro-note">未签名 · 用你自己的 Apple ID 签名</span>
+      </div>
+
+      <p class="cmd-desc" style="margin-top:14px"><strong>方式一 · 自助签名安装（推荐）</strong></p>
+      <p class="cmd-desc" style="opacity:.78">下载上面的 <code>.ipa</code> → 用 <a href="https://altstore.io" target="_blank" rel="noopener">AltStore</a> 或 <a href="https://sidestore.io" target="_blank" rel="noopener">SideStore</a> 在手机上签名并安装。用你自己的 Apple ID，不依赖任何人的开发者账号，也不需要把 UDID 交给别人。免费 Apple ID 签名 7 天有效（到期原地续签），付费 Apple ID 可用 1 年。</p>
+
+      <p class="cmd-desc" style="margin-top:12px"><strong>方式二 · 自己编译（有 Mac 时最干净）</strong></p>
+      <p class="cmd-desc" style="opacity:.78"><code>git clone https://github.com/logos-42/bolloon</code> → <code>cd bolloon &amp;&amp; npm install &amp;&amp; npm run ios:build</code>，用你自己的 Apple ID 签名安装，全程本地、不经过第三方。</p>
+
+      <p class="cmd-desc" style="margin-top:12px"><strong>方式三 · 一键 OTA 安装（待签名版发布）</strong></p>
+      <p class="cmd-desc" style="opacity:.78" id="ios-ota-hint">签名版打包好并发布后，这里会出现「安装 iOS App」按钮，Safari 点一下即可安装。该路径依赖签名证书：免费账号签的包只能装在已登记 UDID 的设备上且 7 天过期；要让任意用户直接安装，需 Apple Developer Program（$99/年）+ Ad Hoc（登记 UDID，≤100 台/年）或 TestFlight。</p>
+      <div class="android-actions" id="ios-ota-wrap" hidden>
         <a class="quiet-cta" id="ios-install" href="itms-services://?action=download-manifest&amp;url=https://logos-42.github.io/bolloon-UI/ios/manifest.plist">安装 iOS App</a>
         <span class="intro-note" id="ios-note">开发版签名 · 需已登记设备</span>
       </div>
-      <p class="cmd-desc" style="margin-top:12px;opacity:.78">当前用 Apple 个人开发者账号（免费）签名，属于<strong>开发版分发</strong>：只能在已登记 UDID 的设备上安装，且描述文件 <strong>7 天</strong>后过期，过期后重装本页即可。面向所有人的正式分发需 Apple Developer Program（$99/年）+ App Store 或 TestFlight。</p>
-      <p class="cmd-desc" style="opacity:.6;margin-top:10px"><strong>要不要给朋友也装？</strong> 目前是免费账号署名的开发版，只能装自己登记的设备。给他人装的两条路：</p>
-      <p class="cmd-desc" style="opacity:.6">· <strong>Ad Hoc</strong>（需 $99/年）：朋友把设备 UDID 交给你 → 登记进描述文件 → 最多 100 台/年，仍用本页 OTA 安装。<br>· <strong>TestFlight</strong>（需 $99/年）：最多 1 万名测试者，但上传需 Xcode 16+（macOS 14.5+），当前构建机 macOS 13 + Xcode 15.2 做不到。</p>
-      <p class="cmd-desc" id="ios-version" style="opacity:.6"></p>
+      <p class="cmd-desc" id="ios-version" style="opacity:.6;margin-top:10px"></p>
     </div>
 
   </div>
