@@ -415,11 +415,13 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .skill-field textarea { font-family: var(--sans); resize: vertical; min-height: 120px; }
 .generate-btn { align-self: flex-start; margin-top: 4px; }
 .gen-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0 18px; }
-.skill-output {
-  width: 100%; padding: 14px 16px; background: rgba(0,0,0,0.3);
-  border: 1px solid var(--hairline); border-radius: 3px;
-  color: var(--ink-2); font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
-  resize: vertical; white-space: pre; overflow: auto;
+.skill-cmd {
+  margin: 8px 0 4px; padding: 18px 20px;
+  background: #161512; border: 1px solid var(--accent); border-radius: 10px;
+}
+.skill-cmd code {
+  font-family: var(--mono); font-size: 15px; color: var(--accent);
+  background: none; border: none; padding: 0; word-break: break-all;
 }
 .skill-field, .skills-form { margin-bottom: 4px; }
 .cmd-desc-inline { font-family: var(--sans); color: var(--ink-2); font-size: 0.9em; border: 1px solid var(--hairline); border-radius: 3px; padding: 2px 8px; }

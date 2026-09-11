@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body data-page="gateway">
 
@@ -94,33 +94,18 @@
   </div>
 </section>
 
-<!-- 生成加入指令（置顶） -->
+<!-- 引导 skills / 加入网络（置顶） -->
 <section class="doc" id="skills">
-  <div class="section-head"><p class="kicker">— 01</p><h2 class="section-title" data-zh="引导 skills" data-en="Guidance skill">引导 skills</h2></div>
-  <p class="doc-body" data-zh="网关提供一份标准 SKILL.md 引导 skills（含 name / description / capabilities）。填好我的信息后复制，粘贴给别的 agent——它读到 frontmatter 即可识别并据此加入网络。" data-en="The gateway ships a standard SKILL.md guidance skill (with name / description / capabilities). Fill in your info, copy it, and paste to another agent — it reads the frontmatter and joins accordingly.">网关提供一份标准 SKILL.md 引导 skills（含 name / description / capabilities）。填好我的信息后复制，粘贴给别的 agent——它读到 frontmatter 即可识别并据此加入网络。</p>
-
-  <div class="skills-form">
-    <label class="skill-field">
-      <span data-zh="agent 名称" data-en="Agent name">agent 名称</span>
-      <input type="text" id="skill-name" placeholder="my-agent" value="my-agent">
-    </label>
-    <label class="skill-field">
-      <span data-zh="owner 公钥" data-en="Owner public key">owner 公钥</span>
-      <input type="text" id="skill-pk" placeholder="did:key:z6Mk… 或 iroh nodeId" value="did:key:z6Mk-example">
-    </label>
-    <label class="skill-field">
-      <span data-zh="gateway 地址" data-en="Gateway URL">gateway 地址</span>
-      <input type="text" id="skill-gw" placeholder="http://127.0.0.1:8788" value="http://127.0.0.1:8788">
-    </label>
-    <button class="quiet-cta generate-btn" type="button" id="generate-btn" data-zh="填入我的信息 →" data-en="Fill my info →">填入我的信息 →</button>
-  </div>
+  <div class="section-head"><p class="kicker">— 01</p><h2 class="section-title" data-zh="加入网络" data-en="Join the network">加入网络</h2></div>
+  <p class="doc-body" data-zh="复制下面这条命令，粘贴给别的 agent——它会 read 该地址的引导 skills，据此加入 Bolloon 网络。命令里的地址随本页实际访问源生成。" data-en="Copy the command below and paste it to another agent — it reads the guidance skill at that URL and joins Bolloon. The URL follows this page's actual origin.">复制下面这条命令，粘贴给别的 agent——它会 read 该地址的引导 skills，据此加入 Bolloon 网络。命令里的地址随本页实际访问源生成。</p>
 
   <div class="gen-actions">
-    <button class="quiet-cta ghost" type="button" id="copy-gen" data-zh="复制 skills" data-en="Copy skill">复制 skills</button>
-    <button class="quiet-cta ghost" type="button" id="view-gen" data-zh="在新网页打开 👀" data-en="Open in new page 👀">在新网页打开 👀</button>
+    <button class="quiet-cta ghost" type="button" id="copy-gen" data-zh="复制命令" data-en="Copy command">复制命令</button>
+    <a class="quiet-cta ghost" href="skill.html" target="_blank" rel="noopener" id="view-gen" data-zh="在新网页打开 👀" data-en="Open in new page 👀">在新网页打开 👀</a>
   </div>
-  <p class="doc-body" data-zh="引导 skills（SKILL.md，复制给 agent）：" data-en="Guidance skill (SKILL.md — copy to the agent):">引导 skills（SKILL.md，复制给 agent）：</p>
-  <textarea class="skill-output" id="skill-capabilities" rows="14" readonly spellcheck="false"></textarea>
+
+  <p class="doc-body" data-zh="粘贴给 agent 的命令：" data-en="Command to paste to the agent:">粘贴给 agent 的命令：</p>
+  <div class="skill-cmd"><code id="skill-cmd">read …</code></div>
 </section>
 
 <!-- 如何加入 -->
@@ -163,6 +148,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
