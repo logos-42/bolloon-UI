@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body data-page="product">
 
@@ -102,16 +102,33 @@
     <p class="kicker">— 01 · Capabilities</p>
     <h2 class="section-title">它能做什么</h2>
   </div>
+
+  <!-- 核心能力滚动展示栏 (三条循环流动; 悬停暂停; 系统「减少动态效果」下静止) -->
+  <div class="cap-marquee">
+    <div class="cap-marquee-track" id="cap-marquee-track">
+      <span class="cap-marquee-group">
+        <span class="cap-marquee-item"><b class="cap-marquee-no">02</b>P2P 网络</span>
+        <span class="cap-marquee-sep">◇</span>
+        <span class="cap-marquee-item"><b class="cap-marquee-no">06</b>微支付信息</span>
+        <span class="cap-marquee-sep">◇</span>
+        <span class="cap-marquee-item"><b class="cap-marquee-no">08</b>技能沉淀与互传</span>
+        <span class="cap-marquee-sep">◇</span>
+      </span>
+      <span class="cap-marquee-group" aria-hidden="true">
+        <span class="cap-marquee-item"><b class="cap-marquee-no">02</b>P2P 网络</span>
+        <span class="cap-marquee-sep">◇</span>
+        <span class="cap-marquee-item"><b class="cap-marquee-no">06</b>微支付信息</span>
+        <span class="cap-marquee-sep">◇</span>
+        <span class="cap-marquee-item"><b class="cap-marquee-no">08</b>技能沉淀与互传</span>
+        <span class="cap-marquee-sep">◇</span>
+      </span>
+    </div>
+  </div>
+
   <ol class="cap-list">
-    <li><span class="cap-no">01</span><div class="cap-body"><h3>AI 对话</h3><p>本地运行的智能体，支持多轮对话与流式回复。</p></div></li>
     <li><span class="cap-no">02</span><div class="cap-body"><h3>P2P 网络</h3><p>通过 DHT 自动发现并连接其他 Bolloon 节点，无需中心服务器。</p></div></li>
-    <li><span class="cap-no">03</span><div class="cap-body"><h3>文档处理</h3><p>接收和管理文档，支持 DID 签名验证归属。</p></div></li>
-    <li><span class="cap-no">04</span><div class="cap-body"><h3>工具调用</h3><p>shell、文件、精确补丁、代码执行、真浏览器与桌面操作，由安全闸门守卫。</p></div></li>
-    <li><span class="cap-no">05</span><div class="cap-body"><h3>自我改进</h3><p>自动检查更新、质量门控，持续进化。</p></div></li>
     <li><span class="cap-no">06</span><div class="cap-body"><h3>微支付信息</h3><p>把数据、技能、商品信息标价提供；买方付款后拿到带签名信封，可核对来源与内容哈希。</p></div></li>
-    <li><span class="cap-no">07</span><div class="cap-body"><h3>人机问答</h3><p>智能体需要你拍板的时候会停下来问，你答复后接着做——不猜、不假装。</p></div></li>
     <li><span class="cap-no">08</span><div class="cap-body"><h3>技能沉淀与互传</h3><p>技能打包走 IPFS，以 bolloon://skill/&lt;cid&gt; 在自己和其他节点之间分享与安装。</p></div></li>
-    <li><span class="cap-no">09</span><div class="cap-body"><h3>勿扰时钟</h3><p>定时任务带跨进程锁与执行记录；你正在对话时后台任务让路，忙完补跑。</p></div></li>
   </ol>
 </section>
 
@@ -142,6 +159,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>
