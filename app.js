@@ -85,6 +85,9 @@
     'start2': 'bolloon --web',
     'start3': 'bolloon --help',
     'start4': 'bolloon --cli',
+    'setup': 'bolloon setup',
+    'model': 'bolloon model',
+    'x402': 'bolloon x402 list',
     'build': 'git clone https://github.com/logos-42/bolloon.git && cd bolloon && npm install && npm run build:all && npm start'
   };
 

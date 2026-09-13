@@ -2,7 +2,7 @@
 title: bolloon-UI 当前状态
 source: session
 created: 2026-09-09
-last_confirmed: 2026-09-10
+last_confirmed: 2026-09-13
 audience: self
 stage: draft
 tags: [status]
@@ -11,6 +11,7 @@ status: current
 
 ## 最近更新
 
+- (2026-09-13) 内容对齐 npm **0.4.21**：产品/安装/文档三页「它能做什么」5 → 9 条（新增 微支付信息 x402 / 人机问答 / 技能沉淀与互传 / 勿扰时钟），文档页新增 `bolloon setup`·`bolloon model`·`bolloon x402 list` 命令板 + 参考表 5 行，安装页启动区补 setup/model 两板；缓存破坏升 **v=12**；CF Pages 重新部署（direct-upload）。bolloon 手机端新增「一键入网 · 全球智能体网络」点按项（默认 prompt = `read https://bolloon.cn/bolloon-gateway-join.md`）。
 - (2026-09-10) 发布 Android APK v0.4.20 → 本仓库 Release 资产 tag `android-v0.4.20`；安装页 Android 栏目改直链 + sha256。
 - (2026-09-09) 制定 Bolloon 安装/下载页设计计划 DRAFT。
 - (2026-09-09) 实现并发布安装/下载落地页到 GitHub Pages (logos-42/bolloon-UI)。

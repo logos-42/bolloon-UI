@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body data-page="docs">
 
@@ -139,6 +139,9 @@
         <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="Web UI 模式" data-en="Web UI mode">Web UI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --web</code><button class="copy" data-copy="start2">复制</button></div></article>
         <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="强制 CLI 模式" data-en="Force CLI mode">强制 CLI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --cli</code><button class="copy" data-copy="start4">复制</button></div></article>
         <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="查看全部命令" data-en="All commands">查看全部命令</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --help</code><button class="copy" data-copy="start3">复制</button></div></article>
+        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="配置向导（首次运行也会自动进入）" data-en="Setup wizard (also runs on first launch)">配置向导（首次运行也会自动进入）</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon setup</code><button class="copy" data-copy="setup">复制</button></div></article>
+        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="切换／配模型供应商" data-en="Switch / configure a provider">切换／配模型供应商</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon model</code><button class="copy" data-copy="model">复制</button></div></article>
+        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="微支付信息（浏览／验真）" data-en="Paid information (browse / verify)">微支付信息（浏览／验真）</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon x402 list</code><button class="copy" data-copy="x402">复制</button></div></article>
       </div>
     </section>
 
@@ -149,8 +152,12 @@
         <li><span class="cap-no">01</span><div class="cap-body"><h3 data-zh="AI 对话" data-en="AI Chat">AI 对话</h3><p data-zh="本地运行的智能体，支持多轮对话与流式回复。" data-en="A local agent with multi-turn conversation and streaming replies.">本地运行的智能体，支持多轮对话与流式回复。</p></div></li>
         <li><span class="cap-no">02</span><div class="cap-body"><h3 data-zh="P2P 网络" data-en="P2P Network">P2P 网络</h3><p data-zh="通过 DHT 自动发现并连接其他节点。" data-en="Auto-discover and connect to other nodes via DHT.">通过 DHT 自动发现并连接其他节点。</p></div></li>
         <li><span class="cap-no">03</span><div class="cap-body"><h3 data-zh="文档处理" data-en="Documents">文档处理</h3><p data-zh="接收和管理文档，支持 DID 签名验证。" data-en="Receive and manage documents with DID signature verification.">接收和管理文档，支持 DID 签名验证。</p></div></li>
-        <li><span class="cap-no">04</span><div class="cap-body"><h3 data-zh="工具调用" data-en="Tool Calls">工具调用</h3><p data-zh="shell、文件、代码分析，由安全闸门守卫。" data-en="Shell, files, and code analysis, guarded by a safety gate.">shell、文件、代码分析，由安全闸门守卫。</p></div></li>
+        <li><span class="cap-no">04</span><div class="cap-body"><h3 data-zh="工具调用" data-en="Tool Calls">工具调用</h3><p data-zh="shell、文件、精确补丁、代码执行、真浏览器、桌面操作与 git，由安全闸门守卫。" data-en="Shell, files, exact patches, code execution, a real browser, desktop control and git — guarded by a safety gate.">shell、文件、精确补丁、代码执行、真浏览器、桌面操作与 git，由安全闸门守卫。</p></div></li>
         <li><span class="cap-no">05</span><div class="cap-body"><h3 data-zh="自我改进" data-en="Self-Improvement">自我改进</h3><p data-zh="自动检查更新、质量门控。" data-en="Automatic update checks and quality gating.">自动检查更新、质量门控。</p></div></li>
+        <li><span class="cap-no">06</span><div class="cap-body"><h3 data-zh="微支付信息 (x402)" data-en="Paid Information (x402)">微支付信息 (x402)</h3><p data-zh="把数据、技能、商品信息与作品标价提供；买方按 x402 付款后拿到带 Ed25519 签名的信封，验真分四档 (verified / self-attested / content-only / unverified)，来源与内容哈希都可核对。" data-en="Price data, skills, listings and artwork; after x402 payment the buyer gets an Ed25519-signed envelope with a four-tier verdict (verified / self-attested / content-only / unverified) so source and content hash can be checked.">把数据、技能、商品信息与作品标价提供；买方按 x402 付款后拿到带 Ed25519 签名的信封，验真分四档 (verified / self-attested / content-only / unverified)，来源与内容哈希都可核对。</p></div></li>
+        <li><span class="cap-no">07</span><div class="cap-body"><h3 data-zh="人机问答" data-en="Clarify">人机问答</h3><p data-zh="关键处智能体停下来问人 (CLI 下一行即答 / Web 弹层)，超时如实返回 expired，不伪造答案。" data-en="At decision points the agent stops and asks (answer on the next CLI line, or a prompt in the Web UI); timeouts return expired rather than a fabricated answer.">关键处智能体停下来问人 (CLI 下一行即答 / Web 弹层)，超时如实返回 expired，不伪造答案。</p></div></li>
+        <li><span class="cap-no">08</span><div class="cap-body"><h3 data-zh="技能沉淀与互传" data-en="Skills: Persist &amp; Share">技能沉淀与互传</h3><p data-zh="技能打包 → IPFS CID → bolloon://skill/&lt;cid&gt; 链接，自己留存也发给别的节点；安装带版本门、覆盖前备份、包内路径校验。" data-en="Pack a skill → IPFS CID → a bolloon://skill/&lt;cid&gt; link you can keep or send to another node; installs are version-gated, backed up before overwrite, and path-checked.">技能打包 → IPFS CID → bolloon://skill/&lt;cid&gt; 链接，自己留存也发给别的节点；安装带版本门、覆盖前备份、包内路径校验。</p></div></li>
+        <li><span class="cap-no">09</span><div class="cap-body"><h3 data-zh="勿扰时钟" data-en="Clock &amp; Do-Not-Disturb">勿扰时钟</h3><p data-zh="定时任务带跨进程 tick 锁、执行记录与熔断；主任务进行中后台 tick 让路并记 deferred，人忙完自动补跑。" data-en="Scheduled jobs with a cross-process tick lock, execution log and circuit breaker; while you are in a session background ticks defer and then catch up.">定时任务带跨进程 tick 锁、执行记录与熔断；主任务进行中后台 tick 让路并记 deferred，人忙完自动补跑。</p></div></li>
       </ol>
     </section>
 
@@ -164,7 +171,7 @@
     <section class="doc" id="integrations">
       <div class="section-head"><p class="kicker">— 06</p><h2 class="section-title" data-zh="集成" data-en="Integrations">集成</h2></div>
       <p class="doc-body" data-zh="Bolloon 通过环境变量接入不同 LLM 提供商，并通过 DIAP 与世界其他节点互连。" data-en="Bolloon plugs into different LLM providers via env vars and connects to other nodes through DIAP.">Bolloon 通过环境变量接入不同 LLM 提供商，并通过 DIAP 与世界其他节点互连。</p>
-      <p class="doc-body" data-zh="提供方：OpenAI / DeepSeek / Anthropic。" data-en="Providers: OpenAI / DeepSeek / Anthropic.">提供方：OpenAI / DeepSeek / Anthropic。</p>
+      <p class="doc-body" data-zh="提供方：OpenAI / DeepSeek / Anthropic。首次运行会进配置向导，密钥写入 ~/.bolloon/llm-config.json（不入仓库），也可随时用 bolloon model 切换。" data-en="Providers: OpenAI / DeepSeek / Anthropic. First launch runs a setup wizard; keys are written to ~/.bolloon/llm-config.json (never committed) and can be switched any time with bolloon model.">提供方：OpenAI / DeepSeek / Anthropic。首次运行会进配置向导，密钥写入 ~/.bolloon/llm-config.json（不入仓库），也可随时用 bolloon model 切换。</p>
     </section>
 
     <!-- 指南与教程 -->
@@ -193,6 +200,11 @@
           <tr><td><code>DEEPSEEK_API_KEY</code></td><td data-zh="DeepSeek 提供商（可选）" data-en="DeepSeek provider (optional)">DeepSeek 提供商（可选）</td></tr>
           <tr><td><code>ANTHROPIC_API_KEY</code></td><td data-zh="Anthropic 提供商（可选）" data-en="Anthropic provider (optional)">Anthropic 提供商（可选）</td></tr>
           <tr><td><code>BOLLOON_LLM_PROVIDER</code></td><td data-zh="指定 LLM 提供商" data-en="Select the LLM provider">指定 LLM 提供商</td></tr>
+          <tr><td><code>~/.bolloon/llm-config.json</code></td><td data-zh="密钥与默认模型落盘位置（向导/ bolloon model 写入，不入仓库）" data-en="Where keys and the default model are stored (written by the wizard / bolloon model; never committed)">密钥与默认模型落盘位置（向导/ bolloon model 写入，不入仓库）</td></tr>
+          <tr><td><code>bolloon setup</code></td><td data-zh="配置向导（首次运行自动进入）" data-en="Setup wizard (auto-runs on first launch)">配置向导（首次运行自动进入）</td></tr>
+          <tr><td><code>bolloon model [key &lt;provider&gt;]</code></td><td data-zh="切换模型供应商 / 配置密钥" data-en="Switch provider / configure an API key">切换模型供应商 / 配置密钥</td></tr>
+          <tr><td><code>bolloon x402 list|show|buy|verify</code></td><td data-zh="微支付信息：浏览 / 详情 / 购买并验真" data-en="Paid information: browse / inspect / buy &amp; verify">微支付信息：浏览 / 详情 / 购买并验真</td></tr>
+          <tr><td><code>BOLLOON_CRON=0</code></td><td data-zh="关闭后台时钟（勿扰时钟总开关）" data-en="Disable the background clock (DND master switch)">关闭后台时钟（勿扰时钟总开关）</td></tr>
           <tr><td><code>BOLLOON_VERSION</code></td><td data-zh="安装脚本：指定版本" data-en="Install script: pinned version">安装脚本：指定版本</td></tr>
           <tr><td><code>BOLLOON_INSTALL_DIR</code></td><td data-zh="安装目录，默认 /usr/local/bin" data-en="Install dir, default /usr/local/bin">安装目录，默认 /usr/local/bin</td></tr>
         </tbody>
@@ -211,6 +223,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
