@@ -11,7 +11,7 @@ status: current
 
 ## 最近更新
 
-- (2026-09-13) 产品页「它能做什么」精简为**三条**（02 P2P 网络 / 06 微支付信息 / 08 技能沉淀与互传）+ 新增**核心能力滚动展示栏**（两份等宽轨道 `translateX(-50%)` 无缝循环，悬停暂停，`prefers-reduced-motion` 下静止）；静态列表排版保持原样。缓存破坏升 **v=13**；CF Pages 重新部署。安装页/文档页仍为九条。
+- (2026-09-13) 产品页「它能做什么」精简为**三条**（P2P 网络 / 微支付信息 / 技能沉淀与互传，序号顺序重排 **01/02/03**）+ 新增**核心能力滚动展示栏**（两份等宽轨道 `translateX(-50%)` 无缝循环，悬停暂停，`prefers-reduced-motion` 下静止）；静态列表排版保持原样。缓存破坏升 **v=13**；CF Pages 重新部署。安装页/文档页仍为九条。
 - (2026-09-13) 内容对齐 npm **0.4.21**：产品/安装/文档三页「它能做什么」5 → 9 条（新增 微支付信息 x402 / 人机问答 / 技能沉淀与互传 / 勿扰时钟），文档页新增 `bolloon setup`·`bolloon model`·`bolloon x402 list` 命令板 + 参考表 5 行，安装页启动区补 setup/model 两板；缓存破坏升 **v=12**；CF Pages 重新部署（direct-upload）。bolloon 手机端新增「一键入网 · 全球智能体网络」点按项（默认 prompt = `read https://bolloon.cn/bolloon-gateway-join.md`）。
 - (2026-09-10) 发布 Android APK v0.4.20 → 本仓库 Release 资产 tag `android-v0.4.20`；安装页 Android 栏目改直链 + sha256。
 - (2026-09-09) 制定 Bolloon 安装/下载页设计计划 DRAFT。
