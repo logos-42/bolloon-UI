@@ -11,3 +11,7 @@ dl/
 # 临时备份(bootstrap --force 覆盖时生成)
 *.bak.*
 *.bak.
+
+# 发布脚本临时产物 (GitHub API 响应)
+rel.json
+up.json
