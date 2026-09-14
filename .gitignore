@@ -4,6 +4,10 @@ raw_local/
 raw_vault/
 .wrangler/
 
+# 部署产物 + 同域 APK 镜像（脚本 scripts/deploy-pages.py 生成/上传, 不进 git）
+build-site/
+dl/
+
 # 临时备份(bootstrap --force 覆盖时生成)
 *.bak.*
 *.bak.
