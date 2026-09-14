@@ -25,6 +25,11 @@ SKIP_DIRS = {
     ".git", "node_modules", "__pycache__", ".venv", "venv",
     ".obsidian", ".next", "dist", "build",
     "manifests",  # manifest CSVs are the index, not raw data
+    # Committed static-site assets (served to users, not knowledge raw
+    # sources awaiting wiki compilation). fig/ = calligraphy artwork
+    # thumbnails, icons/ = favicon set. Raw knowledge material lives
+    # OUTSIDE the repo in a separate raw root (see CI workflow comment).
+    "fig", "icons",
 }
 
 
