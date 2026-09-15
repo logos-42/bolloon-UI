@@ -2,7 +2,7 @@
 title: bolloon-UI 当前状态
 source: session
 created: 2026-09-09
-last_confirmed: 2026-09-13
+last_confirmed: 2026-09-15
 audience: self
 stage: draft
 tags: [status]
@@ -10,6 +10,8 @@ status: current
 ---
 
 ## 最近更新
+
+- (2026-09-15) **入网 skill 文档 v1.2.0 同步**（`bolloon-gateway-join.md` + `skill.html`）：新增 §0.1 两条执行路径（本机是 bolloon 就调工具 `join_global_gateway`，别再照抄 TS 伪码）、§7 重写为「首次接触 TOFU」（`AddressBroadcast` 自携 `publicKey` 且纳入签名覆盖、did:key 做 DID↔公钥派生一致性检查、公钥不一致拒收不覆盖）、§3 注明 `/api/agent` 启动即挂载、§9 排错 +4 行、§10 补 `gateway-join.json`。**版本徽章去硬编码**：5 页内联 `0.4.20` → 占位 `—`，`app.js` 删 `VERSION_FALLBACK`，只认 live 数据（npm registry → GitHub tag，且只接受形如 `0.4.23` 的值），取不到就保持 `—`。部署 CF Pages `1de7518a.bolloon.pages.dev` 并补回同域 APK 镜像（部署前 `dl/` 是空的，先拉回 0.4.22.3 资产再传）。**新增 `scripts/verify-site.mjs`**（零依赖 CDP 真 Chrome 验收）本地 + 线上均 **21/21**。
 
 - (2026-09-13) 产品页「它能做什么」精简为**三条**（P2P 网络 / 微支付信息 / 技能沉淀与互传，序号顺序重排 **01/02/03**）+ 新增**核心能力滚动展示栏**（两份等宽轨道 `translateX(-50%)` 无缝循环，悬停暂停，`prefers-reduced-motion` 下静止）；静态列表排版保持原样。缓存破坏升 **v=13**；CF Pages 重新部署。安装页/文档页仍为九条。
 - (2026-09-13) 内容对齐 npm **0.4.21**：产品/安装/文档三页「它能做什么」5 → 9 条（新增 微支付信息 x402 / 人机问答 / 技能沉淀与互传 / 勿扰时钟），文档页新增 `bolloon setup`·`bolloon model`·`bolloon x402 list` 命令板 + 参考表 5 行，安装页启动区补 setup/model 两板；缓存破坏升 **v=12**；CF Pages 重新部署（direct-upload）。bolloon 手机端新增「一键入网 · 全球智能体网络」点按项（默认 prompt = `read https://bolloon.cn/bolloon-gateway-join.md`）。

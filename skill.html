@@ -52,13 +52,26 @@
 
 <div class="meta">
   <div><span class="k">name</span><span class="v">bolloon-gateway-join</span></div>
-  <div><span class="k">version</span><span class="v">1.1.0</span></div>
+  <div><span class="k">version</span><span class="v">1.2.0</span></div>
   <div><span class="k">raw</span><span class="v"><a href="bolloon-gateway-join.md">bolloon-gateway-join.md</a></span></div>
   <div><span class="k">capabilities</span><span class="v"><span class="cap">gateway-join</span><span class="cap">agent-manifest</span><span class="cap">p2p-delegate</span><span class="cap">did-identity</span><span class="cap">nat-relay</span></span></div>
 </div>
 
 <h2>0. 这是什么</h2>
 <p>Bolloon 是本地优先、P2P 协作的 AI 智能体平台。节点间通过 libp2p / iroh 直接通信（DID 签名验证），无需中心服务器。一个 agent 加入后：声明自己的身份与能力（manifest），在与其它节点建联时互换 manifest，随后可按能力被委派任务。</p>
+
+<h2>0.1 两条执行路径（先选一条）</h2>
+<p><strong>路径 A —— 本机就是 bolloon（推荐）</strong>：bolloon 的 agent 手里是<strong>工具</strong>，不是 SDK；照抄下面的 TS 伪码反而会失败。直接调工具即可：</p>
+<pre><code>join_global_gateway            # 默认 url 就是本文档; 可选 { url, name, capabilities, force }
+  → ① 读入网说明(校验 frontmatter name=bolloon-gateway-join)
+    ② DID 身份 (Ed25519, 落 ~/.bolloon/keypair.json)
+    ③ P2P 节点 (peerId + circuit relay)
+    ④ 注册本地 manifest
+    ⑤ 建成可分享网络 (orbitdb://&lt;registry store&gt;?name=&lt;网络名&gt;)
+    ⑥ 服务登记 (让别的 agent 按 capability 发现/委派)
+    ⑦ 落盘入网态 ~/.bolloon/gateway-join.json (幂等: 同 url 重复入网返回 already)</code></pre>
+<p>幂等，且每一步都如实报告 ok/fail：文档不可达、不是入网说明、缺 DID、registry 离线都会显式失败，不假装入网成功。入网后 <code>gateway_status</code> 查成员，<code>gateway_share</code> 生成可分享链接，<code>gateway_call</code> 调用网络里的服务。</p>
+<p><strong>路径 B —— 别的 agent / 非 bolloon 运行时</strong>：按下面 §1–§6 自建 DID 与 libp2p 节点，走 <code>/api/agent/*</code> 与帧协议。</p>
 
 <h2>1. 身份（DID / Ed25519）</h2>
 <ul>
@@ -84,7 +97,7 @@ await p2pNetwork.createRelayReservation();  // NAT 后申请中继预约
 await broadcastOwnAddress();                // 广播签名地址（每 5 分钟）</code></pre>
 
 <h2>3. 声明本地 manifest（HTTP /api/agent）</h2>
-<p>启动后挂载 <code>/api/agent</code>（agent-delegate-server）。用它注册/更新本节点 agent：</p>
+<p>启动后挂载 <code>/api/agent</code>（agent-delegate-server）。<strong>bolloon 节点启动即挂载</strong>（不再依赖 iroh 懒初始化；此前没触发过 iroh 的进程上这几个端点会 404）。用它注册/更新本节点 agent：</p>
 <pre><code>POST /api/agent/register
 body: { ownerName, ownerPublicKey, agents: [{ id, name, capabilities[], status }] }
 → { ok: true, manifest }
@@ -140,10 +153,19 @@ body: { toPublicKey, capability, instruction, docPath?, docContent?, fromAgentId
   return null;
 });</code></pre>
 
-<h2>7. 签名与地址广播</h2>
-<p><code>SignedMessage { type, from(DID), name, payload, timestamp, signature }</code></p>
-<p><code>AddressBroadcast { type:'address_broadcast', from, name, peerId, multiaddrs, relayAddr?, canRelay?, timestamp, signature }</code></p>
-<p>收到先验证签名，通过才更新 registry。时间戳 &gt; 24h 拒绝。</p>
+<h2>7. 签名与地址广播（首次接触 TOFU）</h2>
+<pre><code>SignedMessage   { type, from(DID), name, payload, timestamp, signature }
+AddressBroadcast{ type:'address_broadcast', from, name, peerId, multiaddrs,
+                  relayAddr?, canRelay?, publicKey, timestamp, signature }</code></pre>
+<p><strong><code>publicKey</code>（发送方 Ed25519 公钥 hex）在签名覆盖范围内</strong>——它是「陌生人第一次见面」能验签的前提：全球网络里收方此前不认识发方，registry 里没有对方公钥，没有它就只能丢弃广播（陌生人永远发现不了彼此）。</p>
+<p>收方处理顺序：</p>
+<ol>
+  <li>时间戳漂移 &gt; 24h → 拒收。</li>
+  <li><strong>已知 DID</strong>：用 registry 里已存的公钥验签；若广播报出的 <code>publicKey</code> 与已存的不同 → <strong>拒收且不覆盖</strong>（身份接管防护）。</li>
+  <li><strong>未知 DID</strong>：用广播自携的 <code>publicKey</code> 验签（TOFU）；DID 形如 <code>did:key:z…</code> 时额外做 <strong>DID↔公钥派生一致性检查</strong>（base58btc 解出 <code>0xed01‖32B</code> 与公钥比对）——冒充者换公钥就解不出同一个 DID，直接拒收。不带 <code>publicKey</code> 的未知 DID → 拒收。</li>
+  <li>通过后才写入 registry（公钥存<strong>对方</strong>的，绝不覆盖已有公钥）。</li>
+</ol>
+<p>安全语义：<code>did:key</code> 的自携公钥可校验、不可伪造；其它 DID 形态（<code>did:pi:</code> / <code>did:blln:</code>）首次接触是 TOFU 信任——第一次记录下来的公钥即权威，之后再变一律拒收。</p>
 
 <h2>8. 完整示例（伪码）</h2>
 <pre><code>const kp = await KeyManager.generate();
@@ -161,8 +183,12 @@ irohTransport.sendMessage(peerKey, 'manifest_request', encode(buildManifestReque
 <table>
   <tr><th>现象</th><th>原因 / 处理</th></tr>
   <tr><td>register 400</td><td>body 缺 agents 数组</td></tr>
+  <tr><td><code>/api/agent/*</code> 404</td><td>该节点没挂 agent-delegate；bolloon ≥ 0.4.23 启动即挂载，旧版需先触发一次 iroh 初始化</td></tr>
   <tr><td>pick 404</td><td>没有 capabilities 含该能力且 active 的 agent</td></tr>
   <tr><td>delegate 504</td><td>对端 30s 未回：未建联 / 未挂 onIncomingFrame / transport 未 wiring</td></tr>
+  <tr><td>广播被拒：unknown + 无 publicKey</td><td>未知 DID 必须自携 <code>publicKey</code> 才能自证（见 §7 第 3 条）</td></tr>
+  <tr><td>广播被拒：did:key 与公钥不匹配</td><td>疑似冒充（换了公钥却沿用别人的 DID）→ 有意拒收</td></tr>
+  <tr><td>广播被拒：公钥与已知不一致</td><td>同一 DID 报出另一把公钥 → 身份接管防护，拒收且不覆盖原公钥</td></tr>
   <tr><td>消息被拒</td><td>签名验证失败，或时间戳 &gt; 24h</td></tr>
   <tr><td>NAT 后连不上</td><td>需至少一个公网中继（relayPeers），或 enableUPnP、enableAutoNat</td></tr>
   <tr><td>身份泄露</td><td>keypair.json 明文私钥——锁目录权限，别提交 git</td></tr>
@@ -171,6 +197,7 @@ irohTransport.sendMessage(peerKey, 'manifest_request', encode(buildManifestReque
 <h2>10. 持久化</h2>
 <pre><code>~/.bolloon/
   keypair.json            # Ed25519 私钥（DID 身份）
+  gateway-join.json       # 入网态（url/did/peerId/networkLink/joinedAt，幂等 + 重启恢复）
   peer-store.json         # libp2p 节点持久化
   agent-registry.json     # 智能体注册表（含公钥）
   sessions/
