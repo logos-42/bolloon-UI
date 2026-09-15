@@ -2,6 +2,7 @@
 
 | 日期 | 事件 | 内容 |
 |------|------|------|
+| 2026-09-15 | 入网 skill 文档 v1.2.1 + iOS 0.4.24 | `bolloon-gateway-join.md` v1.2.0 → **v1.2.1**（+ `skill.html` 同步）：新增 §0.1 **路径 A′ 手机端已内置**（手机本机内核真读说明/本机 DID/服务登记[桌面可达即进网络 registry]/P2P 公告[无对端如实标注]/落盘 `bolloon_gateway_join`），标题改「三条执行路径」；§6 被委派语义回写为**真执行**（严格能力匹配不兜底 `local.agents[0]`、`resultCid` 真 CID 非 `mock-`、超时 504 不假成功）。安装页 iOS 入口 → Release `ios-v0.4.24-unsigned`（`Bolloon-unsigned.ipa` 10,090,692 B / 9.6 MB，`CFBundleShortVersionString=0.4.24`，内含手机端自足入网代码；bolloon 仓 `npm run ios:sim` 真机(模拟器)点「一键入网」实测通过 + 桌面 registry 侧查到该 DID）。缓存破坏 v=13 → **v=14**；`scripts/verify-site.mjs` 断言同步（1.2.1 + 线上正文含「路径 A′」）。 |
 | 2026-09-09 | 启动 | 初始化知识系统：建立 wiki、manifest、检查脚本和 repo 级默认规则。 |
 | 2026-09-09 | Bolloon 安装/下载页 | 设计计划 DRAFT：读 design.md(数字展馆 brief)+核实 Bolloon 品牌色(style.css)+README 安装命令+package v0.4.20；识别 fig/ 8 图为毛笔书法作品。定稿：纸+炭黑为骨/Bolloon lime 唯一强调色；书法作主视觉展品与能力对位；纯静态 index.html 零构建。计划落 docs/bolloon-install-page-plan.md，未实现 UI。 |
 | 2026-09-09 | 安装/下载页发布 | 实现静态落地页 index.html/style.css/app.js(炭黑+lime 编辑式排版、OS 探测、复制按钮、live 版本号)。经本地服务 + headless Chrome(dump-dom+截图)验证渲染/交互。GitHub repo logos-42/bolloon-UI(public, main)，Pages 已启用并构建成功：https://logos-42.github.io/bolloon-UI/ 。注意：git add 曾误裹入全项目，已重建为只含网站文件的干净 commit。 |

@@ -1,8 +1,8 @@
 ---
 name: bolloon-gateway-join
-description: 把 agent 完整加入 Bolloon 本地优先 P2P 网关。两种路径：① bolloon 自身的 agent —— 一个工具调用（join_global_gateway）走完读说明/DID/节点/manifest/建网/登记；② 第三方 agent —— 按本文档自建 DID 身份、libp2p 节点、manifest 声明 (/api/agent/register)、主题建联、manifest_request→manifest_payload 互换、被 pick→delegate 委派。含帧协议、签名与地址广播（首次接触 TOFU 验签）与持久化路径。支持 SKILL.md frontmatter 的 agent 读到即可识别并执行。
+description: 把 agent 完整加入 Bolloon 本地优先 P2P 网关。三种路径：① bolloon 自身的 agent —— 一个工具调用（join_global_gateway）走完读说明/DID/节点/manifest/建网/登记；①′ 手机端 App/PWA —— 点「一键入网」即由手机本机内核执行（读说明/DID/服务登记/落盘，不依赖电脑端在线）；② 第三方 agent —— 按本文档自建 DID 身份、libp2p 节点、manifest 声明 (/api/agent/register)、主题建联、manifest_request→manifest_payload 互换、被 pick→delegate 委派（被委派端**真执行**，严格能力匹配，结果落 CID）。含帧协议、签名与地址广播（首次接触 TOFU 验签）与持久化路径。支持 SKILL.md frontmatter 的 agent 读到即可识别并执行。
 capabilities: [gateway-join, agent-manifest, p2p-delegate, did-identity, nat-relay]
-version: 1.2.0
+version: 1.2.1
 ---
 
 # Bolloon Agent · 加入网关
@@ -31,6 +31,21 @@ join_global_gateway            # 默认 url 就是本文档; 可选 { url, name,
 ```
 
 幂等、且**每一步都如实报告 ok/fail**：文档不可达、不是入网说明、缺 DID、registry 离线都会显式失败，不假装入网成功。入网后 `gateway_status` 查成员，`gateway_share` 生成可分享链接，`gateway_call` 调用网络里的服务。
+
+**路径 A′ —— 手机端（iOS App / Android App / PWA）已经内置这条路，不需要 agent 自己动手**
+
+手机端点「网络 → 一键入网」发出的就是本文档地址（`read https://bolloon.cn/bolloon-gateway-join.md`），由**手机本机内核**直接执行，不依赖电脑端在线：
+
+```
+① 读入网说明 (真 HTTP, 校验 frontmatter name=bolloon-gateway-join + version)
+② DID 身份 (手机本机生成/复用, WebCrypto Ed25519)
+③ 服务登记: 电脑端基址可达 → 登记进网络 registry (别的 agent 可按 capability 发现我)
+            电脑端不可达 → 本机登记, 如实标注 (不假装已进网)
+④ P2P 公告: 有已连接对端就广播, 没有就如实标注「连上即生效」(浏览器/WebView 正常状态)
+⑤ 落盘入网态 localStorage:bolloon_gateway_join { url, did, docVersion, registeredOn, joinedAt }
+```
+
+每一步都真跑且如实报告 ✓/✗；文档不可达 / 不是入网说明 / 电脑端离线都会显式写明，不假装成功。手机端要"上桌"被其他 agent 发现，需电脑端在同一网络 registry 在线（或后续手机端直连 P2P）。
 
 **路径 B —— 别的 agent / 非 bolloon 运行时要接进来**：按下面 §1–§6 自建 DID 与 libp2p 节点，然后走 `/api/agent/*` 与帧协议。
 
@@ -124,13 +139,20 @@ onIncomingFrame(async (fromKey, frame) => {
   if (f.type === 'manifest_request') return buildManifestPayload(getLocalManifest());
   if (f.type === 'manifest_payload') { cacheRemoteManifest(f.payload); return null; }  // 不回包
   if (f.type === 'agent_delegate') {
-    const t = pickAgent(f.payload.capability);      // capabilities 含之且 active
-    return buildAgentResponse(t ? { ok:true, delegatedTo:t.id, summary:'handled' }
-                               : { ok:false, delegatedTo:'none', summary:'no local agent available' });
+    const t = pickAgent(f.payload.capability);      // 严格: capabilities 含之 **且** status==='active'
+    if (!t) return buildAgentResponse({ ok:false, delegatedTo:null, summary:'no local agent available' });
+    const out = await t.run(f.payload.instruction); // 真跑本机 agent, 结果落 CID 库
+    return buildAgentResponse({ ok:true, delegatedTo:t.id, summary:out.summary, resultCid:out.cid });
   }
   return null;
 });
 ```
+
+三点语义（别照着旧版写）：
+
+- **严格能力匹配**：只认 `capabilities` 含该能力且 `status === 'active'` 的本机 agent；没有匹配就如实回 `delegatedTo: null` + `ok:false`，**不要**兜底挑一个 `local.agents[0]`（那会把任务派给不具备该能力的 agent）。
+- **真执行**：被委派端真的跑 agent（LLM 在环），产物按 CID 落库，`resultCid` 是真 CID，不是 `mock-<ts>` 占位。
+- **超时即 504**：`sendToNode` 默认 30000ms 未回 → `null` → 委派方 HTTP 504；不要用假成功掩盖超时。
 
 ## 7. 签名与地址广播（首次接触 TOFU）
 

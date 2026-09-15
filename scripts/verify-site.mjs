@@ -7,9 +7,9 @@
  * 覆盖:
  *   ① 5 页版本徽章 = live npm 版本 (取自 registry, 不再硬编码)
  *   ② 徽章在 JS 失败时显示「—」而不是过期版本 (静态 HTML 内已是占位符)
- *   ③ skill.html 已同步文档 v1.2.0 (两条执行路径 / §7 首次接触 TOFU / 排错新行)
+ *   ③ skill.html 已同步文档 v1.2.1 (两条执行路径 / §7 首次接触 TOFU / 排错新行)
  *   ④ gateway.html 的粘贴命令 = 本页实际源 + bolloon-gateway-join.md
- *   ⑤ /bolloon-gateway-join.md 线上正文 = v1.2.0 且含 join_global_gateway / publicKey
+ *   ⑤ /bolloon-gateway-join.md 线上正文 = v1.2.1 且含 join_global_gateway / publicKey
  *
  * 用法: node scripts/verify-site.mjs [基址]      # 默认 https://bolloon.cn
  *       node scripts/verify-site.mjs http://127.0.0.1:8898
@@ -125,9 +125,9 @@ async function main() {
   }
 
   // ③ skill.html 文档同步
-  console.log('\n[3] skill.html 已同步文档 v1.2.0');
+  console.log('\n[3] skill.html 已同步文档 v1.2.1');
   const skillHtml = await (await fetch(`${BASE}/skill.html`)).text();
-  check('版本 1.2.0', skillHtml.includes('>1.2.0<') || skillHtml.includes('1.2.0'));
+  check('版本 1.2.0', skillHtml.includes('>1.2.1<') || skillHtml.includes('1.2.1'));
   check('含「0.1 两条执行路径」', skillHtml.includes('0.1 两条执行路径'));
   check('含 join_global_gateway 工具路径', skillHtml.includes('join_global_gateway'));
   check('含 §7 首次接触 TOFU', skillHtml.includes('首次接触 TOFU'));
@@ -143,7 +143,8 @@ async function main() {
   // ⑤ 文档正文
   console.log('\n[5] /bolloon-gateway-join.md 线上正文');
   const doc = await (await fetch(`${BASE}/bolloon-gateway-join.md`)).text();
-  check('HTTP 正文含 version: 1.2.0', doc.includes('version: 1.2.0'));
+  check('HTTP 正文含手机端路径 A′', doc.includes('路径 A′'));
+  check('HTTP 正文含 version: 1.2.1', doc.includes('version: 1.2.1'));
   check('含 name: bolloon-gateway-join', doc.includes('name: bolloon-gateway-join'));
   check('含 join_global_gateway', doc.includes('join_global_gateway'));
   check('含 publicKey (TOFU 契约)', doc.includes('publicKey'));
