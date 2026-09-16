@@ -32,7 +32,9 @@ BRANCH = "main"
 MAX_FILE = 25 * 1024 * 1024  # CF Pages 单文件硬上限 25 MiB
 
 # 不镜像进站点的东西（部署产物/本地状态/仓库内部）
-EXCLUDE_DIRS = {".git", "build-site", "dl", ".wrangler", "node_modules", ".github", ".claude"}
+#   2026-09-16: 加 .kilo —— 它是本地 git worktree 的副本目录（6.1 MB 整站重复），
+#   线上本来不需要，且此前每次部署都把它一并传上去（旧部署实测 https://bolloon.cn/.kilo/ = 200）。
+EXCLUDE_DIRS = {".git", "build-site", "dl", ".wrangler", "node_modules", ".github", ".claude", ".kilo"}
 
 
 def mirror() -> list[pathlib.Path]:
