@@ -798,7 +798,7 @@ p
       <tr><td>位置 / ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION</td><td>仅 Android 11 及以下：系统要求蓝牙扫描需位置权限 / Android 11 and below only: the OS requires it for BLE scanning</td><td>已限制 maxSdkVersion=30；Android 12+ 不再申请 / Capped at maxSdkVersion=30; not requested on Android 12+</td></tr>
       <tr><td>网络 / INTERNET, ACCESS_NETWORK_STATE</td><td>P2P 连接与下载 / P2P connectivity and downloads</td><td>—</td></tr>
       <tr><td>相机 / Camera</td><td>扫码与拍摄头像 / QR scanning and avatars</td><td>调用系统相机应用完成，本应用不申请 CAMERA 权限 / Uses the system camera app; no CAMERA permission is declared</td></tr>
-      <tr><td>无障碍服务与 Shizuku / Accessibility service and Shizuku</td><td>「智能体控制」：在你授权下让智能体操作本机界面与系统 API / Agent control of the device UI and system APIs, only with your authorization</td><td>&lt;strong&gt;仅官网直装版本包含&lt;/strong&gt;，需你在系统设置中显式开启，可随时关闭；应用商店版本不包含 / Included in the direct-download build only; never enabled by default; removed from app-store builds</td></tr>
+      <tr><td>让智能体操作手机 / Agent control of the phone</td><td>也就是系统里的「辅助功能 / 无障碍服务」：只有你亲手在系统设置里开启后，智能体才能代你点按、滑动本机界面或调用系统 API / The system accessibility service: after you enable it yourself in system settings, the agent may tap or swipe the phone UI or call system APIs for you</td><td>&lt;strong&gt;仅官网直装版本包含&lt;/strong&gt;，默认关闭、可随时关闭；应用商店版本不包含 / Included in the direct-download build only; off by default; can be turned off at any time; removed from app-store builds</td></tr>
     </tbody>
   </table>
   </div>
