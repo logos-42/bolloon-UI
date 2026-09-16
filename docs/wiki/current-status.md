@@ -5,13 +5,14 @@ created: 2026-09-09
 last_confirmed: 2026-09-16
 audience: self
 stage: draft
-tags: [status]
+tags: [status, privacy-policy-page, footer-compliance, icons-store-specs]
 status: current
 ---
 
 ## 最近更新
 
-- (2026-09-16) **商店/备案用图标四件套**（`icons/` 与 bolloon 仓 `src/web/icons/` 双目录镜像）：从品牌 master `icon.png`(1254×1254 满幅无圆角) LANCZOS 下采样出 **`icon-1024x1024.png`**(607.4 KB, md5 `779dd53b8e54f83710cceaa029fa5475`) / **`icon-1024x1024.webp`**(15.9 KB) / **`icon-216x216.png`**(30.6 KB) / **`icon-216x216.webp`**(2.6 KB) —— 对齐商店规格（正方形 · 216 或 1024 · PNG ≤3 MB · WEBP ≤100 KB · 无 alpha 满幅），216 档肉眼复核清晰无锯齿。**顺带发现真实不一致**: `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`(1024×1024) 与品牌 master 不同源（sha256 `a3d1d11e…` vs `02098983…`）→ 三端图标同源待办。
+- (2026-09-16) **隐私政策页 privacy.html（应用市场表单要填的那个链接）**：新增 `privacy.html` + 生成器 `scripts/gen-privacy-page.py`（单一来源、可复跑，避免与 App 内摘要/商店表单三处漂移）：七章 + 三张表（数据清单 / 权限 / 第三方服务），中英双语走站点既有 `data-zh/data-en` 机制；事实逐条对着代码写完（无账号体系 · 无统计/崩溃 SDK · 蓝牙 `neverForLocation` · 位置 `maxSdkVersion=30` · 相机不申请 CAMERA · 无障碍与 Shizuku 仅官网直装版 · 境外服务披露 · 注销即时生效 + 最长 7 个工作日 + 链上不可删）。**5 页页脚统一加「隐私政策」链接 + 备案号占位注释块**（备案完成后把注释块展开即公示，链接 beian.miit.gov.cn）；`style.css` 加政策页样式并全站缓存破坏 **v=14 → v=15**。**新增零依赖验收脚本 `scripts/verify-privacy.mjs`（真 Chrome CDP）本地 38/38**（14 个必填要素 + 3 张表 + 中英双语计数一致 + EN 切换真生效 + 5 页页脚链接与备案锚点 + 站内链接全可达 + 无 JS 报错），站点回归 `verify-site.mjs` **23/23** 无退化。
+- (2026-09-16) **商店/备案用图标四件套**（`icons/` 与 bolloon 仓 `src/web/icons/` 双目录镜像）：从品牌 master `icon.png`(1254×1254 满幅无圆角) LANCZOS 下采样出 **`icon-1024x1024.png`**(607.4 KB, md5 `779dd53b8e54f83710cceaa029fa5475`) / **`icon-1024x1024.webp`**(15.9 KB) / **`icon-216x216.png`**(30.6 KB) / **`icon-216x216.webp`**(2.6 KB) —— 对齐商店规格（正方形 · 216 或 1024 · PNG ≤3 MB · WEBP ≤100 KB · 无 alpha 满幅），216 档肉眼复核清晰无锯齿。**顺带发现真实不一致**: `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`(1024×1024) 与品牌 master 不同源（sha256 `a3d1d11e…` vs `02098983…`）→ 已在 bolloon 仓重出为同源（见该仓 wiki 2026-09-16）。
 - (2026-09-15) **入网 skill 文档 v1.2.1 + iOS 0.4.24 包**（`bolloon-gateway-join.md` / `skill.html` / `install.html`）：① 新增 **§0.1 路径 A′「手机端已内置」**（iOS/Android/PWA 点「一键入网」即由**手机本机内核**真执行：读说明校验 frontmatter → 本机 DID → 服务登记[电脑端可达则真进网络 registry，不可达则如实标注] → P2P 公告[无对端如实标"连上即生效"] → 落盘 `bolloon_gateway_join`），标题改「三条执行路径」；② **§6 被委派语义回写为真执行**——严格能力匹配（无匹配如实回 `delegatedTo:null`，**不**兜底挑 `local.agents[0]`）、被委派端真跑 agent 且 `resultCid` 是真 CID（不再 `mock-<ts>`）、超时即 504 不假成功；③ 安装页 iOS 入口改指向新包 **`ios-v0.4.24-unsigned`**（`Bolloon-unsigned.ipa`，10,090,692 B / 9.6 MB）；④ 缓存破坏 v=13 → **v=14**；⑤ `scripts/verify-site.mjs` 断言同步（1.2.1 + 线上正文须含「路径 A′」）。
 - (2026-09-15) **入网 skill 文档 v1.2.0 同步**（`bolloon-gateway-join.md` + `skill.html`）：新增 §0.1 两条执行路径（本机是 bolloon 就调工具 `join_global_gateway`，别再照抄 TS 伪码）、§7 重写为「首次接触 TOFU」（`AddressBroadcast` 自携 `publicKey` 且纳入签名覆盖、did:key 做 DID↔公钥派生一致性检查、公钥不一致拒收不覆盖）、§3 注明 `/api/agent` 启动即挂载、§9 排错 +4 行、§10 补 `gateway-join.json`。**版本徽章去硬编码**：5 页内联 `0.4.20` → 占位 `—`，`app.js` 删 `VERSION_FALLBACK`，只认 live 数据（npm registry → GitHub tag，且只接受形如 `0.4.23` 的值），取不到就保持 `—`。部署 CF Pages `1de7518a.bolloon.pages.dev` 并补回同域 APK 镜像（部署前 `dl/` 是空的，先拉回 0.4.22.3 资产再传）。**新增 `scripts/verify-site.mjs`**（零依赖 CDP 真 Chrome 验收）本地 + 线上均 **21/21**。
 
