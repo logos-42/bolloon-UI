@@ -88,9 +88,9 @@ SECTIONS = [
              ["网络 / INTERNET, ACCESS_NETWORK_STATE", "P2P 连接与下载 / P2P connectivity and downloads", "—"],
              ["相机 / Camera", "扫码与拍摄头像 / QR scanning and avatars",
               "调用系统相机应用完成，本应用不申请 CAMERA 权限 / Uses the system camera app; no CAMERA permission is declared"],
-             ["让智能体操作手机 / Agent control of the phone",
-              "也就是系统里的「辅助功能 / 无障碍服务」：只有你亲手在系统设置里开启后，智能体才能代你点按、滑动本机界面或调用系统 API / The system accessibility service: after you enable it yourself in system settings, the agent may tap or swipe the phone UI or call system APIs for you",
-              "<strong>仅官网直装版本包含</strong>，默认关闭、可随时关闭；应用商店版本不包含 / Included in the direct-download build only; off by default; can be turned off at any time; removed from app-store builds"]]),
+             ["完全访问权限 / Full access permission",
+              "让智能体在这台手机上点按、滑动屏幕或调用系统能力 / Lets the agent tap or swipe the phone UI, or call system capabilities, on your behalf",
+              "<strong>仅官网直装版本包含</strong>，默认开启（首次使用会直接带你去系统开关页确认一次，之后一直有效）、可随时关闭；应用商店版本不包含 / Included in the direct-download build only; on by default (one confirmation in system settings on first use, then it stays on); can be turned off at any time; removed from app-store builds"]]),
       P("敏感权限都是按需申请：你拒绝某项权限后应用不会因此退出，只是对应功能不可用。",
         "Every sensitive permission is requested on demand. Declining a permission never force-closes the app; only that feature becomes unavailable.")]),
 
