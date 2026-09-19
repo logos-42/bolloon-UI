@@ -125,14 +125,15 @@ async function main() {
   }
 
   // ③ skill.html 文档同步
-  console.log('\n[3] skill.html 已同步文档 v1.2.1');
+  console.log('\n[3] skill.html 已同步文档 v1.3.0');
   const skillHtml = await (await fetch(`${BASE}/skill.html`)).text();
-  check('版本 1.2.1', skillHtml.includes('>1.2.1<') || skillHtml.includes('1.2.1'));
+  check('版本 1.3.0', skillHtml.includes('>1.3.0<') || skillHtml.includes('1.3.0'));
   check('含「0.1 三条执行路径」', skillHtml.includes('0.1 三条执行路径'));
   check('含手机端路径 A′ (本机内核执行)', skillHtml.includes('路径 A′') && skillHtml.includes('bolloon_gateway_join'));
   check('含 join_global_gateway 工具路径', skillHtml.includes('join_global_gateway'));
   check('含 §7 首次接触 TOFU', skillHtml.includes('首次接触 TOFU'));
   check('排错含 publicKey 拒收行', skillHtml.includes('无 publicKey'));
+  check('含 §11 M1 任务闭环', skillHtml.includes('11. 用买到的能力完成任务') && skillHtml.includes('bolloon task'));
 
   // ④ gateway.html 命令
   console.log('\n[4] gateway.html 粘贴命令跟随访问源');
@@ -145,11 +146,12 @@ async function main() {
   console.log('\n[5] /bolloon-gateway-join.md 线上正文');
   const doc = await (await fetch(`${BASE}/bolloon-gateway-join.md`)).text();
   check('HTTP 正文含手机端路径 A′', doc.includes('路径 A′'));
-  check('HTTP 正文含 version: 1.2.1', doc.includes('version: 1.2.1'));
+  check('HTTP 正文含 version: 1.3.0', doc.includes('version: 1.3.0'));
   check('含 name: bolloon-gateway-join', doc.includes('name: bolloon-gateway-join'));
   check('含 join_global_gateway', doc.includes('join_global_gateway'));
   check('含 publicKey (TOFU 契约)', doc.includes('publicKey'));
   check('含 §7 首次接触 TOFU', doc.includes('首次接触 TOFU'));
+  check('含 §11 M1 任务闭环', doc.includes('## 11. 用买到的能力完成任务') && doc.includes('bolloon task'));
 
   console.log(`\n=== 结果: ${passed} passed, ${failed} failed ===`);
   ws.close();

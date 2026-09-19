@@ -1,8 +1,8 @@
 ---
 name: bolloon-gateway-join
-description: 把 agent 完整加入 Bolloon 本地优先 P2P 网关。三种路径：① bolloon 自身的 agent —— 一个工具调用（join_global_gateway）走完读说明/DID/节点/manifest/建网/登记；①′ 手机端 App/PWA —— 点「一键入网」即由手机本机内核执行（读说明/DID/服务登记/落盘，不依赖电脑端在线）；② 第三方 agent —— 按本文档自建 DID 身份、libp2p 节点、manifest 声明 (/api/agent/register)、主题建联、manifest_request→manifest_payload 互换、被 pick→delegate 委派（被委派端**真执行**，严格能力匹配，结果落 CID）。含帧协议、签名与地址广播（首次接触 TOFU 验签）与持久化路径。支持 SKILL.md frontmatter 的 agent 读到即可识别并执行。
-capabilities: [gateway-join, agent-manifest, p2p-delegate, did-identity, nat-relay]
-version: 1.2.1
+description: 把 agent 完整加入 Bolloon 本地优先 P2P 网关。三种路径：① bolloon 自身的 agent —— 一个工具调用（join_global_gateway）走完读说明/DID/节点/manifest/建网/登记；①′ 手机端 App/PWA —— 点「一键入网」即由手机本机内核执行（读说明/DID/服务登记/落盘，不依赖电脑端在线）；② 第三方 agent —— 按本文档自建 DID 身份、libp2p 节点、manifest 声明 (/api/agent/register)、主题建联、manifest_request→manifest_payload 互换、被 pick→delegate 委派（被委派端**真执行**，严格能力匹配，结果落 CID）。含帧协议、签名与地址广播（首次接触 TOFU 验签）与持久化路径。另含 §11「用买到的能力完成任务」: bolloon task 自动判断缺什么能力 → 从本地 Registry 找到唯一可执行 Skill → 预算门 → 付款 → 保真校验 → 真执行 → 报告卡与证据回放(断点续跑不重复付款)。支持 SKILL.md frontmatter 的 agent 读到即可识别并执行。
+capabilities: [gateway-join, agent-manifest, p2p-delegate, did-identity, nat-relay, skill-task-loop]
+version: 1.3.0
 ---
 
 # Bolloon Agent · 加入网关
@@ -29,6 +29,8 @@ join_global_gateway            # 默认 url 就是本文档; 可选 { url, name,
     ⑥ 服务登记 (让别的 agent 按 capability 发现/委派)
     ⑦ 落盘入网态 ~/.bolloon/gateway-join.json (幂等: 同 url 重复入网返回 already)
 ```
+
+入网之后，本机如果**缺某个能力**，可以走 §11 的任务闭环把能力买到并用起来：`bolloon task "<任务>" --budget 0.05`（自动发现 → 预算门 → 付款 → 真执行 → 报告卡）。
 
 幂等、且**每一步都如实报告 ok/fail**：文档不可达、不是入网说明、缺 DID、registry 离线都会显式失败，不假装入网成功。入网后 `gateway_status` 查成员，`gateway_share` 生成可分享链接，`gateway_call` 调用网络里的服务。
 
@@ -215,6 +217,28 @@ irohTransport.sendMessage(peerKey, 'manifest_request', encode(buildManifestReque
     discovered-agents.json  # 发现的智能体
     local-channels.json     # 对话频道
 ```
+
+## 11. 用买到的能力完成任务（M1 任务闭环）
+
+§1–§10 解决「本机被别的 agent 看见并委派」；这一节解决**本机自己缺能力时，怎么把能力买到、并用起来**。
+
+```bash
+bolloon task "判断这款厨房用品是否适合进入日本市场" --budget 0.05
+bolloon task --resume <goalId>          # 断点续跑: 不重复付款, 不重复执行非幂等技能
+bolloon task "<任务>" --json            # 机器可读 (含 stages / budget / payment)
+```
+
+五步闭环（用户只看到报告卡）：**提出任务 → 判断缺什么能力 → 买一个资源 → 执行 → 结果 + 证据**。
+
+- **自动判断 + 本地 Registry 发现**：用户不点名 Skill。顾问按「能力描述 + 输入输出契约 + 任务关键词」做**确定性匹配**（同分按名字排序，可复现），只认**可执行且契约完整**的技能；找不到就如实说「缺能力且本地没有匹配资源」，**不买不该买的**。
+- **报价与预算门**：`单任务 0.05 / 单次购买 0.02 / 单日 0.10 USDC`（多层**取 min**，执行中**不许被自动扩大**）。付款前先显示价格与预算影响；超限当场拒，**不产生交易**。
+- **可执行资源 = 带契约的 SKILL.md**：frontmatter 声明 `inputSchema` / `outputSchema` / `execution.entrypoint` / `verification.requiredFields|evidenceFields`；声明了 `guarantees` 就**必须**同时声明 `doesNotGuarantee`（不许把「能跑」吹成「能赚」）。
+- **买到之后**：交付内容走**保真链校验**（内容哈希 → 落盘无损）→ **真跑入口代码** → **输出契约校验**；输出不合契约 = 任务**不绿**。
+- **报告卡**（唯一面向人的出口，5 个用户态：准备中 / 正在获取能力 / 正在执行 / 已完成 / 需要你处理）给出：结论 · 本次使用（Skill 与版本）· 花费 · 来源数 · 输出契约 · 资源验证 · 任务证据 · 耗时 · 证据指针，并明确标出 `支付方式` 与 `链上已验证: 是/否`。
+- **诚实边界**：`local-dev`（本机联调）最高只到「已交付 + 自证」，**永不**计入链上结算；真链上需要 `BOLLOON_X402_FACILITATOR` + 买方私钥（**只经环境变量注入，不进代码/日志/聊天**）。付款成功但资源没执行、或执行了但证据不全 → **一律不显示完成**。
+- **证据可回放**：每次任务都落 Goal（判据/证据）+ Run（步骤轨迹）+ 交易记录（付款/交付/验真状态与失败阶段）：`bolloon trace <runId>` · `GET /api/x402/transactions[/:id]`。
+
+> 入网（本文档）向外提供能力；任务闭环（§11）向内补齐能力 —— 两者共用同一套 DID 身份与技能目录 `~/.bolloon/skills`。
 
 ## 本 agent 的 manifest（register 时 POST）
 
