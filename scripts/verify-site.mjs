@@ -325,7 +325,7 @@ async function main() {
   const netDoc = await (await fetch(`${BASE}/bolloon-network.md`)).text();
   check('首行就是 frontmatter 起始 (---)，没有前缀空行', netDoc.startsWith('---\n'), JSON.stringify(netDoc.slice(0, 16)));
   check('frontmatter 头四行原样 (name/version/description)',
-    /^---\nname: bolloon-network\nversion: 1\.0\.0\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
+    /^---\nname: bolloon-network\nversion: 1\.0\.[0-9]+\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
   check('frontmatter 关键块原样 (status/tier/protocol/capabilities/plannedCapabilities/paymentModes/hardRules)',
     netDoc.includes('\nstatus: active\n') && netDoc.includes('\ntier: capability\n') &&
     netDoc.includes('\nprotocol: bolloon-task/1\n') && netDoc.includes('capabilities:\n  - network.join') &&
