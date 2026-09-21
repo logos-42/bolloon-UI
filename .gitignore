@@ -15,3 +15,7 @@ dl/
 # 发布脚本临时产物 (GitHub API 响应)
 rel.json
 up.json
+
+# 公开观察入口的动态快照 (每次刷新由 scripts/refresh-pulse.sh 重新生成, 不进 git 免噪音)
+network-pulse.json
+network-pulse.json.prev

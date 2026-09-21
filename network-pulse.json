@@ -1,0 +1,96 @@
+{
+  "status": "live",
+  "generated_at": 1789982435293,
+  "fresh_until": 1789982465293,
+  "scope": "verified",
+  "scope_label": {
+    "zh": "网络观察快照 (多签名来源)",
+    "en": "Verified network snapshot"
+  },
+  "totals": {
+    "nodes": 2,
+    "agents": 3,
+    "active_agents": 0,
+    "seen_last_24h": 3
+  },
+  "capabilities": [
+    {
+      "key": "other",
+      "count": 3
+    }
+  ],
+  "recent_activity": [
+    {
+      "kind": "capability_announced",
+      "at": 1789981132069,
+      "text": {
+        "zh": "有节点公开声明了新能力",
+        "en": "A node announced a capability"
+      }
+    },
+    {
+      "kind": "capability_announced",
+      "at": 1789981132068,
+      "text": {
+        "zh": "有节点公开声明了新能力",
+        "en": "A node announced a capability"
+      }
+    },
+    {
+      "kind": "capability_announced",
+      "at": 1789981132068,
+      "text": {
+        "zh": "有节点公开声明了新能力",
+        "en": "A node announced a capability"
+      }
+    },
+    {
+      "kind": "manifest_published",
+      "at": 1789981132067,
+      "text": {
+        "zh": "有节点发布/更新了能力声明",
+        "en": "A node published or updated its manifest"
+      }
+    },
+    {
+      "kind": "capability_announced",
+      "at": 1789981132065,
+      "text": {
+        "zh": "有节点公开声明了新能力",
+        "en": "A node announced a capability"
+      }
+    },
+    {
+      "kind": "capability_announced",
+      "at": 1789981132065,
+      "text": {
+        "zh": "有节点公开声明了新能力",
+        "en": "A node announced a capability"
+      }
+    },
+    {
+      "kind": "capability_announced",
+      "at": 1789981132064,
+      "text": {
+        "zh": "有节点公开声明了新能力",
+        "en": "A node announced a capability"
+      }
+    },
+    {
+      "kind": "manifest_published",
+      "at": 1789981132063,
+      "text": {
+        "zh": "有节点发布/更新了能力声明",
+        "en": "A node published or updated its manifest"
+      }
+    }
+  ],
+  "notes": [
+    "多签名来源汇总 (2 个签名节点)"
+  ],
+  "observation_entry": "static-signed-snapshot",
+  "published_at": 1789982435301,
+  "published_by": "bolloon-node-export",
+  "signature": "78UKui24kv+wTmQgVPmPfc9QjAo5lLgLvL9qIIuyqx49a59P4Eh5Z1NrDR2CKq8u9FAUxnc887Q3kl/9mSi0DQ==",
+  "signer_fingerprint": "515f324fcbfcbc68"
+}
