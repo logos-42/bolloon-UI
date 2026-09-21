@@ -500,7 +500,7 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 [data-pulse] [hidden] { display: none !important; }
 
 /* 大数值: 只靠字号和留白分层, 不做卡片墙 */
-.pulse-stats { display: flex; flex-wrap: wrap; align-items: flex-end; gap: clamp(26px, 5vw, 56px); margin: clamp(30px, 5vh, 52px) 0; }
+.pulse-stats { display: flex; flex-wrap: wrap; align-items: flex-end; gap: clamp(24px, 3.6vw, 46px); margin: clamp(30px, 5vh, 52px) 0; }
 .pulse-stat { display: flex; flex-direction: column; gap: 8px; padding-right: clamp(22px, 4vw, 52px); border-right: 1px solid var(--hairline); }
 .pulse-stat:last-child { border-right: none; padding-right: 0; }
 .pulse-stat-value {
@@ -536,6 +536,35 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 [data-pulse][data-pulse-state="unavailable"] .pulse-hint { display: block; }
 .pulse-hint .cmd-line { margin-top: 10px; }
 .pulse-example { font-family: var(--mono); font-size: 12.5px; color: var(--lime); border: 1px solid var(--hairline); border-radius: 2px; padding: 8px 12px; word-break: break-all; }
+
+/* —— 智能体私有站 (IPNS): 列表 + 粘贴打开器 (2026-09-21) ——
+   无动画 (所以不需要 reduce-motion 例外); 长 cid 一律 break-all 不撑破容器。 */
+.pulse-sites { margin-bottom: clamp(28px, 4vh, 44px); }
+.pulse-sites-note { color: var(--ink-3); font-size: 0.92rem; max-width: 52em; }
+.pulse-sites-list { list-style: none; margin: 12px 0 16px; }
+.pulse-sites-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 10px 0; border-bottom: 1px solid var(--hairline); }
+.pulse-sites-list li:first-child { border-top: 1px solid var(--hairline); }
+.pulse-site-label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.5px; color: var(--ink); }
+.pulse-site-link { font-family: var(--mono); font-size: 12px; color: var(--lime); word-break: break-all; min-width: 0; }
+.pulse-ipns { margin-top: 4px; padding: 16px 18px; border: 1px solid var(--hairline); border-radius: 2px; }
+.pulse-ipns-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.pulse-ipns-field { display: flex; flex-direction: column; gap: 7px; flex: 1 1 300px; min-width: 0; }
+.pulse-ipns-label { font-family: var(--mono); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-3); }
+.pulse-ipns-input {
+  width: 100%; background: #161512; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 2px; padding: 10px 12px;
+  font-family: var(--mono); font-size: 12.5px;
+}
+.pulse-ipns-input:focus-visible, .pulse-ipns-input:focus { outline: 2px solid var(--lime); outline-offset: 1px; border-color: var(--lime-deep); }
+.pulse-ipns-input[aria-invalid="true"] { border-color: #d9a441; }
+.pulse-ipns-open { flex: 0 0 auto; }
+.pulse-ipns-msg { margin-top: 10px; font-family: var(--mono); font-size: 12px; line-height: 1.5; color: var(--ink-3); word-break: break-all; }
+.pulse-ipns-msg.is-error { color: #d9a441; }
+.pulse-ipns-msg.is-ok { color: var(--ink-2); }
+.pulse-ipns-hint { margin-top: 8px; color: var(--ink-3); font-size: 0.88rem; max-width: 52em; }
+.pulse-ipns-out { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; }
+/* 网关页 skills 栏: 指向站内 skills 索引 (这一栏只留一条 read 命令) */
+.skills-index-pointer { margin-top: 14px; max-width: 52em; }
 
 /* —— 首页序栏紧凑版 (index.html hero): 更小字号 / 更密行距 / 不做卡片墙 —— */
 .pulse-compact {
@@ -586,6 +615,12 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   .pulse-grid { grid-template-columns: 1fr; gap: 30px; }
   .pulse-feed li { flex-direction: column; gap: 2px; }
   .pulse-feed-time { flex: none; }
+  /* 智能体私有站: 列表纵向, 粘贴框纵向 (输入框 + 按钮各占整行, 不横向溢出) */
+  .pulse-sites-list li { flex-direction: column; gap: 4px; }
+  .pulse-ipns { padding: 14px 14px; }
+  .pulse-ipns-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .pulse-ipns-field { flex: 1 1 auto; }
+  .pulse-ipns-open { width: 100%; }
   /* 首页紧凑版: 数值纵向堆叠 (值左 · 标签右), 不挤成一行 */
   .pulse-compact .pulse-state + .pulse-c-scope { display: block; margin-left: 0; }
   .pulse-c-totals { flex-direction: column; align-items: stretch; gap: 10px; margin: 14px 0 12px; }

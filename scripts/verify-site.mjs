@@ -7,9 +7,11 @@
  * 覆盖:
  *   ① 5 页版本徽章 = live npm 版本 (取自 registry, 不再硬编码)
  *   ② 徽章在 JS 失败时显示「—」而不是过期版本 (静态 HTML 内已是占位符)
- *   ③ skill.html 已同步文档 v1.3.0
+ *   ③ skill.html 已同步文档 v1.3.0 + 站内 skills 索引区 (bolloon-gateway-join / bolloon-network)
  *   ④ gateway.html 的粘贴命令 = 本页实际源 + bolloon-gateway-join.md
  *   ⑤ /bolloon-gateway-join.md 线上正文 = v1.3.0 且含 join_global_gateway / publicKey
+ *   ⑤′ /bolloon-network.md 线上正文 = 主仓 skills/bolloon-network/SKILL.md 的原样镜像
+ *      (frontmatter 原样: name/version/protocol/paymentModes/hardRules + 正文首尾锚点都在)
  *   ⑥ gateway.html 全球网络脉冲 (公开只读接口 /api/public/network/progress):
  *      loading/live/stale/unavailable 四态 (用 CDP Fetch 拦截夹具数据, 不对真实网络下断言)、
  *      中英切换、活动文本走 textContent、失败不阻断其它区域、30s 轮询 + 5s 超时 + 退避常量、
@@ -18,10 +20,18 @@
  *   ⑧ 多实例隔离: 同一页两个 [data-pulse] 实例各自独立取数/降级 (一个失败另一个仍活)
  *   ⑨ 全站 7 页无重复 id
  *   ⑩ 网关页新顺序: 脉冲区在「加入方式 / 如何加入」之前
+ *   ⑪ 聚合计数「拿不到就不显示」: tasks / tasks_completed / tasks_verified 缺失 → 整行隐藏, 不编造
+ *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
+ *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
+ *   ⑭ 全站资源 ?v=18 一致 (逐页抓原始 HTML)
  *
  * 脉冲区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
- * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago / data-pulse-total="nodes|agents|active|24h"
- *            / data-pulse-caps / data-pulse-feed / data-pulse-notes / data-pulse-hint。
+ * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago
+ *            / data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified"
+ *            / data-pulse-caps / data-pulse-feed / data-pulse-notes / data-pulse-hint
+ *            / data-pulse-sites / data-pulse-sites-empty
+ *            / data-pulse-ipns-form / data-pulse-ipns-input / data-pulse-ipns-open / data-pulse-ipns-msg。
+ * 纯函数入口: window.BOLLOON_IPNS.parse/url (归一化) · window.__bolloonIpns (上次真开过的链接快照)。
  *
  * 用法: node scripts/verify-site.mjs [基址]      # 默认 https://bolloon.cn
  *       node scripts/verify-site.mjs http://127.0.0.1:8897
@@ -64,6 +74,9 @@ const pulseProbe = (rootSel) => `(() => {
   const visText = Array.from(root.querySelectorAll('.pulse-state-text')).filter((e) => getComputedStyle(e).display !== 'none')[0] || {};
   const hint = q('.pulse-hint');
   const caveat = q('.pulse-caveat');
+  const hid = (k) => { const n = q('[data-pulse-total="' + k + '"]'); return n ? n.parentNode.hasAttribute('hidden') : null; };
+  const form = q('[data-pulse-ipns-form]');
+  const sitesEmpty = q('[data-pulse-sites-empty]');
   return {
     state: root.getAttribute('data-pulse-state'),
     visible: visText.textContent || '',
@@ -71,6 +84,30 @@ const pulseProbe = (rootSel) => `(() => {
     agents: t('[data-pulse-total="agents"]'),
     active: t('[data-pulse-total="active"]'),
     h24: t('[data-pulse-total="24h"]'),
+    tasks: t('[data-pulse-total="tasks"]'),
+    tasksDone: t('[data-pulse-total="tasks_completed"]'),
+    tasksVerified: t('[data-pulse-total="tasks_verified"]'),
+    tasksHidden: { tasks: hid('tasks'), done: hid('tasks_completed'), verified: hid('tasks_verified') },
+    taskLabels: Array.from(root.querySelectorAll('.pulse-stat-label'))
+      .filter((e) => /任务/.test(e.textContent)).map((e) => e.textContent.trim()),
+    sites: Array.from(root.querySelectorAll('[data-pulse-sites] li')).map((li) => {
+      const a = li.querySelector('a');
+      return { label: (li.querySelector('.pulse-site-label') || {}).textContent || '',
+        href: a ? a.href : null, rel: a ? a.rel : null, target: a ? a.target : null,
+        text: a ? a.textContent : null, kids: a ? a.childNodes.length : null };
+    }),
+    sitesEmptyShown: sitesEmpty ? getComputedStyle(sitesEmpty).display !== 'none' : null,
+    sitesEmptyText: sitesEmpty ? sitesEmpty.textContent.trim() : null,
+    ipns: form ? { inputTag: form.querySelector('[data-pulse-ipns-input]').tagName,
+      inputType: form.querySelector('[data-pulse-ipns-input]').type,
+      inputAria: form.querySelector('[data-pulse-ipns-input]').getAttribute('aria-label'),
+      btnTag: form.querySelector('[data-pulse-ipns-open]').tagName,
+      btnType: form.querySelector('[data-pulse-ipns-open]').type,
+      btnAria: form.querySelector('[data-pulse-ipns-open]').getAttribute('aria-label'),
+      msgRole: form.querySelector('[data-pulse-ipns-msg]').getAttribute('role'),
+      msgLive: form.querySelector('[data-pulse-ipns-msg]').getAttribute('aria-live'),
+      msg: form.querySelector('[data-pulse-ipns-msg]').textContent,
+      invalids: root.querySelectorAll('[data-pulse-ipns-input][aria-invalid="true"]').length } : null,
     scope: t('[data-pulse-scope]'),
     scopeHidden: !!q('[data-pulse-scope]') && q('[data-pulse-scope]').hasAttribute('hidden'),
     snap: t('[data-pulse-time]'),
@@ -93,6 +130,10 @@ async function main() {
   const userDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bolloon-site-verify-'));
   const proc = spawn(chrome, [
     '--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${userDir}`,
+    // macOS: headless Chrome 默认会去访问登录钥匙串 (Safe Storage) → 后台/无人值守时
+    // 会卡在系统授权弹窗上 (子智能体点不了"允许")。这些开关让 Chrome 用内存钥匙串,
+    // 不碰系统钥匙串 —— 验收行为不受影响。
+    '--use-mock-keychain', '--password-store=basic', '--no-first-run', '--no-default-browser-check',
     '--no-first-run', '--no-default-browser-check', '--disable-gpu', 'about:blank',
   ], { stdio: ['ignore', 'ignore', 'ignore'] });
 
@@ -146,6 +187,21 @@ async function main() {
   await cdp('Page.enable');
   await cdp('Runtime.enable');
 
+  // —— 新窗口侦察 (IPNS 粘贴框验收用) ——
+  // autoAttach + waitForDebuggerOnStart ⇒ 新标签页在启动前挂起: 验收只统计「真的开了新窗口」,
+  // 然后立刻关掉它, 不让验收去访问 ipfs.io。
+  const popups = [];
+  let popupWatch = false;
+  on('Target.attachedToTarget', (p) => { if (popupWatch && p.targetInfo.targetId !== targetId) popups.push(p.targetInfo); });
+  const watchPopups = async (on2) => {
+    popupWatch = on2;
+    try { await cdp('Target.setAutoAttach', on2 ? { autoAttach: true, waitForDebuggerOnStart: true, flatten: true } : { autoAttach: false }, false); } catch { /* 不致命 */ }
+  };
+  const closePopups = async () => {
+    for (const t of popups) { try { await cdp('Target.closeTarget', { targetId: t.targetId }, false); } catch { /* 已关 */ } }
+    popups.length = 0;
+  };
+
   const evalJs = async (code) => {
     const r = await cdp('Runtime.evaluate', { expression: code, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.text + ' ' + (r.exceptionDetails.exception?.description || ''));
@@ -198,12 +254,50 @@ async function main() {
   check('排错含 publicKey 拒收行', skillHtml.includes('无 publicKey'));
   check('含 §11 M1 任务闭环', skillHtml.includes('11. 用买到的能力完成任务') && skillHtml.includes('bolloon task'));
 
+  // ③′ 站内 skills 索引区 —— bolloon-UI 就是 skills 的完整索引
+  console.log('\n[3b] skill.html 站内 skills 索引区 (完整索引)');
+  check('有索引区 (id=skills-index + [data-skills-index])',
+    skillHtml.includes('id="skills-index"') && skillHtml.includes('data-skills-index'));
+  check('索引区两份 skill 名称 + version 都在原始 HTML 里',
+    skillHtml.includes('>bolloon-gateway-join<') && skillHtml.includes('>1.3.0<') &&
+    skillHtml.includes('>bolloon-network<') && skillHtml.includes('>1.0.0<'));
+  check('每行都有 read 钩子 + 复制按钮 + 直达 .md 链接',
+    (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
+    (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
+    (skillHtml.match(/data-copy-skill="/g) || []).length === 2 &&
+    skillHtml.includes('href="bolloon-gateway-join.md"') && skillHtml.includes('href="bolloon-network.md"'));
+  await cdp('Page.navigate', { url: `${BASE}/skill.html` });
+  await sleep(900);
+  const idxRows = await evalJs(`(() => Array.from(document.querySelectorAll('[data-skills-index] tbody tr')).map((tr) => ({
+    name: tr.cells[0].textContent.trim(), version: tr.cells[1].textContent.trim(),
+    read: tr.querySelector('[data-skill-read]').textContent,
+    slug: tr.querySelector('[data-skill-read]').getAttribute('data-skill-read'),
+    kids: tr.querySelector('[data-skill-read]').childNodes.length,
+    direct: tr.cells[4].querySelector('a').getAttribute('href'),
+    copy: !!tr.querySelector('[data-copy-skill]') })))()`);
+  check('索引区 read 命令按实际访问源生成 (read <BASE>/<name>.md), 文本节点只 1 个',
+    Array.isArray(idxRows) && idxRows.length === 2 && idxRows.every((r) => r.read === `read ${BASE}/${r.slug}.md` && r.kids === 1),
+    JSON.stringify(idxRows && idxRows.map((r) => r.read)));
+  check('索引区名称/version/直达链接/复制按钮逐行都对',
+    JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])) === JSON.stringify([
+      ['bolloon-gateway-join', '1.3.0', 'bolloon-gateway-join.md', true],
+      ['bolloon-network', '1.0.0', 'bolloon-network.md', true]]), JSON.stringify(idxRows));
+  const idxCount = await evalJs(`(document.querySelector('[data-skills-count]')||{}).textContent||''`);
+  check('索引区标注「共 2 份 · 索引里列的就是全部」', /共 2 份/.test(idxCount), idxCount);
+  await evalJs(`(() => { window.__copyBtn = document.querySelector('[data-copy-skill="bolloon-network"]'); window.__copyBtn.click(); return 1; })()`);
+  await sleep(400);   // 剪贴板写入是异步的, 等它 settle 再读按钮文案
+  const idxCopy = await evalJs(`window.__copyBtn.textContent`);
+  check('索引区复制按钮真的可点 (点击 → 「已复制」)', idxCopy === '已复制', idxCopy);
+
   // ④ gateway.html 命令
   console.log('\n[4] gateway.html 粘贴命令跟随访问源');
   await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
   await sleep(1500);
   const cmd = String(await evalJs(`(document.getElementById('skill-cmd')||{}).textContent`));
   check(`命令 = "${cmd}"`, cmd.startsWith('read ') && cmd.endsWith('/bolloon-gateway-join.md'), cmd);
+  check('网关页 skills 栏仍然只给一条 read 命令, 旁边指向站内 skills 索引',
+    (await evalJs(`document.querySelectorAll('#skills .skill-cmd code').length`)) === 1 &&
+    (await evalJs(`!!document.querySelector('#skills a[href="skill.html#skills-index"]')`)) === true);
 
   // ⑤ 文档正文
   console.log('\n[5] /bolloon-gateway-join.md 线上正文');
@@ -216,6 +310,22 @@ async function main() {
   check('含 §7 首次接触 TOFU', doc.includes('首次接触 TOFU'));
   check('含 §11 M1 任务闭环', doc.includes('## 11. 用买到的能力完成任务') && doc.includes('bolloon task'));
 
+  // ⑤′ /bolloon-network.md 线上正文 (bolloon 主仓 skills/bolloon-network/SKILL.md 的原样镜像)
+  console.log('\n[5b] /bolloon-network.md 线上正文 (主仓 SKILL.md 镜像)');
+  const netDoc = await (await fetch(`${BASE}/bolloon-network.md`)).text();
+  check('首行就是 frontmatter 起始 (---)，没有前缀空行', netDoc.startsWith('---\n'), JSON.stringify(netDoc.slice(0, 16)));
+  check('frontmatter 头四行原样 (name/version/description)',
+    /^---\nname: bolloon-network\nversion: 1\.0\.0\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
+  check('frontmatter 关键块原样 (status/tier/protocol/capabilities/plannedCapabilities/paymentModes/hardRules)',
+    netDoc.includes('\nstatus: active\n') && netDoc.includes('\ntier: capability\n') &&
+    netDoc.includes('\nprotocol: bolloon-task/1\n') && netDoc.includes('capabilities:\n  - network.join') &&
+    netDoc.includes('plannedCapabilities:') && netDoc.includes('paymentModes:') && netDoc.includes('hardRules:'));
+  check('正文首尾都在 (没被截断/没被渲染成 HTML): 标题 + §⑥ 支付规范 + 附: 清单',
+    netDoc.includes('# bolloon-network — 外部 Agent 接入 Skill') && netDoc.includes('## ⑥ 支付规范') &&
+    netDoc.includes('## 附: 本 Skill 的 `(planned)` 清单'));
+  check('正文含真命令 (bolloon task / bolloon setup / 54188), 不是占位摘要',
+    netDoc.includes('bolloon task') && netDoc.includes('bolloon setup') && netDoc.includes('54188'));
+
   // ——— CDP Fetch 拦截: 用夹具数据确定性地驱动脉冲区的四种状态 ———
   // 注意: 文档 URL 里带着 ?pulse=<夹具地址>, 所以 urlPattern 也会命中文档本身 ——
   // 必须把非目标请求 (Document 等) 立刻 continueRequest, 否则 Page.navigate 永远不返回。
@@ -227,6 +337,8 @@ async function main() {
   const B_SRC = `${BASE}/network-pulse-verify-b.json`;
   let bMode = 'fail';
   let aFail = false;
+  // 「缺 tasks* + agent_sites 为空」夹具 (第三档) 的开关
+  let cMode = 'full';
   on('Fetch.requestPaused', (p) => {
     // 文档请求也命中 pattern (URL 里带着 ?pulse=<夹具地址>), 必须放行, 否则 Page.navigate 不返回
     if (p.resourceType === 'Document' || !shouldIntercept(p)) {
@@ -237,6 +349,11 @@ async function main() {
     if (p.request.url.includes('network-pulse-verify-b')) {
       if (bMode === 'fail') cdp('Fetch.failRequest', { requestId: p.requestId, errorReason: 'ConnectionRefused' }).catch(() => {});
       else fulfillJson(p.requestId, FX_EXPIRED);
+      return;
+    }
+    // 第三档: cMode='full' → FX_LIVE; 'no-tasks' → FX_NO_TASKS (缺 tasks* 且 agent_sites=[])
+    if (p.request.url.includes('network-pulse-verify-c')) {
+      fulfillJson(p.requestId, cMode === 'full' ? FX_LIVE : FX_NO_TASKS);
       return;
     }
     // 「让第一个实例失败」开关
@@ -267,16 +384,39 @@ async function main() {
   const T0 = Date.now();
   // 活动文本故意带 <b>: 用它证明渲染走 textContent 而不是 innerHTML
   const MARKUP_TEXT = { zh: '节点 <b>42</b> 发布 manifest & 计数', en: 'Node <b>42</b> published a manifest & counters' };
+  // IPNS 夹具: 三种合法形态 (裸 k51… / ipns://12D3… / /ipns/k51…) + 一条非法 (必须被丢弃, 不渲染链接)
+  const CID_1 = 'k51qzi5uqu5dlvj2baxnqndepeb86cbk3ng7n3i46uzyxzyqj2xjonzllnv0v8';
+  const CID_2 = '12D3KooWQq7fUuY8gTZ2mNpRx4vBcDeFkLg';
+  const CID_3 = 'k51qzi5uqu5dgn2p8v06tw5xrs3lhhh9sfwvbm2baxnqndepeb86cbk3ng';
+  const IPNS_OK = [CID_1, 'ipns://' + CID_1, '/ipns/' + CID_1, 'https://ipfs.io/ipns/' + CID_2, 'ipns://' + CID_2, '/ipns/' + CID_3, CID_3];
+  const IPNS_BAD = ['', '   ', 'hello', 'ipns://', '/ipns/', 'javascript:alert(1)', 'https://evil.example/x',
+    'k51', 'QmTooShort', 'file:///etc/passwd', 'data:text/html,x', CID_1 + '/extra/path'];
   const FX_LIVE = {
     status: 'live', generated_at: T0 - 3 * 60000, fresh_until: T0 + 60000,
     scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
-    totals: { nodes: 7, agents: 12, active_agents: 4, seen_last_24h: 5 },
+    totals: { nodes: 7, agents: 12, active_agents: 4, seen_last_24h: 5, tasks: 21, tasks_completed: 13, tasks_verified: 6 },
+    agent_sites: [
+      { label: 'leo-node', ipns: CID_1, added_at: T0 - 86400000 },
+      { label: 'research', ipns: 'ipns://' + CID_2, added_at: T0 - 3600000 },
+      { label: 'mirror', ipns: '/ipns/' + CID_3, added_at: T0 - 60000 },
+      { label: 'bogus', ipns: 'javascript:alert(1)', added_at: T0 },       // 非法 → 必须不渲染
+    ],
     capabilities: [{ key: 'code-review', count: 6 }, { key: 'translation', count: 3 }, { key: 'other', count: 2 }],
     recent_activity: [
       { kind: 'manifest_published', at: T0 - 3 * 60000, text: MARKUP_TEXT },
       { kind: 'node_joined', at: T0 - 2 * 3600000, text: { zh: '一个新节点加入', en: 'A node joined' } },
     ],
     notes: ['计数按隐私阈值合并', '观察窗口内的聚合值'],
+  };
+  // 缺 tasks* 三个聚合计数 + agent_sites 空数组: 证明「拿不到就不显示」「空 ≠ 没数据」
+  const FX_NO_TASKS = {
+    status: 'live', generated_at: T0 - 60000, fresh_until: T0 + 60000,
+    scope: 'verified', scope_label: { zh: '网络观察快照', en: 'Verified network snapshot' },
+    totals: { nodes: 2, agents: 3, active_agents: 0, seen_last_24h: 3 },
+    agent_sites: [],
+    capabilities: [{ key: 'search', count: 1 }],
+    recent_activity: [],
+    notes: [],
   };
   // status 仍写 live, 靠 fresh_until 已过来证明「过期即 stale, 不伪装实时」
   const FX_EXPIRED = {
@@ -352,6 +492,23 @@ async function main() {
   check('live: 四个大数值 = 接口总数 (7/12/4/5)',
     live.nodes === '7' && live.agents === '12' && live.active === '4' && live.h24 === '5',
     JSON.stringify({ n: live.nodes, a: live.agents, ac: live.active, d: live.h24 }));
+  check('live: 三行任务计数 = 接口原值 (21/13/6), 行可见',
+    live.tasks === '21' && live.tasksDone === '13' && live.tasksVerified === '6' &&
+    live.tasksHidden.tasks === false && live.tasksHidden.done === false && live.tasksHidden.verified === false,
+    JSON.stringify({ t: live.tasks, d: live.tasksDone, v: live.tasksVerified, h: live.tasksHidden }));
+  check('live: 三行标签 = 任务数量 / 完成任务数量 / 已验真任务',
+    JSON.stringify(live.taskLabels) === JSON.stringify(['任务数量', '完成任务数量', '已验真任务']), JSON.stringify(live.taskLabels));
+  check('live: agent_sites 三种 ipns 形态都归一化成 https://ipfs.io/ipns/<cid> (非法条目被丢弃)',
+    live.sites.length === 3 && live.sites.map((s) => s.href).join('|') ===
+      [`https://ipfs.io/ipns/${CID_1}`, `https://ipfs.io/ipns/${CID_2}`, `https://ipfs.io/ipns/${CID_3}`].join('|') &&
+      live.sites.map((s) => s.label).join('|') === 'leo-node|research|mirror',
+    JSON.stringify(live.sites));
+  check('live: 站点链接 = rel=noopener noreferrer + target=_blank + 链接文本是裸 cid (只 1 个文本节点)',
+    live.sites.length === 3 && live.sites.every((s) => s.rel === 'noopener noreferrer' && s.target === '_blank' &&
+      s.kids === 1 && s.text === s.href.replace('https://ipfs.io/ipns/', '')),
+    JSON.stringify(live.sites));
+  check('live: 脉冲区内没有任何 javascript: 链接 (非法 ipns 没被渲染)',
+    (await evalJs(`Array.from(document.querySelectorAll('#pulse a')).every((a) => !/^javascript:/i.test(a.getAttribute('href') || ''))`)) === true);
   check('live: scope=observed → 「当前节点观察到」', live.scope === '当前节点观察到' && !live.scopeHidden, live.scope);
   check('live: 快照时间 + 相对时间 (3 分钟前)',
     /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(live.snap) && /\d+ 分钟前/.test(live.feed[0] || ''),
@@ -387,7 +544,30 @@ async function main() {
     JSON.stringify({ v: en.visible, s: en.scope, f: en.feedText }));
   check('EN: 相对时间英文 (minutes ago)', /minutes ago/.test(en.feed[0] + en.ago), en.feed[0] + ' ' + en.ago);
   check('EN: 「not an exact global total」可见', enCaveat.includes('not an exact global total'), enCaveat);
-  check('EN: 能力/活动小标题英文', JSON.stringify(enKickers) === JSON.stringify(['Capabilities', 'Recent activity']), JSON.stringify(enKickers));
+  check('EN: 能力/活动/私有站小标题英文',
+    JSON.stringify(enKickers) === JSON.stringify(['Capabilities', 'Recent activity', 'Agent private sites']), JSON.stringify(enKickers));
+  const enStatLabels = await evalJs(`Array.from(document.querySelectorAll('#pulse .pulse-stat-label')).map(e=>e.textContent.trim())`);
+  check('EN: 七个数值标签英文 (含 Tasks / Tasks completed / Tasks verified)',
+    JSON.stringify(enStatLabels) === JSON.stringify(['Nodes', 'Agents', 'Active agents', 'Seen in last 24h', 'Tasks', 'Tasks completed', 'Tasks verified']),
+    JSON.stringify(enStatLabels));
+  const enIpns = await evalJs(`(() => {
+    const f = document.querySelector('#pulse [data-pulse-ipns-form]');
+    const i = f.querySelector('[data-pulse-ipns-input]');
+    i.value = 'nope'; f.requestSubmit();
+    const out = { ph: i.getAttribute('placeholder'), aria: i.getAttribute('aria-label'),
+      btnAria: f.querySelector('[data-pulse-ipns-open]').getAttribute('aria-label'),
+      btnText: f.querySelector('[data-pulse-ipns-open]').textContent,
+      msg: f.querySelector('[data-pulse-ipns-msg]').textContent,
+      hint: document.querySelector('#pulse .pulse-ipns-hint').textContent,
+      sitesEmpty: document.querySelector('#pulse [data-pulse-sites-empty]').textContent,
+      siteAria: (document.querySelector('#pulse [data-pulse-sites] a') || {}).getAttribute ? document.querySelector('#pulse [data-pulse-sites] a').getAttribute('aria-label') : '' };
+    i.value = ''; return out;
+  })()`);
+  check('EN: 粘贴框 placeholder/aria-label/按钮/报错/提示 全英文 (含站点链接 aria)',
+    /IPNS address or name/.test(enIpns.aria) && /ipns:\/\//.test(enIpns.ph) && /new window/.test(enIpns.btnAria) &&
+    enIpns.btnText === 'Open' && /Not a valid IPNS address/.test(enIpns.msg) &&
+    /no network request/.test(enIpns.hint) && /has not published/.test(enIpns.sitesEmpty) &&
+    /in a new window/.test(enIpns.siteAria), JSON.stringify(enIpns));
   await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
   await sleep(250);
 
@@ -413,6 +593,24 @@ async function main() {
   const mob = await evalJs(`(() => ({ w: window.innerWidth, dir: getComputedStyle(document.querySelector('#pulse .pulse-stats')).flexDirection, cols: getComputedStyle(document.querySelector('#pulse .pulse-grid')).gridTemplateColumns }))()`);
   check('390px: 统计改纵向堆叠', mob.w <= 640 && mob.dir === 'column', JSON.stringify(mob));
   check('390px: 能力/活动两栏各自堆叠', mob.cols.split(' ').length === 1, mob.cols);
+  const mobIpns = await evalJs(`(() => {
+    const de = document.documentElement;
+    const f = document.querySelector('#pulse [data-pulse-ipns-form]');
+    const row = f.querySelector('.pulse-ipns-row');
+    const btn = f.querySelector('[data-pulse-ipns-open]');
+    const input = f.querySelector('[data-pulse-ipns-input]');
+    const sites = document.querySelector('#pulse .pulse-sites');
+    const list = document.querySelector('#pulse [data-pulse-sites] li');
+    return { rowDir: getComputedStyle(row).flexDirection, btnW: Math.round(btn.getBoundingClientRect().width),
+      formW: Math.round(f.getBoundingClientRect().width), inputW: Math.round(input.getBoundingClientRect().width),
+      sitesW: Math.round(sites.getBoundingClientRect().width), clientW: de.clientWidth,
+      liDir: list ? getComputedStyle(list).flexDirection : null,
+      linkWrap: list ? list.querySelector('a').getBoundingClientRect().right <= de.clientWidth + 1 : null };
+  })()`);
+  check('390px: IPNS 粘贴框与站点列表改纵向堆叠, 宽度不超出视口 (不横向溢出)',
+    mobIpns.rowDir === 'column' && mobIpns.liDir === 'column' && mobIpns.linkWrap === true &&
+    mobIpns.btnW <= mobIpns.formW && mobIpns.formW <= mobIpns.clientW && mobIpns.inputW <= mobIpns.formW,
+    JSON.stringify(mobIpns));
   await cdp('Emulation.clearDeviceMetricsOverride');
   await sleep(200);
 
@@ -491,6 +689,108 @@ async function main() {
     JSON.stringify({ state: fb.state, cmd: fbCmd.slice(0, 40) }));
   await cdp('Fetch.disable');
 
+  // ⑥′ 聚合计数缺失 + agent_sites 为空: 「拿不到就不显示」, 空 ≠ 没数据
+  console.log('\n[6b] 任务计数缺失 + 智能体私有站为空 (拿不到就不显示)');
+  const cErrStart = consoleErrors.length;
+  cMode = 'no-tasks';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-c.json`)}` });
+  await sleep(1400);
+  const noT = await evalJs(pulseProbe('#pulse'));
+  check('缺 tasks* 三个字段 → 三行整行隐藏, 且不拿 0 或数字冒充',
+    noT.state === 'live' && noT.tasksHidden.tasks === true && noT.tasksHidden.done === true && noT.tasksHidden.verified === true &&
+    noT.tasks === '—' && noT.tasksDone === '—' && noT.tasksVerified === '—',
+    JSON.stringify({ s: noT.state, h: noT.tasksHidden, v: [noT.tasks, noT.tasksDone, noT.tasksVerified] }));
+  check('缺字段时四个老数值照常显示 (2/3/0/3) — 只有拿不到的才不显示 (真 0 照常显示 0)',
+    noT.nodes === '2' && noT.agents === '3' && noT.active === '0' && noT.h24 === '3',
+    JSON.stringify({ n: noT.nodes, a: noT.agents, ac: noT.active, d: noT.h24 }));
+  check('agent_sites=[] → 0 条链接 + 诚实空提示 (没发布 ≠ 没数据)',
+    noT.sites.length === 0 && noT.sitesEmptyShown === true && /暂未发布智能体私有站/.test(noT.sitesEmptyText),
+    JSON.stringify({ n: noT.sites.length, shown: noT.sitesEmptyShown, text: noT.sitesEmptyText }));
+  check('缺字段这一轮无 console 错误 / 未捕获异常', consoleErrors.length === cErrStart, consoleErrors.slice(0, 3).join(' | '));
+
+  // ⑥″ IPNS 粘贴框: 真 input + 真按钮, 严格校验, 合法才开新窗口, 本页不发任何网络请求
+  console.log('\n[6c] IPNS 粘贴框 (归一化 → 新窗口 / 非法就地报错)');
+  const ipnsBox = await evalJs(pulseProbe('#pulse'));
+  check('粘贴框 = 真 input + 真 type=submit 按钮 (回车可提交) + aria-label 齐全',
+    !!ipnsBox.ipns && ipnsBox.ipns.inputTag === 'INPUT' && ipnsBox.ipns.inputType === 'text' &&
+    ipnsBox.ipns.btnTag === 'BUTTON' && ipnsBox.ipns.btnType === 'submit' &&
+    !!ipnsBox.ipns.inputAria && !!ipnsBox.ipns.btnAria,
+    JSON.stringify(ipnsBox.ipns));
+  check('粘贴框状态区 role=status + aria-live=polite', ipnsBox.ipns.msgRole === 'status' && ipnsBox.ipns.msgLive === 'polite',
+    JSON.stringify(ipnsBox.ipns && { r: ipnsBox.ipns.msgRole, l: ipnsBox.ipns.msgLive }));
+  const truth = await evalJs(`(() => {
+    const P = window.__bolloonIpns;
+    const good = ${JSON.stringify(IPNS_OK)};
+    const bad = ${JSON.stringify(IPNS_BAD)};
+    return { good: good.map((v) => [v, P.parse(v), P.url(v)]), bad: bad.map((v) => [v, P.parse(v), P.url(v)]) };
+  })()`);
+  check(`归一化: ${IPNS_OK.length} 种合法写法 (裸 k51… / ipns://… / /ipns/… / 网关 URL) 都得到同一 cid 与网关 URL`,
+    truth.good.every((r) => !!r[1] && r[2] === 'https://ipfs.io/ipns/' + r[1]),
+    JSON.stringify(truth.good.filter((r) => !(r[1] && r[2] === 'https://ipfs.io/ipns/' + r[1]))));
+  check(`归一化: ${IPNS_BAD.length} 种非法输入全部拒绝 (含 javascript: / file: / data: / 空 / 带路径)`,
+    truth.bad.every((r) => r[1] === null && r[2] === null),
+    JSON.stringify(truth.bad.filter((r) => r[1] !== null)));
+  // 输入内容绝不进 innerHTML: 塞一个 <img onerror> 进去, 只应看到被转义的文本
+  const xss = await evalJs(`(() => {
+    const f = document.querySelector('#pulse [data-pulse-ipns-form]');
+    const i = f.querySelector('[data-pulse-ipns-input]');
+    const m = f.querySelector('[data-pulse-ipns-msg]');
+    i.value = '<img src=x onerror="window.__xss=1">';
+    f.requestSubmit();
+    return { msg: m.textContent, cls: m.className, html: m.innerHTML, imgs: f.querySelectorAll('img').length,
+      rawMarkup: m.innerHTML.indexOf('<') !== -1, xss: !!window.__xss,
+      kids: m.childNodes.length, nodeType: m.childNodes[0] && m.childNodes[0].nodeType,
+      invalid: i.getAttribute('aria-invalid'), opened: window.__bolloonIpns.lastOpened() };
+  })()`);
+  check('非法输入 → 就地报错 (不是静默), 且输入内容绝不进 innerHTML (无标签节点 / 无 XSS)',
+    /不是合法的 IPNS 地址/.test(xss.msg) && xss.msg.indexOf('<img') === -1 && xss.imgs === 0 &&
+    xss.rawMarkup === false && xss.xss === false &&
+    xss.kids === 1 && xss.nodeType === 3 && xss.invalid === 'true' && xss.opened === '',
+    JSON.stringify(xss));
+
+  // 真窗口: 合法 → 真的开一个新标签页; 非法 → 一个都不开 (新标签页在启动前挂起, 不会去访问 ipfs.io)
+  await watchPopups(true);
+  const ipnsInput = async (v) => evalJs(`(() => { const i = document.querySelector('#pulse [data-pulse-ipns-input]'); i.value = ${JSON.stringify(v)}; i.focus(); return i.value; })()`);
+  const pressEnter = async () => {
+    await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, text: '\r' });
+    await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
+    await sleep(900);
+  };
+  const clickOpen = async () => {
+    const b = await evalJs(`(() => { const el = document.querySelector('#pulse [data-pulse-ipns-open]'); el.scrollIntoView({ block: 'center' }); const r = el.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`);
+    await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: b.x, y: b.y, button: 'left', clickCount: 1 });
+    await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: b.x, y: b.y, button: 'left', clickCount: 1 });
+    await sleep(900);
+  };
+  await closePopups();
+  await ipnsInput('javascript:alert(1)');
+  await pressEnter();
+  check('非法输入 + 真回车 → 一个新窗口都不开', popups.length === 0, `popups=${popups.length}`);
+  await closePopups();
+  await ipnsInput(CID_1);
+  await pressEnter();
+  const kbOpen = await evalJs(`JSON.stringify({ cid: window.__bolloonIpns.lastCid(), opened: window.__bolloonIpns.lastOpened(), link: window.__bolloonIpns.lastLink() })`);
+  check(`合法裸 k51 + 真回车 → 真的开一个新标签页 (${popups.length} 个 page 目标)`,
+    popups.length === 1 && popups[0].type === 'page', `popups=${JSON.stringify(popups.map((p) => p.type))}`);
+  check('开新窗口走的是新建 <a rel="noopener noreferrer" target="_blank"> (href = 网关 URL)',
+    JSON.parse(kbOpen).opened === `https://ipfs.io/ipns/${CID_1}` &&
+    JSON.parse(kbOpen).link.href === `https://ipfs.io/ipns/${CID_1}` &&
+    JSON.parse(kbOpen).link.rel === 'noopener noreferrer' && JSON.parse(kbOpen).link.target === '_blank',
+    kbOpen);
+  await closePopups();
+  await ipnsInput('/ipns/' + CID_3);
+  await clickOpen();
+  const clickOpen2 = await evalJs(`JSON.stringify({ cid: window.__bolloonIpns.lastCid(), opened: window.__bolloonIpns.lastOpened(), msg: document.querySelector('#pulse [data-pulse-ipns-msg]').textContent })`);
+  check(`合法 /ipns/… + 真鼠标点「打开」→ 也真的开一个新标签页 (${popups.length} 个), cid 归一化对了`,
+    popups.length === 1 && JSON.parse(clickOpen2).cid === CID_3 && JSON.parse(clickOpen2).opened === `https://ipfs.io/ipns/${CID_3}`,
+    clickOpen2);
+  await closePopups();
+  await watchPopups(false);
+  check('粘贴框这几轮无 console 错误 / 未捕获异常', consoleErrors.length === cErrStart, consoleErrors.slice(0, 3).join(' | '));
+  cMode = 'full';
+
   // ⑦ 首页序栏紧凑版脉冲 (同一数据源, 同一诚实四态)
   console.log('\n[7] index.html 序栏紧凑版脉冲 (同一接口 + 同一四态)');
   const idxErrStart = consoleErrors.length;
@@ -524,6 +824,13 @@ async function main() {
   check('首页 live: 状态=实时 + 四个数值 = 7/12/4/5',
     idxLive.state === 'live' && idxLive.visible.includes('实时') && idxLive.nodes === '7' && idxLive.agents === '12' && idxLive.active === '4' && idxLive.h24 === '5',
     JSON.stringify({ s: idxLive.state, n: idxLive.nodes, a: idxLive.agents, ac: idxLive.active, d: idxLive.h24 }));
+  check('首页 live: 只加两行 —— 任务 21 / 已完成 13 (第三行「已验真任务」刻意不放首页)',
+    idxLive.tasks === '21' && idxLive.tasksDone === '13' && idxLive.tasksVerified === null &&
+    idxLive.tasksHidden.tasks === false && idxLive.tasksHidden.done === false,
+    JSON.stringify({ t: idxLive.tasks, d: idxLive.tasksDone, v: idxLive.tasksVerified, h: idxLive.tasksHidden }));
+  const idxTotLabels = await evalJs(`Array.from(document.querySelectorAll('${IDX_ROOT} .pulse-c-totals span')).map(e=>e.textContent.trim())`);
+  check('首页 live: 六行标签 = 节点 / agents / 活跃 agent / 24 小时内出现 / 任务 / 已完成',
+    JSON.stringify(idxTotLabels) === JSON.stringify(['节点', 'agents', '活跃 agent', '24 小时内出现', '任务', '已完成']), JSON.stringify(idxTotLabels));
   check('首页 live: scope=observed + 活动流按 feed-max 截断 (只 1 条, 不是 5 条)',
     idxLive.scope === '当前节点观察到' && !idxLive.scopeHidden && idxLive.feed.length === 1 && idxLive.feedText[0] === MARKUP_TEXT.zh,
     JSON.stringify({ s: idxLive.scope, f: idxLive.feed, ft: idxLive.feedText }));
@@ -532,9 +839,9 @@ async function main() {
     JSON.stringify({ c: idxLive.caveat, h: idxLive.hintShown }));
   check('首页 live: 有指向网关页完整脉冲的链接',
     (await evalJs(`!!document.querySelector('${IDX_ROOT} .pulse-c-more a[href$="gateway.html#pulse"]')`)) === true);
-  const idxDensity = await evalJs(`(() => ({ font: parseFloat(getComputedStyle(document.querySelector('${IDX_ROOT} .pulse-c-totals b')).fontSize), h: Math.round(document.querySelector('${IDX_ROOT}').getBoundingClientRect().height), feedStyle: getComputedStyle(document.querySelector('${IDX_ROOT} [data-pulse-feed] li')).display }))()`);
-  check(`首页那份确实更轻更密 (数值字号 ${idxDensity.font}px < 网关 ${gwValueFont}px, 整块高 ${idxDensity.h}px < 320px)`,
-    idxDensity.font < gwValueFont && idxDensity.h < 320, JSON.stringify({ idxDensity, gwValueFont }));
+  const idxDensity = await evalJs(`(() => ({ font: parseFloat(getComputedStyle(document.querySelector('${IDX_ROOT} .pulse-c-totals b')).fontSize), h: Math.round(document.querySelector('${IDX_ROOT}').getBoundingClientRect().height), rows: document.querySelectorAll('${IDX_ROOT} .pulse-c-totals li').length, feedStyle: getComputedStyle(document.querySelector('${IDX_ROOT} [data-pulse-feed] li')).display }))()`);
+  check(`首页那份确实更轻更密 (数值字号 ${idxDensity.font}px < 网关 ${gwValueFont}px, 加了两行后整块高 ${idxDensity.h}px < 320px, 共 ${idxDensity.rows} 行数值)`,
+    idxDensity.font < gwValueFont && idxDensity.h < 320 && idxDensity.rows === 6, JSON.stringify({ idxDensity, gwValueFont }));
 
   // 首页那份也吃中英切换
   await evalJs(`document.querySelector('.lang-toggle [data-lang="en"]').click()`);
@@ -545,8 +852,8 @@ async function main() {
     idxEn.visible.includes('Live') && idxEn.scope === 'Observed by this node' && idxEn.feedText[0] === MARKUP_TEXT.en,
     JSON.stringify({ v: idxEn.visible, s: idxEn.scope, f: idxEn.feedText }));
   check('首页 EN: caveat 变「not an exact global total」', idxEn.caveat.includes('not an exact global total'), idxEn.caveat);
-  check('首页 EN: 四个数值标签英文 (nodes/agents/active agents/seen in 24h)',
-    JSON.stringify(idxLabels) === JSON.stringify(['nodes', 'agents', 'active agents', 'seen in 24h']), JSON.stringify(idxLabels));
+  check('首页 EN: 六个数值标签英文 (nodes/agents/active agents/seen in 24h/tasks/completed)',
+    JSON.stringify(idxLabels) === JSON.stringify(['nodes', 'agents', 'active agents', 'seen in 24h', 'tasks', 'completed']), JSON.stringify(idxLabels));
   await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
   await sleep(250);
 
@@ -703,6 +1010,19 @@ async function main() {
   const hookCheck = await evalJs(`(() => ({ ids: Array.from(document.querySelectorAll('[data-pulse] [id]')).map(e => e.id), roots: document.querySelectorAll('[data-pulse]').length }))()`);
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
+
+  // ⑪ 全站资源版本 ?v=18 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=18 一致 (7 页原始 HTML)');
+  const vStale = [], vMissing = [];
+  for (const pg of ALL_PAGES) {
+    const html = await (await fetch(`${BASE}/${pg}`)).text();
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=18');
+    if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
+    if (pg !== 'skill.html' && (!/style\.css\?v=18/.test(html) || !/app\.js\?v=18/.test(html))) vMissing.push(pg);
+  }
+  check('7 页都没有 ?v=18 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=18 + app.js?v=18 (skill.html 自包含, 无外链)',
+    vMissing.length === 0, JSON.stringify(vMissing));
 
   // console 错误
   check('整轮访问无 console 错误 / 未捕获异常', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

@@ -204,6 +204,157 @@
 })();
 
 /* ============================================================
+   IPNS 智能体私有站 —— 地址归一化 (2026-09-21)
+   静态站没有后端: 本模块**不发任何网络请求**, 只做字符串归一化, 跳转交给浏览器。
+   合法输入 (只认这几种; 其余一律拒, 绝不猜、不兜底):
+     ① ipns://<cid>            ② /ipns/<cid>
+     ③ 裸 <cid>               k51… (CIDv1-base36) / 12D3KooW… (ed25519 peer id)
+                               / Qm… (CIDv0) / b… (CIDv1-base32)
+     ④ https://<host>/ipns/<cid>   本模块自己生成的链接形态 —— 粘回来必须能打开;
+                                   只取 path 里的 /ipns/<cid>, 不跟随、不请求、不换 host
+   拒: 空 / 超长 / 其它 scheme (javascript: file: data:) / CID 形状不对 / 带路径或查询
+   ============================================================ */
+var BOLLOON_IPNS = (function () {
+  'use strict';
+  var GATEWAY = 'https://ipfs.io/ipns/';
+  var MAX_LEN = 256;   // 异常输入直接拒, 不做任何截断或猜测
+  var CID_RE = /^(?:k51[0-9a-z]{20,}|12D3KooW[1-9A-HJ-NP-Za-km-z]{19,}|Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{20,})$/;
+  var PATH_RE = /^\/ipns\/([^\/?#\s]+)\/*$/;
+
+  // → 归一化后的裸 cid, 或 null (非法)
+  function parse(raw) {
+    if (raw == null) return null;
+    var s = String(raw).trim();
+    if (!s || s.length > MAX_LEN) return null;
+    if (s.toLowerCase().indexOf('ipns://') === 0) {
+      s = s.slice(7);
+    } else if (s.charAt(0) === '/') {
+      var m = PATH_RE.exec(s);
+      if (!m) return null;
+      s = m[1];
+    } else if (/^https?:\/\//i.test(s)) {
+      var path = '';
+      try { path = new URL(s).pathname; } catch (e) { return null; }   // 只解析字符串, 不发请求
+      var m2 = PATH_RE.exec(path);
+      if (!m2) return null;
+      s = m2[1];
+    }
+    while (s.length && s.charAt(s.length - 1) === '/') s = s.slice(0, -1);
+    if (!s || /[\/?#\s]/.test(s)) return null;
+    return CID_RE.test(s) ? s : null;
+  }
+
+  function url(cid) { return GATEWAY + cid; }
+
+  return {
+    gateway: GATEWAY,
+    parse: parse,                                                          // → cid | null
+    url: url,                                                              // cid → 网关 URL
+    urlFrom: function (raw) { var c = parse(raw); return c ? url(c) : null; }  // raw → 网关 URL | null
+  };
+})();
+
+/* ============================================================
+   IPNS 粘贴打开器 —— 用户粘一个 IPNS 链接/裸值 → 打开新窗口 (2026-09-21)
+   多实例安全: 按 [data-pulse-ipns-form] 根遍历, 区内一律 data-pulse-ipns-* 钩子 (无 id)。
+   点击 / 回车都能用: <form> + type=submit 按钮 ⇒ 输入框里回车走原生隐式提交。
+   安全: 新建 <a> 一律 rel="noopener noreferrer" target="_blank"; 链接文本与提示
+         一律 textContent —— 输入内容**绝不**拼进 innerHTML / href 之外的任何地方。
+   ============================================================ */
+(function () {
+  'use strict';
+  var forms = document.querySelectorAll('[data-pulse-ipns-form]');
+  if (!forms || !forms.length) return;
+
+  var STR = {
+    zh: {
+      ph: 'ipns://k51… · /ipns/12D3KooW… · 裸 k51… / 12D3…',
+      input: '粘贴 IPNS 地址或名称: 只接受 ipns://<cid> 、 /ipns/<cid> 或裸 CID',
+      btn: '在新窗口打开这个 IPNS 站点',
+      err: '不是合法的 IPNS 地址 —— 只接受 ipns://<cid> 、 /ipns/<cid> 或裸 k51… / 12D3…；本页不替你猜。',
+      ok: '已新窗口打开: '
+    },
+    en: {
+      ph: 'ipns://k51… · /ipns/12D3KooW… · bare k51… / 12D3…',
+      input: 'Paste an IPNS address or name: ipns://<cid>, /ipns/<cid> or a bare CID only',
+      btn: 'Open this IPNS site in a new window',
+      err: 'Not a valid IPNS address — only ipns://<cid>, /ipns/<cid> or a bare k51… / 12D3… are accepted; this page will not guess.',
+      ok: 'Opened in a new window: '
+    }
+  };
+  function lang() { return document.documentElement.lang === 'en' ? 'en' : 'zh'; }
+  function str(key) { return STR[lang()][key]; }
+
+  var seen = { lastCid: '', lastOpened: '', lastLink: null, forms: 0 };
+
+  function wire(form) {
+    var input = form.querySelector('[data-pulse-ipns-input]');
+    var msg = form.querySelector('[data-pulse-ipns-msg]');
+    var btn = form.querySelector('[data-pulse-ipns-open]');
+    if (!input || !btn) return false;
+
+    function say(text, kind) {
+      if (!msg) return;
+      msg.textContent = text || '';                       // 只写 textContent
+      msg.classList.toggle('is-error', kind === 'error');
+      msg.classList.toggle('is-ok', kind === 'ok');
+    }
+    function syncLabels() {
+      input.setAttribute('placeholder', str('ph'));
+      input.setAttribute('aria-label', str('input'));
+      btn.setAttribute('aria-label', str('btn'));
+    }
+    function open() {
+      var cid = BOLLOON_IPNS.parse(input.value);
+      if (!cid) {                                          // 非法: 就地报错, 不发任何请求
+        input.setAttribute('aria-invalid', 'true');
+        say(str('err'), 'error');
+        seen.lastLink = null;
+        return null;
+      }
+      input.removeAttribute('aria-invalid');
+      var href = BOLLOON_IPNS.url(cid);
+      var a = document.createElement('a');                  // 真跳转: 由浏览器开新窗口
+      a.className = 'pulse-ipns-out';
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = href;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      seen.lastCid = cid;
+      seen.lastOpened = href;
+      seen.lastLink = { href: href, rel: a.rel, target: a.target, text: a.textContent };
+      say(str('ok') + href, 'ok');
+      return href;
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();                                   // 静态站: 不提交表单, 只归一化 + 开新窗口
+      open();
+    });
+    syncLabels();
+    document.addEventListener('bolloon:lang', syncLabels);
+    return true;
+  }
+
+  for (var i = 0; i < forms.length; i++) { if (wire(forms[i])) seen.forms++; }
+
+  // 对外接口 (验收用): 纯函数 + 上一次真开过的链接快照
+  window.__bolloonIpns = {
+    version: 1,
+    forms: seen.forms,
+    gateway: BOLLOON_IPNS.gateway,
+    lastCid: function () { return seen.lastCid; },
+    lastOpened: function () { return seen.lastOpened; },
+    lastLink: function () { return seen.lastLink; },
+    parse: function (raw) { return BOLLOON_IPNS.parse(raw); },
+    url: function (raw) { return BOLLOON_IPNS.urlFrom(raw); }
+  };
+})();
+
+/* ============================================================
    全球网络脉冲 / Network pulse —— 多实例隔离模块
    数据: 公开只读接口 GET /api/public/network/progress (无认证, 15s 缓存 + ETag)
    取数顺序: ① 根元素 data-pulse-src="<url>" ② 地址 ?pulse=<url>
@@ -213,8 +364,14 @@
    多实例: 页面上每个 [data-pulse] 根 = 一个独立实例, 各自取数 / 轮询 / 降级。
    区内节点一律靠 data-pulse-* 钩子查找 (不用 id, 不会撞):
      data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-hint
-     data-pulse-total="nodes|agents|active|24h" · data-pulse-caps · data-pulse-caps-empty
+     data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified"
+     data-pulse-caps · data-pulse-caps-empty
      data-pulse-feed · data-pulse-feed-empty · data-pulse-notes
+     data-pulse-sites · data-pulse-sites-empty            (智能体私有站 IPNS 列表)
+     data-pulse-ipns-form · data-pulse-ipns-input · data-pulse-ipns-open · data-pulse-ipns-msg
+       (粘贴打开器由上面的 IPNS 模块单独绑定, 与本模块无关)
+   聚合计数缺失 (tasks / tasks_completed / tasks_verified) → 整行隐藏:
+   「拿不到就不显示」, 不拿 0 或 — 冒充数据。真实计数 0 照常显示 0。
    可选根属性: data-pulse-feed-max="N" (本实例活动条数上限, 默认 5)
    任何一份实例失败 (含启动即失败) 都不影响另一份或页面其它区域。
    ============================================================ */
@@ -231,6 +388,7 @@
   var SNAPSHOT_FILE = 'network-pulse.json'; // 静态签名快照（可能已过期 → 就显示 stale）
   var FEED_MAX = 5;                         // 活动条数上限 (可被 data-pulse-feed-max 覆盖)
   var CAPS_MAX = 8;                         // 能力条数上限
+  var SITES_MAX = 20;                       // 智能体私有站条数上限
 
   var instances = [];
 
@@ -264,6 +422,20 @@
     return lang() === 'en' ? d + (d === 1 ? ' day ago' : ' days ago') : d + ' 天前';
   }
   function fmtCount(v) { var n = num(v); return n == null ? '—' : String(n); }
+  // 聚合计数「拿不到就不显示」: 字段缺失/非数字 → 整行隐藏 (不拿 0 / — 冒充数据);
+  // 真相是真 0 时照常显示 0 (0 是计数, 不是"没数据")。
+  function setOptCount(node, v) {
+    if (!node) return;
+    var row = node.parentNode;
+    var n = num(v);
+    if (n == null) {
+      text(node, '—');
+      if (row && row.setAttribute) row.setAttribute('hidden', '');
+    } else {
+      text(node, String(n));
+      if (row && row.removeAttribute) row.removeAttribute('hidden');
+    }
+  }
   function toggleEmpty(node, show) { if (node) node.classList.toggle('is-shown', !!show); }
   function clear(node) { if (node) while (node.firstChild) node.removeChild(node.firstChild); }
   function isReducedMotion() {
@@ -285,14 +457,19 @@
       agents: root.querySelector('[data-pulse-total="agents"]'),
       active: root.querySelector('[data-pulse-total="active"]'),
       h24: root.querySelector('[data-pulse-total="24h"]'),
+      tasks: root.querySelector('[data-pulse-total="tasks"]'),
+      tasksCompleted: root.querySelector('[data-pulse-total="tasks_completed"]'),
+      tasksVerified: root.querySelector('[data-pulse-total="tasks_verified"]'),
       caps: root.querySelector('[data-pulse-caps]'),
       capsEmpty: root.querySelector('[data-pulse-caps-empty]'),
+      sites: root.querySelector('[data-pulse-sites]'),
+      sitesEmpty: root.querySelector('[data-pulse-sites-empty]'),
       feed: root.querySelector('[data-pulse-feed]'),
       feedEmpty: root.querySelector('[data-pulse-feed-empty]'),
       notes: root.querySelector('[data-pulse-notes]')
     };
 
-    var view = { state: 'loading', payload: null, snapAt: 0, capRows: [], rawFeed: [], notes: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null };
+    var view = { state: 'loading', payload: null, snapAt: 0, capRows: [], rawFeed: [], notes: [], sites: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null };
     var timer = null, relTimer = null, failCount = 0, started = false, api = null;
 
     function setState(next) {
@@ -414,6 +591,47 @@
       }
     }
 
+    // —— 智能体私有站 (本节点显式发布的 IPNS): label + 可点链接 ——
+    // ipns 三种形态 (裸 k51… / ipns://… / /ipns/…) 一律归一化成 https://ipfs.io/ipns/<cid>;
+    // 归一化失败 (非法/缺失) → 该条不列 (宁可不显示, 不给半个链接)。
+    function renderSites() {
+      if (!el.sites) return;
+      clear(el.sites);
+      var en = lang() === 'en';
+      for (var i = 0; i < view.sites.length; i++) {
+        var s = view.sites[i];
+        var li = document.createElement('li');
+        var label = document.createElement('span');
+        label.className = 'pulse-site-label';
+        label.textContent = s.label || (en ? 'agent private site' : '智能体私有站');   // 一律 textContent
+        var a = document.createElement('a');
+        a.className = 'pulse-site-link';
+        a.href = s.href;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = s.cid;                                        // 链接文本一律 textContent
+        a.setAttribute('aria-label',
+          (en ? 'Open ' : '打开 ') + (s.label || s.cid) + (en ? ' in a new window (IPNS via ipfs.io)' : ' 的智能体私有站（经 ipfs.io 打开，新窗口）'));
+        li.appendChild(label); li.appendChild(a);
+        el.sites.appendChild(li);
+      }
+      if (view.sites.length === 0) text(el.sitesEmpty, emptySitesText());
+      toggleEmpty(el.sitesEmpty, view.sites.length === 0);
+    }
+
+    // 空列表的两种真相要分清: 没数据 (快照不可用) ≠ 本节点没发布
+    function emptySitesText() {
+      var hasSnapshot = !!view.payload;
+      if (lang() === 'en') {
+        return hasSnapshot
+          ? 'This node has not published any agent private site.'
+          : 'Snapshot unavailable — published agent sites cannot be read right now.';
+      }
+      return hasSnapshot
+        ? '本节点暂未发布智能体私有站。'
+        : '快照不可用，此刻读不到已发布的智能体私有站。';
+    }
+
     function updateRelTimes() {
       if (el.snapAgo) text(el.snapAgo, view.snapAt ? '(' + relTime(view.snapAt) + ')' : '');
       if (!el.feed) return;
@@ -423,14 +641,15 @@
 
     function redraw() {
       if (!view.payload) return;
-      renderScope(); renderCaps(); renderFeed(); renderNotes(); updateRelTimes();
+      renderScope(); renderCaps(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
     }
 
     function clearData() {
-      view.payload = null; view.snapAt = 0; view.capRows = []; view.rawFeed = []; view.notes = []; view.sourceKind = null;
+      view.payload = null; view.snapAt = 0; view.capRows = []; view.rawFeed = []; view.notes = []; view.sites = []; view.sourceKind = null;
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
+      setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       text(el.snapTime, '—'); text(el.snapAgo, '');
-      renderCaps(); renderFeed(); renderNotes(); renderScope();
+      renderCaps(); renderFeed(); renderNotes(); renderSites(); renderScope();
     }
 
     function applyPayload(payload, state, kind) {
@@ -449,14 +668,29 @@
       view.notes = (Array.isArray(payload.notes) ? payload.notes : []).filter(function (n) {
         return typeof n === 'string' && n.trim();
       }).slice(0, 4);
+      // agent_sites[] = 本节点**显式发布**的智能体私有站; 可能是空数组, 也可能整个字段没有。
+      // ipns 三种形态都归一化; 非法条目直接跳过 (不编造链接), 空数组 → 空列表提示。
+      view.sites = (Array.isArray(payload.agent_sites) ? payload.agent_sites : [])
+        .map(function (s) {
+          if (!s || typeof s !== 'object') return null;
+          var cid = BOLLOON_IPNS.parse(s.ipns);
+          if (!cid) return null;
+          var label = typeof s.label === 'string' ? s.label.trim() : '';
+          return { label: label, cid: cid, href: BOLLOON_IPNS.url(cid) };
+        })
+        .filter(function (x) { return !!x; })
+        .slice(0, SITES_MAX);
       var t = payload.totals || {};
       text(el.nodes, fmtCount(t.nodes));
       text(el.agents, fmtCount(t.agents));
       text(el.active, fmtCount(t.active_agents));
       text(el.h24, fmtCount(t.seen_last_24h));
+      setOptCount(el.tasks, t.tasks);                            // 缺失 → 整行隐藏
+      setOptCount(el.tasksCompleted, t.tasks_completed);
+      setOptCount(el.tasksVerified, t.tasks_verified);
       text(el.snapTime, absTime(view.snapAt));
       setState(state);
-      renderScope(); renderCaps(); renderFeed(); renderNotes(); updateRelTimes();
+      renderScope(); renderCaps(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
       if (!relTimer) relTimer = setInterval(function () { try { updateRelTimes(); } catch (e) {} }, REL_TICK_MS);
     }
 
@@ -500,6 +734,7 @@
       redraw: function () { try { redraw(); } catch (e) {} },
       reducedMotion: isReducedMotion,
       source: function () { var s = resolveSource(); return s ? s.kind : null; },
+      sites: function () { return view.sites.slice(); },
       failCount: function () { return failCount; },
       applyReducedMotion: function () {
         root.setAttribute('data-reduced-motion', isReducedMotion() ? 'true' : 'false');
