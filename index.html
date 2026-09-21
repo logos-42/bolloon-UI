@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body data-page="product">
 
@@ -65,6 +65,7 @@
             <div class="nav-item has-menu">
         <a href="gateway.html" data-zh="网关" data-en="Gateway">网关</a>
         <div class="nav-menu">
+          <a href="gateway.html#pulse" data-zh="网络脉冲" data-en="Network pulse">网络脉冲</a>
           <a href="gateway.html#join" data-zh="如何加入" data-en="How to join">如何加入</a>
           <a href="gateway.html#endpoints" data-zh="端点" data-en="Endpoints">端点</a>
           <a href="gateway.html#skills" data-zh="生成 skills" data-en="Implicit skills">生成 skills</a>
@@ -89,6 +90,48 @@
       <a class="quiet-cta" href="install.html">开始安装 <span aria-hidden="true">→</span></a>
       <a class="quiet-cta ghost" href="gateway.html#skills" data-zh="加入网络" data-en="Join the Network">加入网络</a>
       <a class="quiet-cta ghost" href="docs.html">阅读文档</a>
+    </div>
+
+    <!-- ◆ 网络脉冲（首页序栏紧凑版）—— 同一公开只读接口, 同样诚实四态 (live/stale/unavailable + observed/verified)。
+         用 data-pulse / data-pulse-* 钩子, 与网关页那份是各自独立的实例 (见 app.js 多实例模块)。
+         拿不到数据就如实显示「尚未接入」, 绝不编造数字。 -->
+    <div class="pulse-compact" data-pulse data-pulse-name="hero" data-pulse-state="loading" data-pulse-feed-max="1">
+      <p class="pulse-state" role="status" aria-live="polite">
+        <span class="pulse-dot" aria-hidden="true"></span>
+        <span class="pulse-state-text" data-state="loading" data-zh="读取中…" data-en="Reading…">读取中…</span>
+        <span class="pulse-state-text" data-state="live" data-zh="实时" data-en="Live">实时</span>
+        <span class="pulse-state-text" data-state="stale" data-zh="快照已过期" data-en="Snapshot expired">快照已过期</span>
+        <span class="pulse-state-text" data-state="unavailable" data-zh="公开观察入口尚未接入" data-en="Public observation endpoint not connected">公开观察入口尚未接入</span>
+      </p>
+      <p class="pulse-c-scope" data-pulse-scope data-zh="当前节点观察到" data-en="Observed by this node" hidden>当前节点观察到</p>
+
+      <ul class="pulse-c-totals">
+        <li><b data-pulse-total="nodes">—</b><span data-zh="节点" data-en="nodes">节点</span></li>
+        <li><b data-pulse-total="agents">—</b><span data-zh="agents" data-en="agents">agents</span></li>
+        <li><b data-pulse-total="active">—</b><span data-zh="活跃 agent" data-en="active agents">活跃 agent</span></li>
+        <li><b data-pulse-total="24h">—</b><span data-zh="24 小时内出现" data-en="seen in 24h">24 小时内出现</span></li>
+      </ul>
+
+      <p class="pulse-c-meta">
+        <span data-zh="快照" data-en="Snapshot">快照</span>
+        <span class="pulse-sep" aria-hidden="true">·</span>
+        <time data-pulse-time datetime="">—</time>
+        <span class="pulse-snapshot-ago" data-pulse-ago></span>
+      </p>
+
+      <ul class="pulse-feed" data-pulse-feed></ul>
+      <p class="pulse-empty" data-pulse-feed-empty data-zh="暂无公开活动" data-en="No public activity yet">暂无公开活动</p>
+
+      <p class="pulse-caveat" data-zh="观察窗口内计数 · 不是全网精确总量。" data-en="Counts within the observation window · not an exact global total.">观察窗口内计数 · 不是全网精确总量。</p>
+
+      <p class="pulse-hint" data-pulse-hint>
+        <span data-zh="公开观察入口尚未接入" data-en="Public observation endpoint not connected">公开观察入口尚未接入</span>
+        <span class="pulse-sep" aria-hidden="true">·</span>
+        <span data-zh="本机跑着 Bolloon 节点时，在地址后追加 ?pulse= 指向它即可。" data-en="If a Bolloon node runs on your machine, append ?pulse= pointing at it.">本机跑着 Bolloon 节点时，在地址后追加 ?pulse= 指向它即可。</span>
+        <span class="cmd-line"><code class="pulse-example">index.html?pulse=http://127.0.0.1:54188/api/public/network/progress</code></span>
+      </p>
+
+      <p class="pulse-c-more"><a href="gateway.html#pulse" data-zh="完整脉冲见网关页 →" data-en="Full pulse on the gateway page →">完整脉冲见网关页 →</a></p>
     </div>
   </div>
   <figure class="intro-art" aria-hidden="true">
@@ -164,6 +207,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=16"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>

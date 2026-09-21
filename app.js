@@ -204,41 +204,35 @@
 })();
 
 /* ============================================================
-   全球网络脉冲 / Network pulse —— 隔离模块 (gateway.html #pulse)
+   全球网络脉冲 / Network pulse —— 多实例隔离模块
    数据: 公开只读接口 GET /api/public/network/progress (无认证, 15s 缓存 + ETag)
-   取数顺序: ① ?pulse=<url> ② 同源 network-pulse.json ③ unavailable
+   取数顺序: ① 根元素 data-pulse-src="<url>" ② 地址 ?pulse=<url>
+             ③ 同源 network-pulse.json ④ unavailable
    静态站, 访客浏览器到不了站点作者的节点 —— 拿不到就如实降级, 绝不编造数字。
-   本模块只碰 #pulse 内的节点, 任何失败都不影响页面其它区域。
+
+   多实例: 页面上每个 [data-pulse] 根 = 一个独立实例, 各自取数 / 轮询 / 降级。
+   区内节点一律靠 data-pulse-* 钩子查找 (不用 id, 不会撞):
+     data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-hint
+     data-pulse-total="nodes|agents|active|24h" · data-pulse-caps · data-pulse-caps-empty
+     data-pulse-feed · data-pulse-feed-empty · data-pulse-notes
+   可选根属性: data-pulse-feed-max="N" (本实例活动条数上限, 默认 5)
+   任何一份实例失败 (含启动即失败) 都不影响另一份或页面其它区域。
    ============================================================ */
 (function () {
   'use strict';
-  var section = document.getElementById('pulse');
-  if (!section) return;
+
+  var roots = document.querySelectorAll('[data-pulse]');
+  if (!roots || !roots.length) return;
 
   var POLL_MS = 30000;                      // 正常轮询间隔
   var TIMEOUT_MS = 5000;                    // 单次请求超时 (AbortController)
   var BACKOFF_MS = [30000, 60000, 120000];  // 失败退避 30s → 60s → 120s（上限）
   var REL_TICK_MS = 20000;                  // 相对时间刷新（只改文字节点）
   var SNAPSHOT_FILE = 'network-pulse.json'; // 静态签名快照（可能已过期 → 就显示 stale）
-  var FEED_MAX = 5;
+  var FEED_MAX = 5;                         // 活动条数上限 (可被 data-pulse-feed-max 覆盖)
+  var CAPS_MAX = 8;                         // 能力条数上限
 
-  var el = {
-    scope: document.getElementById('pulse-scope'),
-    snapTime: document.getElementById('pulse-snapshot-time'),
-    snapAgo: document.getElementById('pulse-snapshot-ago'),
-    nodes: document.getElementById('pulse-nodes'),
-    agents: document.getElementById('pulse-agents'),
-    active: document.getElementById('pulse-active'),
-    h24: document.getElementById('pulse-24h'),
-    caps: document.getElementById('pulse-caps'),
-    capsEmpty: document.getElementById('pulse-caps-empty'),
-    feed: document.getElementById('pulse-feed'),
-    feedEmpty: document.getElementById('pulse-feed-empty'),
-    notes: document.getElementById('pulse-notes')
-  };
-
-  var view = { state: 'loading', payload: null, snapAt: 0, capRows: [], rawFeed: [], notes: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null };
-  var timer = null, relTimer = null, failCount = 0, started = false;
+  var instances = [];
 
   // —— 小工具（全部只写 textContent / 属性, 不碰 innerHTML）——
   function lang() { return document.documentElement.lang === 'en' ? 'en' : 'zh'; }
@@ -275,227 +269,302 @@
   function isReducedMotion() {
     return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
-
-  function setState(next) {
-    view.state = next;
-    section.setAttribute('data-pulse-state', next);
-    if (api) api.state = next;
+  function readLimit(raw, def) {
+    var n = parseInt(raw, 10);
+    return (isFinite(n) && n > 0 && n <= def) ? n : def;
   }
 
-  // —— 取数来源 ——
-  function resolveSource() {
-    var q = null;
-    try { q = new URLSearchParams(location.search).get('pulse'); } catch (e) { q = null; }
-    if (q) {
-      try { return { url: new URL(q, location.href).href, kind: 'endpoint' }; } catch (e) { return null; }
+  // —— 一个实例: 绑定一个 [data-pulse] 根, 全部状态自持 (互不共享) ——
+  function createInstance(root) {
+    var FEED_LIMIT = readLimit(root.getAttribute('data-pulse-feed-max'), FEED_MAX);
+    var el = {
+      scope: root.querySelector('[data-pulse-scope]'),
+      snapTime: root.querySelector('[data-pulse-time]'),
+      snapAgo: root.querySelector('[data-pulse-ago]'),
+      nodes: root.querySelector('[data-pulse-total="nodes"]'),
+      agents: root.querySelector('[data-pulse-total="agents"]'),
+      active: root.querySelector('[data-pulse-total="active"]'),
+      h24: root.querySelector('[data-pulse-total="24h"]'),
+      caps: root.querySelector('[data-pulse-caps]'),
+      capsEmpty: root.querySelector('[data-pulse-caps-empty]'),
+      feed: root.querySelector('[data-pulse-feed]'),
+      feedEmpty: root.querySelector('[data-pulse-feed-empty]'),
+      notes: root.querySelector('[data-pulse-notes]')
+    };
+
+    var view = { state: 'loading', payload: null, snapAt: 0, capRows: [], rawFeed: [], notes: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null };
+    var timer = null, relTimer = null, failCount = 0, started = false, api = null;
+
+    function setState(next) {
+      view.state = next;
+      root.setAttribute('data-pulse-state', next);
+      if (api) api.state = next;
     }
-    try { return { url: new URL(SNAPSHOT_FILE, location.href).href, kind: 'snapshot' }; } catch (e) { return null; }
-  }
 
-  function fetchOnce(src) {
-    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-    var to = ctrl ? setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS) : null;
-    var opts = { cache: 'no-cache', headers: { Accept: 'application/json' } };
-    if (ctrl) opts.signal = ctrl.signal;
-    return fetch(src.url, opts).then(function (r) {
-      if (to) clearTimeout(to);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
-    }).then(function (body) {
-      var data;
-      try { data = JSON.parse(body); } catch (e) { throw new Error('bad json'); }
-      if (!data || typeof data !== 'object') throw new Error('bad payload');
-      return data;
-    }, function (err) {
-      if (to) clearTimeout(to);
-      throw err;
-    });
-  }
-
-  function classify(payload) {
-    if (!payload || typeof payload !== 'object') return 'unavailable';
-    if (payload.status === 'unavailable') return 'unavailable';
-    if (payload.status === 'stale') return 'stale';
-    var fu = num(payload.fresh_until);
-    if (fu != null && fu > 0 && fu <= Date.now()) return 'stale'; // 快照已过期 → 不伪装实时
-    return 'live';
-  }
-
-  // —— 渲染（全部重建 <= FEED_MAX 条列表项; 相对时间只改文字节点）——
-  function renderScope() {
-    if (!el.scope) return;
-    if (!view.payload) { el.scope.setAttribute('hidden', ''); return; }
-    var fromApi = pickBi(view.scopeLabels);
-    var fallback = view.scopeKey === 'verified'
-      ? (lang() === 'en' ? 'Verified network snapshot' : '网络观察快照')
-      : (lang() === 'en' ? 'Observed by this node' : '当前节点观察到');
-    el.scope.removeAttribute('hidden');
-    text(el.scope, fromApi || fallback);
-  }
-
-  function renderCaps() {
-    if (!el.caps) return;
-    clear(el.caps);
-    var rows = view.capRows, max = 0, i;
-    for (i = 0; i < rows.length; i++) if (rows[i].count > max) max = rows[i].count;
-    for (i = 0; i < rows.length; i++) {
-      var li = document.createElement('li');
-      var key = document.createElement('span');
-      key.className = 'pulse-cap-key';
-      key.textContent = rows[i].key === 'other'
-        ? (lang() === 'en' ? 'other (merged)' : '其它（已合并）')
-        : rows[i].key;
-      var bar = document.createElement('span');
-      bar.className = 'pulse-cap-bar';
-      var fill = document.createElement('i');
-      fill.className = 'pulse-cap-fill';
-      fill.style.width = max > 0 ? Math.round(rows[i].count / max * 100) + '%' : '0%';
-      bar.appendChild(fill);
-      var cnt = document.createElement('span');
-      cnt.className = 'pulse-cap-count';
-      cnt.textContent = String(rows[i].count);
-      li.appendChild(key); li.appendChild(bar); li.appendChild(cnt);
-      el.caps.appendChild(li);
+    // —— 取数来源 (本实例优先看 data-pulse-src, 再 ?pulse=, 最后同源快照) ——
+    function resolveSource() {
+      var own = root.getAttribute('data-pulse-src');
+      if (own) {
+        try { return { url: new URL(own, location.href).href, kind: 'endpoint' }; } catch (e) { return null; }
+      }
+      var q = null;
+      try { q = new URLSearchParams(location.search).get('pulse'); } catch (e) { q = null; }
+      if (q) {
+        try { return { url: new URL(q, location.href).href, kind: 'endpoint' }; } catch (e) { return null; }
+      }
+      try { return { url: new URL(SNAPSHOT_FILE, location.href).href, kind: 'snapshot' }; } catch (e) { return null; }
     }
-    toggleEmpty(el.capsEmpty, rows.length === 0);
-  }
 
-  function renderFeed() {
-    if (!el.feed) return;
-    clear(el.feed);
-    for (var i = 0; i < view.rawFeed.length; i++) {
-      var item = view.rawFeed[i] || {};
-      var at = num(item.at) || 0;
-      var li = document.createElement('li');
-      var t = document.createElement('time');
-      t.className = 'pulse-feed-time';
-      t.setAttribute('data-at', String(at));
-      if (at) { try { t.setAttribute('datetime', new Date(at).toISOString()); } catch (e) {} }
-      t.textContent = relTime(at);
-      var s = document.createElement('span');
-      s.className = 'pulse-feed-text';
-      s.textContent = pickBi(item.text); // 服务端文本 → 只经 textContent, 严禁 innerHTML
-      li.appendChild(t); li.appendChild(s);
-      el.feed.appendChild(li);
+    function fetchOnce(src) {
+      var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS) : null;
+      var opts = { cache: 'no-cache', headers: { Accept: 'application/json' } };
+      if (ctrl) opts.signal = ctrl.signal;
+      return fetch(src.url, opts).then(function (r) {
+        if (to) clearTimeout(to);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      }).then(function (body) {
+        var data;
+        try { data = JSON.parse(body); } catch (e) { throw new Error('bad json'); }
+        if (!data || typeof data !== 'object') throw new Error('bad payload');
+        return data;
+      }, function (err) {
+        if (to) clearTimeout(to);
+        throw err;
+      });
     }
-    toggleEmpty(el.feedEmpty, view.rawFeed.length === 0);
-  }
 
-  function renderNotes() {
-    if (!el.notes) return;
-    clear(el.notes);
-    for (var i = 0; i < view.notes.length; i++) {
-      var li = document.createElement('li');
-      li.textContent = view.notes[i];
-      el.notes.appendChild(li);
+    function classify(payload) {
+      if (!payload || typeof payload !== 'object') return 'unavailable';
+      if (payload.status === 'unavailable') return 'unavailable';
+      if (payload.status === 'stale') return 'stale';
+      var fu = num(payload.fresh_until);
+      if (fu != null && fu > 0 && fu <= Date.now()) return 'stale'; // 快照已过期 → 不伪装实时
+      return 'live';
     }
+
+    // —— 渲染（全部重建 <= FEED_LIMIT 条列表项; 相对时间只改文字节点）——
+    function renderScope() {
+      if (!el.scope) return;
+      if (!view.payload) { el.scope.setAttribute('hidden', ''); return; }
+      var fromApi = pickBi(view.scopeLabels);
+      var fallback = view.scopeKey === 'verified'
+        ? (lang() === 'en' ? 'Verified network snapshot' : '网络观察快照')
+        : (lang() === 'en' ? 'Observed by this node' : '当前节点观察到');
+      el.scope.removeAttribute('hidden');
+      text(el.scope, fromApi || fallback);
+    }
+
+    function renderCaps() {
+      if (!el.caps) return;
+      clear(el.caps);
+      var rows = view.capRows, max = 0, i;
+      for (i = 0; i < rows.length; i++) if (rows[i].count > max) max = rows[i].count;
+      for (i = 0; i < rows.length; i++) {
+        var li = document.createElement('li');
+        var key = document.createElement('span');
+        key.className = 'pulse-cap-key';
+        key.textContent = rows[i].key === 'other'
+          ? (lang() === 'en' ? 'other (merged)' : '其它（已合并）')
+          : rows[i].key;
+        var bar = document.createElement('span');
+        bar.className = 'pulse-cap-bar';
+        var fill = document.createElement('i');
+        fill.className = 'pulse-cap-fill';
+        fill.style.width = max > 0 ? Math.round(rows[i].count / max * 100) + '%' : '0%';
+        bar.appendChild(fill);
+        var cnt = document.createElement('span');
+        cnt.className = 'pulse-cap-count';
+        cnt.textContent = String(rows[i].count);
+        li.appendChild(key); li.appendChild(bar); li.appendChild(cnt);
+        el.caps.appendChild(li);
+      }
+      toggleEmpty(el.capsEmpty, rows.length === 0);
+    }
+
+    function renderFeed() {
+      if (!el.feed) return;
+      clear(el.feed);
+      for (var i = 0; i < view.rawFeed.length; i++) {
+        var item = view.rawFeed[i] || {};
+        var at = num(item.at) || 0;
+        var li = document.createElement('li');
+        var t = document.createElement('time');
+        t.className = 'pulse-feed-time';
+        t.setAttribute('data-at', String(at));
+        if (at) { try { t.setAttribute('datetime', new Date(at).toISOString()); } catch (e) {} }
+        t.textContent = relTime(at);
+        var s = document.createElement('span');
+        s.className = 'pulse-feed-text';
+        s.textContent = pickBi(item.text); // 服务端文本 → 只经 textContent, 严禁 innerHTML
+        li.appendChild(t); li.appendChild(s);
+        el.feed.appendChild(li);
+      }
+      toggleEmpty(el.feedEmpty, view.rawFeed.length === 0);
+    }
+
+    function renderNotes() {
+      if (!el.notes) return;
+      clear(el.notes);
+      for (var i = 0; i < view.notes.length; i++) {
+        var li = document.createElement('li');
+        li.textContent = view.notes[i];
+        el.notes.appendChild(li);
+      }
+    }
+
+    function updateRelTimes() {
+      if (el.snapAgo) text(el.snapAgo, view.snapAt ? '(' + relTime(view.snapAt) + ')' : '');
+      if (!el.feed) return;
+      var nodes = el.feed.querySelectorAll('time[data-at]');
+      for (var i = 0; i < nodes.length; i++) text(nodes[i], relTime(Number(nodes[i].getAttribute('data-at'))));
+    }
+
+    function redraw() {
+      if (!view.payload) return;
+      renderScope(); renderCaps(); renderFeed(); renderNotes(); updateRelTimes();
+    }
+
+    function clearData() {
+      view.payload = null; view.snapAt = 0; view.capRows = []; view.rawFeed = []; view.notes = []; view.sourceKind = null;
+      text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
+      text(el.snapTime, '—'); text(el.snapAgo, '');
+      renderCaps(); renderFeed(); renderNotes(); renderScope();
+    }
+
+    function applyPayload(payload, state, kind) {
+      view.payload = payload;
+      view.sourceKind = kind;
+      view.snapAt = num(payload.generated_at) || 0;
+      view.scopeKey = payload.scope === 'verified' ? 'verified' : 'observed';
+      view.scopeLabels = payload.scope_label || null;
+      var caps = Array.isArray(payload.capabilities) ? payload.capabilities : [];
+      view.capRows = caps.filter(function (c) {
+        return c && typeof c.key === 'string' && num(c.count) != null;
+      }).map(function (c) { return { key: c.key, count: num(c.count) }; })
+        .sort(function (a, b) { return b.count - a.count; })
+        .slice(0, CAPS_MAX);
+      view.rawFeed = (Array.isArray(payload.recent_activity) ? payload.recent_activity : []).slice(0, FEED_LIMIT);
+      view.notes = (Array.isArray(payload.notes) ? payload.notes : []).filter(function (n) {
+        return typeof n === 'string' && n.trim();
+      }).slice(0, 4);
+      var t = payload.totals || {};
+      text(el.nodes, fmtCount(t.nodes));
+      text(el.agents, fmtCount(t.agents));
+      text(el.active, fmtCount(t.active_agents));
+      text(el.h24, fmtCount(t.seen_last_24h));
+      text(el.snapTime, absTime(view.snapAt));
+      setState(state);
+      renderScope(); renderCaps(); renderFeed(); renderNotes(); updateRelTimes();
+      if (!relTimer) relTimer = setInterval(function () { try { updateRelTimes(); } catch (e) {} }, REL_TICK_MS);
+    }
+
+    function showUnavailable() {
+      clearData();
+      setState('unavailable');
+    }
+
+    function backoffFor(n) { return BACKOFF_MS[Math.min(Math.max(n, 1) - 1, BACKOFF_MS.length - 1)]; }
+
+    function schedule(ms) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () { refresh(); }, ms);
+    }
+
+    function refresh() {
+      if (!started) return null;
+      var src = resolveSource();
+      if (!src) { failCount++; showUnavailable(); schedule(backoffFor(failCount)); return null; }
+      return fetchOnce(src).then(function (payload) {
+        var st = classify(payload);
+        if (st === 'unavailable') { failCount++; showUnavailable(); schedule(backoffFor(failCount)); return; }
+        failCount = 0;
+        applyPayload(payload, st, src.kind);
+        schedule(POLL_MS);
+      }, function () {
+        failCount++;
+        showUnavailable();               // 失败只影响本实例; 退避后重试
+        schedule(backoffFor(failCount));
+      });
+    }
+
+    api = {
+      version: 2,
+      root: root,
+      key: root.id || root.getAttribute('data-pulse-name') || '',
+      state: 'loading',
+      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, capsMax: CAPS_MAX },
+      refresh: function () { try { return refresh(); } catch (e) { return null; } },
+      tick: function () { try { updateRelTimes(); } catch (e) {} },
+      redraw: function () { try { redraw(); } catch (e) {} },
+      reducedMotion: isReducedMotion,
+      source: function () { var s = resolveSource(); return s ? s.kind : null; },
+      failCount: function () { return failCount; },
+      applyReducedMotion: function () {
+        root.setAttribute('data-reduced-motion', isReducedMotion() ? 'true' : 'false');
+      },
+      start: function () {
+        if (started) return api;
+        started = true;
+        api.applyReducedMotion();
+        try {
+          setState('loading');   // 首次: loading → 请求返回后 live / stale / unavailable
+          refresh();
+        } catch (e) {
+          try { showUnavailable(); } catch (e2) { /* noop */ }
+        }
+        return api;
+      }
+    };
+    return api;
   }
 
-  function updateRelTimes() {
-    if (el.snapAgo) text(el.snapAgo, view.snapAt ? '(' + relTime(view.snapAt) + ')' : '');
-    if (!el.feed) return;
-    var nodes = el.feed.querySelectorAll('time[data-at]');
-    for (var i = 0; i < nodes.length; i++) text(nodes[i], relTime(Number(nodes[i].getAttribute('data-at'))));
+  // —— 挂载一个根 (已经挂过的跳过; 启动失败只把这份标成 unavailable, 不冒泡) ——
+  function attach(root) {
+    if (!root || root.getAttribute('data-pulse-bound') === 'true') return null;
+    var inst = null;
+    try {
+      root.setAttribute('data-pulse-bound', 'true');
+      inst = createInstance(root);
+      instances.push(inst);
+      inst.start();
+    } catch (e) {
+      try { root.setAttribute('data-pulse-state', 'unavailable'); } catch (e2) { /* noop */ }
+      inst = null;
+    }
+    return inst;
   }
 
-  function clearData() {
-    view.payload = null; view.snapAt = 0; view.capRows = []; view.rawFeed = []; view.notes = []; view.sourceKind = null;
-    text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
-    text(el.snapTime, '—'); text(el.snapAgo, '');
-    renderCaps(); renderFeed(); renderNotes(); renderScope();
+  for (var i = 0; i < roots.length; i++) {
+    try { attach(roots[i]); } catch (e) { /* 一份失败不影响其余实例 */ }
   }
 
-  function applyPayload(payload, state, kind) {
-    view.payload = payload;
-    view.sourceKind = kind;
-    view.snapAt = num(payload.generated_at) || 0;
-    view.scopeKey = payload.scope === 'verified' ? 'verified' : 'observed';
-    view.scopeLabels = payload.scope_label || null;
-    var caps = Array.isArray(payload.capabilities) ? payload.capabilities : [];
-    view.capRows = caps.filter(function (c) {
-      return c && typeof c.key === 'string' && num(c.count) != null;
-    }).map(function (c) { return { key: c.key, count: num(c.count) }; })
-      .sort(function (a, b) { return b.count - a.count; })
-      .slice(0, 8);
-    view.rawFeed = (Array.isArray(payload.recent_activity) ? payload.recent_activity : []).slice(0, FEED_MAX);
-    view.notes = (Array.isArray(payload.notes) ? payload.notes : []).filter(function (n) {
-      return typeof n === 'string' && n.trim();
-    }).slice(0, 4);
-    var t = payload.totals || {};
-    text(el.nodes, fmtCount(t.nodes));
-    text(el.agents, fmtCount(t.agents));
-    text(el.active, fmtCount(t.active_agents));
-    text(el.h24, fmtCount(t.seen_last_24h));
-    text(el.snapTime, absTime(view.snapAt));
-    setState(state);
-    renderScope(); renderCaps(); renderFeed(); renderNotes(); updateRelTimes();
-    if (!relTimer) relTimer = setInterval(function () { try { updateRelTimes(); } catch (e) {} }, REL_TICK_MS);
-  }
-
-  function showUnavailable() {
-    clearData();
-    setState('unavailable');
-  }
-
-  function backoffFor(n) { return BACKOFF_MS[Math.min(Math.max(n, 1) - 1, BACKOFF_MS.length - 1)]; }
-
-  function schedule(ms) {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(function () { refresh(); }, ms);
-  }
-
-  function refresh() {
-    if (!started) return null;
-    var src = resolveSource();
-    if (!src) { failCount++; showUnavailable(); schedule(backoffFor(failCount)); return null; }
-    return fetchOnce(src).then(function (payload) {
-      var st = classify(payload);
-      if (st === 'unavailable') { failCount++; showUnavailable(); schedule(backoffFor(failCount)); return; }
-      failCount = 0;
-      applyPayload(payload, st, src.kind);
-      schedule(POLL_MS);
-    }, function () {
-      failCount++;
-      showUnavailable();               // 失败只影响本区域; 退避后重试
-      schedule(backoffFor(failCount));
-    });
-  }
-
-  var api = {
-    version: 1,
-    state: 'loading',
-    config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_MAX },
-    refresh: function () { try { return refresh(); } catch (e) { return null; } },
-    tick: function () { try { updateRelTimes(); } catch (e) {} },
-    reducedMotion: isReducedMotion,
-    source: function () { var s = resolveSource(); return s ? s.kind : null; },
-    failCount: function () { return failCount; }
-  };
-  window.__bolloonPulse = api;
+  // —— 对外接口: __bolloonPulse 保持 = 页面第一个实例 (旧断言兼容); __bolloonPulses = 全部实例 ——
+  var first = instances[0] || null;
+  window.__bolloonPulses = instances;
+  window.__bolloonPulse = first;
+  if (first) first.attach = attach;
+  window.__bolloonPulseAttach = attach;   // 运行时可再挂一个新根 (测试 / 动态插入)
 
   // 语言切换: applyLang 跑完后重画动态文字（否则会被 data-zh/data-en 覆盖）
   document.addEventListener('bolloon:lang', function () {
-    try {
-      if (view.payload) { renderScope(); renderCaps(); renderFeed(); renderNotes(); updateRelTimes(); }
-    } catch (e) { /* 动态区失败不影响页面其它区域 */ }
+    for (var k = 0; k < instances.length; k++) {
+      try { instances[k].redraw(); } catch (e) { /* 单份失败不影响其它实例 */ }
+    }
   });
 
   // prefers-reduced-motion: 只标记, 动画本身由 CSS 媒体查询关闭
   try {
-    section.setAttribute('data-reduced-motion', isReducedMotion() ? 'true' : 'false');
     if (typeof window.matchMedia === 'function') {
       var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-      var onMq = function () { section.setAttribute('data-reduced-motion', isReducedMotion() ? 'true' : 'false'); };
+      var onMq = function () {
+        for (var k = 0; k < instances.length; k++) {
+          try { instances[k].applyReducedMotion(); } catch (e) { /* noop */ }
+        }
+      };
       if (mq.addEventListener) mq.addEventListener('change', onMq);
       else if (mq.addListener) mq.addListener(onMq);
     }
   } catch (e) { /* noop */ }
-
-  try {
-    setState('loading');   // 首次: loading → 请求返回后 live / stale / unavailable
-    started = true;
-    refresh();
-  } catch (e) {
-    try { showUnavailable(); } catch (e2) { /* noop */ }
-  }
 })();
