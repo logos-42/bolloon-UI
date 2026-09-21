@@ -467,3 +467,89 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .doc-table-wrap .doc-table { min-width: 680px; margin: 0; }
 .foot-link { color: var(--ink-3); }
 .foot-link:hover { color: var(--lime); }
+
+/* ============================================================
+   全球网络脉冲 (gateway.html #pulse) — 2026-09-21
+   数据: 公开只读接口 GET /api/public/network/progress (见 app.js 末尾隔离模块)
+   风格: 沿用炭黑 + lime 编辑式排版 —— 大留白 / 发丝线 / 圆角 ≤ 2px / 无阴影渐变
+   ============================================================ */
+.gateway-pulse .section-head { margin-bottom: 32px; }
+.pulse-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 22px;
+  margin-top: clamp(22px, 4vh, 38px);
+  font-family: var(--mono); font-size: 12px; letter-spacing: 1px; color: var(--ink-3);
+}
+.pulse-state { display: inline-flex; align-items: center; gap: 9px; text-transform: uppercase; color: var(--ink-3); }
+.pulse-state-text { display: none; }
+#pulse[data-pulse-state="loading"] .pulse-state-text[data-state="loading"],
+#pulse[data-pulse-state="live"] .pulse-state-text[data-state="live"],
+#pulse[data-pulse-state="stale"] .pulse-state-text[data-state="stale"],
+#pulse[data-pulse-state="unavailable"] .pulse-state-text[data-state="unavailable"] { display: inline; }
+#pulse[data-pulse-state="live"] .pulse-state { color: var(--lime); }
+#pulse[data-pulse-state="stale"] .pulse-state { color: var(--lime-deep); }
+.pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+#pulse[data-pulse-state="live"] .pulse-dot { animation: pulse-dot 2.4s ease-in-out infinite; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.pulse-scope { color: var(--ink-2); }
+.pulse-snapshot { color: var(--ink-3); }
+.pulse-snapshot time { font-family: var(--mono); color: var(--ink-2); }
+.pulse-snapshot-ago { color: var(--ink-3); }
+.pulse-sep { color: var(--ink-3); }
+#pulse [hidden] { display: none !important; }
+
+/* 大数值: 只靠字号和留白分层, 不做卡片墙 */
+.pulse-stats { display: flex; flex-wrap: wrap; align-items: flex-end; gap: clamp(26px, 5vw, 56px); margin: clamp(30px, 5vh, 52px) 0; }
+.pulse-stat { display: flex; flex-direction: column; gap: 8px; padding-right: clamp(22px, 4vw, 52px); border-right: 1px solid var(--hairline); }
+.pulse-stat:last-child { border-right: none; padding-right: 0; }
+.pulse-stat-value {
+  font-family: var(--serif); font-weight: 300;
+  font-size: clamp(2.7rem, 6vw, 4.4rem); line-height: 0.92;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.pulse-stat-label { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-3); }
+
+.pulse-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(30px, 5vw, 64px); margin-bottom: clamp(28px, 4vh, 44px); }
+.pulse-block { min-width: 0; }
+.pulse-sub { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--lime); margin-bottom: 16px; }
+.pulse-cap-list { list-style: none; }
+.pulse-cap-list li { display: flex; align-items: baseline; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--hairline); }
+.pulse-cap-list li:first-child { border-top: 1px solid var(--hairline); }
+.pulse-cap-key { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+.pulse-cap-bar { flex: 1 1 auto; display: block; min-width: 12px; height: 1px; background: var(--hairline); }
+.pulse-cap-fill { display: block; height: 1px; background: var(--lime-deep); }
+.pulse-cap-count { font-family: var(--mono); font-size: 13px; color: var(--lime); }
+.pulse-feed { list-style: none; }
+.pulse-feed li { display: flex; align-items: baseline; gap: 18px; padding: 10px 0; border-bottom: 1px solid var(--hairline); }
+.pulse-feed li:first-child { border-top: 1px solid var(--hairline); }
+.pulse-feed-time { flex: 0 0 8.5em; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.pulse-feed-text { color: var(--ink-2); font-size: 0.95rem; }
+.pulse-empty { display: none; font-family: var(--mono); font-size: 0.9rem; color: var(--ink-3); }
+.pulse-empty.is-shown { display: block; }
+
+.pulse-caveat { border-left: 2px solid var(--lime-deep); padding-left: 16px; color: var(--ink-2); font-size: 0.95rem; max-width: 44em; }
+.pulse-notes { list-style: none; margin-top: 10px; padding-left: 18px; }
+.pulse-notes li { font-family: var(--mono); font-size: 0.85rem; color: var(--ink-3); }
+.pulse-inline-note { font-family: var(--mono); font-size: 0.85em; color: var(--ink-3); }
+.pulse-hint { display: none; margin-top: 20px; padding: 18px 20px; max-width: 52em; border: 1px solid var(--hairline); border-radius: 2px; color: var(--ink-2); font-size: 0.95rem; }
+#pulse[data-pulse-state="unavailable"] .pulse-hint { display: block; }
+.pulse-hint .cmd-line { margin-top: 10px; }
+.pulse-example { font-family: var(--mono); font-size: 12.5px; color: var(--lime); border: 1px solid var(--hairline); border-radius: 2px; padding: 8px 12px; word-break: break-all; }
+
+/* 移动端: 统计纵向堆叠 */
+@media (max-width: 640px) {
+  .pulse-head { flex-direction: column; gap: 8px; }
+  .pulse-stats { flex-direction: column; align-items: stretch; gap: 18px; }
+  .pulse-stat {
+    flex-direction: row; align-items: baseline; justify-content: space-between; gap: 14px;
+    padding: 0 0 14px; border-right: none; border-bottom: 1px solid var(--hairline);
+  }
+  .pulse-stat:last-child { border-bottom: none; padding-bottom: 0; }
+  .pulse-stat-value { font-size: clamp(2.2rem, 12vw, 3rem); }
+  .pulse-grid { grid-template-columns: 1fr; gap: 30px; }
+  .pulse-feed li { flex-direction: column; gap: 2px; }
+  .pulse-feed-time { flex: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot { animation: none !important; }
+}
