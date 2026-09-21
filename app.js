@@ -364,14 +364,21 @@ var BOLLOON_IPNS = (function () {
    多实例: 页面上每个 [data-pulse] 根 = 一个独立实例, 各自取数 / 轮询 / 降级。
    区内节点一律靠 data-pulse-* 钩子查找 (不用 id, 不会撞):
      data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-hint
-     data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified"
+     data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
      data-pulse-caps · data-pulse-caps-empty
      data-pulse-feed · data-pulse-feed-empty · data-pulse-notes
      data-pulse-sites · data-pulse-sites-empty            (智能体私有站 IPNS 列表)
      data-pulse-ipns-form · data-pulse-ipns-input · data-pulse-ipns-open · data-pulse-ipns-msg
        (粘贴打开器由上面的 IPNS 模块单独绑定, 与本模块无关)
-   聚合计数缺失 (tasks / tasks_completed / tasks_verified) → 整行隐藏:
+   聚合计数缺失 (tasks / tasks_completed / tasks_verified / signatures) → 整行隐藏:
    「拿不到就不显示」, 不拿 0 或 — 冒充数据。真实计数 0 照常显示 0。
+
+   活动流 (recent_activity) —— kind 无关: 前端只认 text {zh,en}, 从不 switch kind。
+   所以后端将来新增任何 kind 都不会报错 / 不会空白:
+     · 服务端给了 {zh,en} → 直取当前语言 (缺当前语言就退回另一种, 仍是服务端原文, 不编造);
+     · 一条文案都没有 / 文案为空 → 该条不进列表 (宁可不显示一行, 也不留空白行 / 不臆造描述)。
+   语言切换: rawFeed 保留原始双语对象, 只在渲染时取语言 → 切语言重画不会串语言。
+   数值变化靠下一轮轮询自动反映 (POLL_MS), 无需刷新页面 (新节点/新 agent 计数同此路径)。
    可选根属性: data-pulse-feed-max="N" (本实例活动条数上限, 默认 5)
    任何一份实例失败 (含启动即失败) 都不影响另一份或页面其它区域。
    ============================================================ */
@@ -397,10 +404,22 @@ var BOLLOON_IPNS = (function () {
   function text(node, v) { if (node) node.textContent = v == null ? '' : String(v); }
   function num(v) { return typeof v === 'number' && isFinite(v) ? v : null; }
   function pickBi(bi) {
+    if (typeof bi === 'string') return bi;                    // 后端偶尔直接给裸字符串 → 直用
     if (!bi || typeof bi !== 'object') return '';
     var v = bi[lang()];
-    if (typeof v === 'string') return v;
+    if (typeof v === 'string' && v) return v;
+    // 缺当前语言就退回另一种语言 —— 仍是服务端原文, 比空白诚实
+    var other = lang() === 'en' ? bi.zh : bi.en;
+    if (typeof other === 'string' && other) return other;
     return typeof bi.zh === 'string' ? bi.zh : '';
+  }
+  // 活动流一条「有没有可显示文案」: 任一语言非空即可 (语言在渲染时才定)
+  function biText(bi) {
+    if (typeof bi === 'string') return bi.trim();
+    if (!bi || typeof bi !== 'object') return '';
+    var zh = typeof bi.zh === 'string' ? bi.zh.trim() : '';
+    var en = typeof bi.en === 'string' ? bi.en.trim() : '';
+    return zh || en;
   }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   function absTime(ms) {
@@ -460,6 +479,7 @@ var BOLLOON_IPNS = (function () {
       tasks: root.querySelector('[data-pulse-total="tasks"]'),
       tasksCompleted: root.querySelector('[data-pulse-total="tasks_completed"]'),
       tasksVerified: root.querySelector('[data-pulse-total="tasks_verified"]'),
+      signatures: root.querySelector('[data-pulse-total="signatures"]'),
       caps: root.querySelector('[data-pulse-caps]'),
       capsEmpty: root.querySelector('[data-pulse-caps-empty]'),
       sites: root.querySelector('[data-pulse-sites]'),
@@ -574,7 +594,9 @@ var BOLLOON_IPNS = (function () {
         t.textContent = relTime(at);
         var s = document.createElement('span');
         s.className = 'pulse-feed-text';
-        s.textContent = pickBi(item.text); // 服务端文本 → 只经 textContent, 严禁 innerHTML
+        // 服务端文案 (kind 无关) → 只经 textContent, 严禁 innerHTML;
+        // 条目进列表前已保证任一语言非空 → 这里不会渲染出空白行
+        s.textContent = pickBi(item.text);
         li.appendChild(t); li.appendChild(s);
         el.feed.appendChild(li);
       }
@@ -648,6 +670,7 @@ var BOLLOON_IPNS = (function () {
       view.payload = null; view.snapAt = 0; view.capRows = []; view.rawFeed = []; view.notes = []; view.sites = []; view.sourceKind = null;
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
+      setOptCount(el.signatures, null);
       text(el.snapTime, '—'); text(el.snapAgo, '');
       renderCaps(); renderFeed(); renderNotes(); renderSites(); renderScope();
     }
@@ -664,7 +687,17 @@ var BOLLOON_IPNS = (function () {
       }).map(function (c) { return { key: c.key, count: num(c.count) }; })
         .sort(function (a, b) { return b.count - a.count; })
         .slice(0, CAPS_MAX);
-      view.rawFeed = (Array.isArray(payload.recent_activity) ? payload.recent_activity : []).slice(0, FEED_LIMIT);
+      // 活动流: 与 kind 无关 —— 只认服务端 text {zh,en} (新 kind 直用后端文案, 前端不再造一套)。
+      // 没有可显示文案的条目直接丢弃: 宁可不显示一行, 也不渲染空白行 / 不臆造描述。
+      // 保留原始双语对象, 语言在 renderFeed 时才取 (切语言重画不串语言)。
+      view.rawFeed = (Array.isArray(payload.recent_activity) ? payload.recent_activity : [])
+        .map(function (it) {
+          if (!it || typeof it !== 'object') return null;
+          if (!biText(it.text)) return null;
+          return { at: num(it.at) || 0, text: it.text };
+        })
+        .filter(function (x) { return !!x; })
+        .slice(0, FEED_LIMIT);
       view.notes = (Array.isArray(payload.notes) ? payload.notes : []).filter(function (n) {
         return typeof n === 'string' && n.trim();
       }).slice(0, 4);
@@ -688,6 +721,7 @@ var BOLLOON_IPNS = (function () {
       setOptCount(el.tasks, t.tasks);                            // 缺失 → 整行隐藏
       setOptCount(el.tasksCompleted, t.tasks_completed);
       setOptCount(el.tasksVerified, t.tasks_verified);
+      setOptCount(el.signatures, t.signatures);
       text(el.snapTime, absTime(view.snapAt));
       setState(state);
       renderScope(); renderCaps(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();

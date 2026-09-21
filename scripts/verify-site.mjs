@@ -23,11 +23,16 @@
  *   ⑪ 聚合计数「拿不到就不显示」: tasks / tasks_completed / tasks_verified 缺失 → 整行隐藏, 不编造
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=18 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=19 一致 (逐页抓原始 HTML)
+ *   ⑮ 钱包签名行 (data-pulse-total="signatures"): 网关页全量区必列 + 字段缺失整行隐藏
+ *   ⑯ 活动流 kind 无关: 后端 6 个新 kind (task_posted/task_accepted/task_completed/
+ *      trade_settled/trade_verified/wallet_signed) 的服务端 {zh,en} 文案直用;
+ *      未知 kind 不报错、无文案条目不留空白行、缺当前语言退回另一种语言
+ *   ⑰ 数值变化在下一轮 30s 轮询内自动反映 (新 agent 加入 → 计数自己变, 页面不刷新)
  *
  * 脉冲区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
  * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago
- *            / data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified"
+ *            / data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
  *            / data-pulse-caps / data-pulse-feed / data-pulse-notes / data-pulse-hint
  *            / data-pulse-sites / data-pulse-sites-empty
  *            / data-pulse-ipns-form / data-pulse-ipns-input / data-pulse-ipns-open / data-pulse-ipns-msg。
@@ -87,7 +92,8 @@ const pulseProbe = (rootSel) => `(() => {
     tasks: t('[data-pulse-total="tasks"]'),
     tasksDone: t('[data-pulse-total="tasks_completed"]'),
     tasksVerified: t('[data-pulse-total="tasks_verified"]'),
-    tasksHidden: { tasks: hid('tasks'), done: hid('tasks_completed'), verified: hid('tasks_verified') },
+    signatures: t('[data-pulse-total="signatures"]'),
+    tasksHidden: { tasks: hid('tasks'), done: hid('tasks_completed'), verified: hid('tasks_verified'), sig: hid('signatures') },
     taskLabels: Array.from(root.querySelectorAll('.pulse-stat-label'))
       .filter((e) => /任务/.test(e.textContent)).map((e) => e.textContent.trim()),
     sites: Array.from(root.querySelectorAll('[data-pulse-sites] li')).map((li) => {
@@ -114,6 +120,10 @@ const pulseProbe = (rootSel) => `(() => {
     ago: t('[data-pulse-ago]'),
     feed: Array.from(root.querySelectorAll('[data-pulse-feed] li')).map((li) => li.textContent.trim()),
     feedText: Array.from(root.querySelectorAll('[data-pulse-feed] .pulse-feed-text')).map((e) => e.textContent),
+    feedBlank: Array.from(root.querySelectorAll('[data-pulse-feed] li'))
+      .filter((li) => { const s = li.querySelector('.pulse-feed-text'); return !s || !s.textContent.trim(); }).length,
+    feedAt: Array.from(root.querySelectorAll('[data-pulse-feed] time')).map((e) => e.getAttribute('data-at')),
+    statLabels: Array.from(root.querySelectorAll('.pulse-stat-label')).map((e) => e.textContent.trim()),
     caps: Array.from(root.querySelectorAll('[data-pulse-caps] li')).map((li) => li.textContent.trim()),
     notes: txt('[data-pulse-notes]').trim(),
     hintShown: hint ? getComputedStyle(hint).display !== 'none' : false,
@@ -339,6 +349,8 @@ async function main() {
   let aFail = false;
   // 「缺 tasks* + agent_sites 为空」夹具 (第三档) 的开关
   let cMode = 'full';
+  // 新事件 kind / 30s 轮询自动更新 夹具 (第四档) 的开关: base → 新 kind 快照; grown → 新 agent 加入后的快照
+  let growMode = 'base';
   on('Fetch.requestPaused', (p) => {
     // 文档请求也命中 pattern (URL 里带着 ?pulse=<夹具地址>), 必须放行, 否则 Page.navigate 不返回
     if (p.resourceType === 'Document' || !shouldIntercept(p)) {
@@ -354,6 +366,12 @@ async function main() {
     // 第三档: cMode='full' → FX_LIVE; 'no-tasks' → FX_NO_TASKS (缺 tasks* 且 agent_sites=[])
     if (p.request.url.includes('network-pulse-verify-c')) {
       fulfillJson(p.requestId, cMode === 'full' ? FX_LIVE : FX_NO_TASKS);
+      return;
+    }
+    // 第四档: 新事件 kind + 数值变化自动反映 —— 每轮请求都按 growMode 自动回夹具 (不走手工队列),
+    // 这样 30s 自动轮询拿到的是「新 agent 加入后」的快照, 而验收无需手动触发 refresh。
+    if (p.request.url.includes('network-pulse-verify-grow')) {
+      fulfillJson(p.requestId, growMode === 'grown' ? FX_GROWN : FX_NEWKINDS);
       return;
     }
     // 「让第一个实例失败」开关
@@ -394,7 +412,7 @@ async function main() {
   const FX_LIVE = {
     status: 'live', generated_at: T0 - 3 * 60000, fresh_until: T0 + 60000,
     scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
-    totals: { nodes: 7, agents: 12, active_agents: 4, seen_last_24h: 5, tasks: 21, tasks_completed: 13, tasks_verified: 6 },
+    totals: { nodes: 7, agents: 12, active_agents: 4, seen_last_24h: 5, tasks: 21, tasks_completed: 13, tasks_verified: 6, signatures: 42 },
     agent_sites: [
       { label: 'leo-node', ipns: CID_1, added_at: T0 - 86400000 },
       { label: 'research', ipns: 'ipns://' + CID_2, added_at: T0 - 3600000 },
@@ -433,6 +451,55 @@ async function main() {
     totals: { nodes: 3, agents: 3, active_agents: 1, seen_last_24h: 1 },
     capabilities: [], recent_activity: [], notes: ['快照已过期'],
   };
+
+  // ——— 后端新契约: 6 个新活动 kind 的文案由服务端模板生成 (中英齐备) → 前端直用, 不造第二套 ———
+  // 每个 kind 的 text 就是「服务端会发的东西」, 断言里逐字比对 (证明没有被前端改写/二次编造)。
+  const NEWKIND_TEXT = {
+    task_posted: { zh: '有新任务被发布', en: 'A task was posted' },
+    task_accepted: { zh: '有节点接下了任务', en: 'A node accepted a task' },
+    task_completed: { zh: '有任务已完成', en: 'A task was completed' },
+    trade_settled: { zh: '有一笔交易已结算', en: 'A trade was settled' },
+    trade_verified: { zh: '有一笔交易已验真', en: 'A trade was verified' },
+    wallet_signed: { zh: '有一次钱包签名', en: 'A wallet signature was made' },
+  };
+  const EN_ONLY_TEXT = 'EN-only server text (no zh)';
+  // 第四档基准: 5 个新 kind + 2 个"坏"条目 (无文案 / 只有 en) —— 顺序按 at 从新到旧;
+  // 网关全量区活动上限 = 5, 所以第 6 个新 kind (wallet_signed) 放到下一轮 FX_GROWN 里证明。
+  const FX_NEWKINDS = {
+    status: 'live', generated_at: T0 - 60000, fresh_until: T0 + 600000,
+    scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
+    totals: { nodes: 7, agents: 12, active_agents: 4, seen_last_24h: 5, tasks: 21, tasks_completed: 13, tasks_verified: 6, signatures: 3 },
+    agent_sites: [],
+    capabilities: [{ key: 'code-review', count: 6 }],
+    recent_activity: [
+      // 未知 kind 且没有文案 → 必须整条不显示 (不留空白行, 也不臆造描述)
+      { kind: 'unknown_future_kind_2099', at: T0 - 10000, text: null },
+      // 未知 kind, 只有 en 文案 → 中文界面下退回 en (仍是服务端原文, 不是空白)
+      { kind: 'agent_announced_unknown_kind', at: T0 - 20000, text: { en: EN_ONLY_TEXT } },
+      { kind: 'task_posted', at: T0 - 30000, text: NEWKIND_TEXT.task_posted },
+      { kind: 'task_accepted', at: T0 - 40000, text: NEWKIND_TEXT.task_accepted },
+      { kind: 'task_completed', at: T0 - 50000, text: NEWKIND_TEXT.task_completed },
+      { kind: 'trade_settled', at: T0 - 60000, text: NEWKIND_TEXT.trade_settled },
+      { kind: 'trade_verified', at: T0 - 70000, text: NEWKIND_TEXT.trade_verified },
+    ],
+    notes: [],
+  };
+  // 下一轮轮询的快照: 一个新 agent 加入 (计数全部 +1) + 上一轮被上限截掉的 kind + 一个空白文案条目。
+  const FX_GROWN = {
+    status: 'live', generated_at: T0 + 60000, fresh_until: T0 + 900000,
+    scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
+    totals: { nodes: 8, agents: 13, active_agents: 5, seen_last_24h: 6, tasks: 22, tasks_completed: 14, tasks_verified: 7, signatures: 42 },
+    agent_sites: [],
+    capabilities: [{ key: 'code-review', count: 7 }],
+    recent_activity: [
+      { kind: 'brand_new_kind_2099b', at: T0 - 1000, text: { zh: '   ', en: '' } },   // 空白文案 → 不显示
+      { kind: 'wallet_signed', at: T0 - 5000, text: NEWKIND_TEXT.wallet_signed },
+      { kind: 'trade_verified', at: T0 - 15000, text: NEWKIND_TEXT.trade_verified },
+    ],
+    notes: [],
+  };
+  const NEWKIND_EXPECT_ZH = [EN_ONLY_TEXT, '有新任务被发布', '有节点接下了任务', '有任务已完成', '有一笔交易已结算'];
+  const NEWKIND_EXPECT_EN = [EN_ONLY_TEXT, 'A task was posted', 'A node accepted a task', 'A task was completed', 'A trade was settled'];
 
   // ⑥ 全球网络脉冲
   console.log('\n[6] gateway.html 全球网络脉冲 (公开只读接口)');
@@ -498,6 +565,12 @@ async function main() {
     JSON.stringify({ t: live.tasks, d: live.tasksDone, v: live.tasksVerified, h: live.tasksHidden }));
   check('live: 三行标签 = 任务数量 / 完成任务数量 / 已验真任务',
     JSON.stringify(live.taskLabels) === JSON.stringify(['任务数量', '完成任务数量', '已验真任务']), JSON.stringify(live.taskLabels));
+  check('live: 新增「钱包签名」行 = 接口原值 (42) 且行可见',
+    live.signatures === '42' && live.tasksHidden.sig === false,
+    JSON.stringify({ sig: live.signatures, hidden: live.tasksHidden.sig }));
+  check('live: 八行标签顺序 = 节点/agents/活跃 agent/24h/任务数量/完成任务数量/已验真任务/钱包签名',
+    JSON.stringify(live.statLabels) === JSON.stringify(['节点', 'agents', '活跃 agent', '24 小时内出现', '任务数量', '完成任务数量', '已验真任务', '钱包签名']),
+    JSON.stringify(live.statLabels));
   check('live: agent_sites 三种 ipns 形态都归一化成 https://ipfs.io/ipns/<cid> (非法条目被丢弃)',
     live.sites.length === 3 && live.sites.map((s) => s.href).join('|') ===
       [`https://ipfs.io/ipns/${CID_1}`, `https://ipfs.io/ipns/${CID_2}`, `https://ipfs.io/ipns/${CID_3}`].join('|') &&
@@ -530,6 +603,16 @@ async function main() {
   check('app.js 不写 innerHTML / outerHTML / insertAdjacentHTML',
     !/\.innerHTML\s*(\+?=|\.)/.test(appSrc) && !/\.outerHTML\s*(\+?=)/.test(appSrc) && !appSrc.includes('insertAdjacentHTML') && !appSrc.includes('document.write'),
     '源码里出现 innerHTML 赋值');
+  const gwHtml = await (await fetch(`${BASE}/gateway.html`)).text();
+  check('网关页静态 HTML 就有签名行 (data-pulse-total="signatures" 恰好 1 处 + 双语标签, JS 挂了也读得到)',
+    (gwHtml.match(/data-pulse-total="signatures"/g) || []).length === 1 &&
+    /data-zh="钱包签名" data-en="Wallet signatures"/.test(gwHtml),
+    JSON.stringify({ n: (gwHtml.match(/data-pulse-total="signatures"/g) || []).length }));
+  check('app.js 真的绑定 signatures 钩子 (取数赋值 + 加载/失败时清空)',
+    /data-pulse-total="signatures"/.test(appSrc) && (appSrc.match(/setOptCount\(el\.signatures/g) || []).length === 2);
+  check('app.js 从不按活动 kind 分支 (无 item.kind 比较 / 无 switch) — 未知 kind 不可能报错',
+    !/\bitem\.kind\b/.test(appSrc) && !/\bit\.kind\b/.test(appSrc) && !/\bswitch\s*\(/.test(appSrc),
+    'app.js 里出现按活动 kind 分支');
 
   // 中英切换
   await evalJs(`document.querySelector('.lang-toggle [data-lang="en"]').click()`);
@@ -547,8 +630,8 @@ async function main() {
   check('EN: 能力/活动/私有站小标题英文',
     JSON.stringify(enKickers) === JSON.stringify(['Capabilities', 'Recent activity', 'Agent private sites']), JSON.stringify(enKickers));
   const enStatLabels = await evalJs(`Array.from(document.querySelectorAll('#pulse .pulse-stat-label')).map(e=>e.textContent.trim())`);
-  check('EN: 七个数值标签英文 (含 Tasks / Tasks completed / Tasks verified)',
-    JSON.stringify(enStatLabels) === JSON.stringify(['Nodes', 'Agents', 'Active agents', 'Seen in last 24h', 'Tasks', 'Tasks completed', 'Tasks verified']),
+  check('EN: 八个数值标签英文 (含 Tasks / Tasks completed / Tasks verified / Wallet signatures)',
+    JSON.stringify(enStatLabels) === JSON.stringify(['Nodes', 'Agents', 'Active agents', 'Seen in last 24h', 'Tasks', 'Tasks completed', 'Tasks verified', 'Wallet signatures']),
     JSON.stringify(enStatLabels));
   const enIpns = await evalJs(`(() => {
     const f = document.querySelector('#pulse [data-pulse-ipns-form]');
@@ -708,6 +791,9 @@ async function main() {
   check('agent_sites=[] → 0 条链接 + 诚实空提示 (没发布 ≠ 没数据)',
     noT.sites.length === 0 && noT.sitesEmptyShown === true && /暂未发布智能体私有站/.test(noT.sitesEmptyText),
     JSON.stringify({ n: noT.sites.length, shown: noT.sitesEmptyShown, text: noT.sitesEmptyText }));
+  check('缺 signatures 字段 → 签名行整行隐藏 (不拿 0 冒充, 也不显示假 0)',
+    noT.tasksHidden.sig === true && noT.signatures === '—',
+    JSON.stringify({ hidden: noT.tasksHidden.sig, v: noT.signatures }));
   check('缺字段这一轮无 console 错误 / 未捕获异常', consoleErrors.length === cErrStart, consoleErrors.slice(0, 3).join(' | '));
 
   // ⑥″ IPNS 粘贴框: 真 input + 真按钮, 严格校验, 合法才开新窗口, 本页不发任何网络请求
@@ -791,6 +877,80 @@ async function main() {
   check('粘贴框这几轮无 console 错误 / 未捕获异常', consoleErrors.length === cErrStart, consoleErrors.slice(0, 3).join(' | '));
   cMode = 'full';
 
+  // ⑥‴ 新事件 kind (服务端文案直用) + 数值变化在下一轮 30s 轮询内自动反映
+  console.log('\n[6d] 新事件 kind 兼容 (后端文案直用) + 数值变化自动反映 (30s 轮询)');
+  const kErrStart = consoleErrors.length;
+  growMode = 'base';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  const growSrc = `${BASE}/network-pulse-verify-grow.json`;
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(growSrc)}` });
+  await sleep(1600);                       // 夹具由 handler 自动回 (不走手工队列)
+  const nk = await evalJs(pulseProbe('#pulse'));
+  check(`新 kind: ${Object.keys(NEWKIND_TEXT).length} 个新 kind 的文案直用服务端 {zh,en} (中文逐字一致, 前端没再造一套)`,
+    JSON.stringify(nk.feedText) === JSON.stringify(NEWKIND_EXPECT_ZH), JSON.stringify(nk.feedText));
+  check('新 kind: 未知 kind + 无文案条目整条不显示; 缺 zh 的条目退回 en (都不留空白)',
+    nk.feed.length === 5 && nk.feedText[0] === EN_ONLY_TEXT, JSON.stringify(nk.feed));
+  check('新 kind: 活动流没有任何空白行 (每条都有非空文案)', nk.feedBlank === 0, `blank=${nk.feedBlank}`);
+  check('新 kind: 这一轮无 console 错误 / 未捕获异常 (未知 kind 不报错)', consoleErrors.length === kErrStart, consoleErrors.slice(0, 3).join(' | '));
+
+  await evalJs(`document.querySelector('.lang-toggle [data-lang="en"]').click()`);
+  await sleep(350);
+  const nkEn = await evalJs(pulseProbe('#pulse'));
+  check('新 kind: 切 EN 后同一批条目显示服务端 en 文案 (语言在渲染时才取, 不串语言)',
+    JSON.stringify(nkEn.feedText) === JSON.stringify(NEWKIND_EXPECT_EN), JSON.stringify(nkEn.feedText));
+  await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
+  await sleep(300);
+  const nkZh = await evalJs(pulseProbe('#pulse'));
+  check('新 kind: 切回中文文案复原 (rawFeed 保留原始双语对象, 不是被覆盖过的文本)',
+    JSON.stringify(nkZh.feedText) === JSON.stringify(NEWKIND_EXPECT_ZH), JSON.stringify(nkZh.feedText));
+
+  // —— 数值变化: 只改「下游夹具」+ 只读 DOM, 不调 refresh() / 不导航 / 不刷新页面 ——
+  const growBefore = await evalJs(`(() => ({
+    mark: (window.__growMark = 'no-reload'),
+    nodes: (document.querySelector('#pulse [data-pulse-total="nodes"]') || {}).textContent,
+    agents: (document.querySelector('#pulse [data-pulse-total="agents"]') || {}).textContent,
+    active: (document.querySelector('#pulse [data-pulse-total="active"]') || {}).textContent,
+    h24: (document.querySelector('#pulse [data-pulse-total="24h"]') || {}).textContent,
+    sig: (document.querySelector('#pulse [data-pulse-total="signatures"]') || {}).textContent,
+    state: document.getElementById('pulse').getAttribute('data-pulse-state'),
+  }))()`);
+  growMode = 'grown';                      // 下一轮轮询将拿到「一个新 agent 加入后」的快照
+  const growT0 = Date.now();
+  let growAfter = null;
+  for (let i = 0; i < 100; i++) {          // 最多 ~50s (自动轮询间隔 30s + 余量)
+    await sleep(500);
+    growAfter = await evalJs(`(() => ({
+      nodes: (document.querySelector('#pulse [data-pulse-total="nodes"]') || {}).textContent,
+      agents: (document.querySelector('#pulse [data-pulse-total="agents"]') || {}).textContent,
+      active: (document.querySelector('#pulse [data-pulse-total="active"]') || {}).textContent,
+      h24: (document.querySelector('#pulse [data-pulse-total="24h"]') || {}).textContent,
+      sig: (document.querySelector('#pulse [data-pulse-total="signatures"]') || {}).textContent,
+      mark: window.__growMark,
+      state: document.getElementById('pulse').getAttribute('data-pulse-state'),
+      feedText: Array.from(document.querySelectorAll('#pulse [data-pulse-feed] .pulse-feed-text')).map((e) => e.textContent),
+      blank: Array.from(document.querySelectorAll('#pulse [data-pulse-feed] li')).filter((li) => {
+        const s = li.querySelector('.pulse-feed-text'); return !s || !s.textContent.trim(); }).length,
+    }))()`);
+    if (growAfter && growAfter.nodes === '8' && growAfter.sig === '42') break;
+  }
+  const growWaited = ((Date.now() - growT0) / 1000).toFixed(1);
+  check(`数值变化在下一轮 30s 轮询内自动出现 (实测等了 ${growWaited}s; 未刷新页面 / 未手动 refresh / 未导航)`,
+    !!growAfter && growBefore.nodes === '7' && growAfter.nodes === '8' && growAfter.state === 'live' && Number(growWaited) < 40,
+    JSON.stringify({ before: growBefore.nodes, after: growAfter && growAfter.nodes, waited: growWaited }));
+  check('新 agent 加入 → 节点/agents/活跃 agent/24h 计数自己变 (+1/+1/+1/+1), 刷新后才能新数字不算',
+    !!growAfter && growAfter.agents === '13' && growAfter.active === '5' && growAfter.h24 === '6',
+    JSON.stringify(growAfter));
+  check('新 agent 加入 → 签名行也跟着自己变 (3 → 42)',
+    !!growAfter && growBefore.sig === '3' && growAfter.sig === '42',
+    JSON.stringify({ before: growBefore.sig, after: growAfter && growAfter.sig }));
+  check('页面从未重新加载 (标记变量存活 ⇒ 数字是自己变的, 不是刷新带出来的)',
+    !!growAfter && growAfter.mark === 'no-reload', JSON.stringify({ mark: growAfter && growAfter.mark }));
+  check('第二轮活动流也直用后端文案 + 无空白行 (含本轮才出现的 wallet_signed)',
+    !!growAfter && JSON.stringify(growAfter.feedText) === JSON.stringify(['有一次钱包签名', '有一笔交易已验真']) && growAfter.blank === 0,
+    JSON.stringify(growAfter && growAfter.feedText));
+  check('自动轮询那一轮也无 console 错误 / 未捕获异常', consoleErrors.length === kErrStart, consoleErrors.slice(0, 3).join(' | '));
+
   // ⑦ 首页序栏紧凑版脉冲 (同一数据源, 同一诚实四态)
   console.log('\n[7] index.html 序栏紧凑版脉冲 (同一接口 + 同一四态)');
   const idxErrStart = consoleErrors.length;
@@ -842,6 +1002,17 @@ async function main() {
   const idxDensity = await evalJs(`(() => ({ font: parseFloat(getComputedStyle(document.querySelector('${IDX_ROOT} .pulse-c-totals b')).fontSize), h: Math.round(document.querySelector('${IDX_ROOT}').getBoundingClientRect().height), rows: document.querySelectorAll('${IDX_ROOT} .pulse-c-totals li').length, feedStyle: getComputedStyle(document.querySelector('${IDX_ROOT} [data-pulse-feed] li')).display }))()`);
   check(`首页那份确实更轻更密 (数值字号 ${idxDensity.font}px < 网关 ${gwValueFont}px, 加了两行后整块高 ${idxDensity.h}px < 320px, 共 ${idxDensity.rows} 行数值)`,
     idxDensity.font < gwValueFont && idxDensity.h < 320 && idxDensity.rows === 6, JSON.stringify({ idxDensity, gwValueFont }));
+  // 首页刻意不列签名行: 实测 1440px 下 6 项正好 1 行 (容器 620px), 第 7 项必然换行 →
+  // 「一眼扫过」的紧凑契约会被破坏。这条断言同时守住「布局没变宽之前别往首页加第 7 行」。
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false });
+  await sleep(300);
+  const idxTot = await evalJs(`(() => { const r = document.querySelector('${IDX_ROOT}'); const list = r.querySelector('.pulse-c-totals');
+    const tops = Array.from(list.children).map((li) => Math.round(li.getBoundingClientRect().top));
+    return { sigRows: r.querySelectorAll('[data-pulse-total="signatures"]').length, rows: list.children.length, lines: new Set(tops).size, listW: Math.round(list.getBoundingClientRect().width), listH: Math.round(list.getBoundingClientRect().height) }; })()`);
+  check(`首页紧凑版刻意不列签名行, 且 6 项仍是 1 行 (1440px 实测 ${idxTot.lines} 行 / ${idxTot.listH}px 高; 第 7 项会换行) — 明细由网关页全量区承接`,
+    idxTot.sigRows === 0 && idxTot.rows === 6 && idxTot.lines === 1, JSON.stringify(idxTot));
+  await cdp('Emulation.clearDeviceMetricsOverride');
+  await sleep(200);
 
   // 首页那份也吃中英切换
   await evalJs(`document.querySelector('.lang-toggle [data-lang="en"]').click()`);
@@ -1011,17 +1182,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=18 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=18 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=19 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=19 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await (await fetch(`${BASE}/${pg}`)).text();
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=18');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=19');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=18/.test(html) || !/app\.js\?v=18/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=19/.test(html) || !/app\.js\?v=19/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=18 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=18 + app.js?v=18 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=19 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=19 + app.js?v=19 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // console 错误

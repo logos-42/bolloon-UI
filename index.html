@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body data-page="product">
 
@@ -113,6 +113,11 @@
         <li><b data-pulse-total="tasks">—</b><span data-zh="任务" data-en="tasks">任务</span></li>
         <li><b data-pulse-total="tasks_completed">—</b><span data-zh="已完成" data-en="completed">已完成</span></li>
       </ul>
+      <!-- 这里刻意只放 6 项 (不放「已验真任务」「钱包签名」)。
+           实测: 1440px 下 6 项正好 1 行 (容器 620px), 第 7 项必然换行 →
+           序厅从「一行数字」变「两行孤行数字墙」, 违背紧凑版一眼扫过的设计。
+           签名/验真这类精细活动账目由网关页全量脉冲承接 (下面那条链接)。
+           首页少列一项 ≠ 显示错误值: 拿不到的字段在网关页也是整行隐藏。 -->
 
       <p class="pulse-c-meta">
         <span data-zh="快照" data-en="Snapshot">快照</span>
@@ -209,6 +214,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>

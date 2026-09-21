@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body data-page="gateway">
 
@@ -151,6 +151,12 @@
     <div class="pulse-stat">
       <span class="pulse-stat-value" data-pulse-total="tasks_verified">—</span>
       <span class="pulse-stat-label" data-zh="已验真任务" data-en="Tasks verified">已验真任务</span>
+    </div>
+    <!-- 钱包签名: 后端口径里的 signatures (网络内已发生的钱包签名次数)。
+         与 tasks* 同一约定: 字段拿不到 → 整行隐藏, 不拿 0 冒充; 真 0 照常显示 0。 -->
+    <div class="pulse-stat">
+      <span class="pulse-stat-value" data-pulse-total="signatures">—</span>
+      <span class="pulse-stat-label" data-zh="钱包签名" data-en="Wallet signatures">钱包签名</span>
     </div>
   </div>
 
@@ -301,6 +307,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>
