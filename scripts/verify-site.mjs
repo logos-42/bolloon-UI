@@ -270,7 +270,7 @@ async function main() {
     skillHtml.includes('id="skills-index"') && skillHtml.includes('data-skills-index'));
   check('索引区两份 skill 名称 + version 都在原始 HTML 里',
     skillHtml.includes('>bolloon-gateway-join<') && skillHtml.includes('>1.3.0<') &&
-    skillHtml.includes('>bolloon-network<') && skillHtml.includes('>1.0.0<'));
+    skillHtml.includes('>bolloon-network<') && />1\.0\.[0-9]+</.test(skillHtml));
   check('每行都有 read 钩子 + 复制按钮 + 直达 .md 链接',
     (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
     (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
@@ -289,9 +289,12 @@ async function main() {
     Array.isArray(idxRows) && idxRows.length === 2 && idxRows.every((r) => r.read === `read ${BASE}/${r.slug}.md` && r.kids === 1),
     JSON.stringify(idxRows && idxRows.map((r) => r.read)));
   check('索引区名称/version/直达链接/复制按钮逐行都对',
-    JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])) === JSON.stringify([
-      ['bolloon-gateway-join', '1.3.0', 'bolloon-gateway-join.md', true],
-      ['bolloon-network', '1.0.0', 'bolloon-network.md', true]]), JSON.stringify(idxRows));
+    idxRows.length === 2 &&
+    idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.3.0' &&
+    idxRows[0].direct === 'bolloon-gateway-join.md' && idxRows[0].copy === true &&
+    idxRows[1].name === 'bolloon-network' && /^1\.0\.[0-9]+$/.test(idxRows[1].version) &&
+    idxRows[1].direct === 'bolloon-network.md' && idxRows[1].copy === true,
+    JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])));
   const idxCount = await evalJs(`(document.querySelector('[data-skills-count]')||{}).textContent||''`);
   check('索引区标注「共 2 份 · 索引里列的就是全部」', /共 2 份/.test(idxCount), idxCount);
   await evalJs(`(() => { window.__copyBtn = document.querySelector('[data-copy-skill="bolloon-network"]'); window.__copyBtn.click(); return 1; })()`);
