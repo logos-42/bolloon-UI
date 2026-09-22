@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body data-page="product">
 
@@ -93,14 +93,14 @@
 
     <!-- ◆ 链上活动（首页序栏紧凑版）—— 同一公开只读接口, 同样诚实四态 (live/stale/unavailable + observed/verified)。
          用 data-pulse / data-pulse-* 钩子, 与网关页那份是各自独立的实例 (见 app.js 多实例模块)。
-         拿不到数据就如实显示「尚未接入」, 绝不编造数字。 -->
+         拿不到数据就如实显示「快照暂时读不到」, 绝不编造数字。 -->
     <div class="pulse-compact" data-pulse data-pulse-name="hero" data-pulse-state="loading" data-pulse-feed-max="1">
       <p class="pulse-state" role="status" aria-live="polite">
         <span class="pulse-dot" aria-hidden="true"></span>
         <span class="pulse-state-text" data-state="loading" data-zh="读取中…" data-en="Reading…">读取中…</span>
         <span class="pulse-state-text" data-state="live" data-zh="实时" data-en="Live">实时</span>
         <span class="pulse-state-text" data-state="stale" data-zh="快照已过期" data-en="Snapshot expired">快照已过期</span>
-        <span class="pulse-state-text" data-state="unavailable" data-zh="公开观察入口尚未接入" data-en="Public observation endpoint not connected">公开观察入口尚未接入</span>
+        <span class="pulse-state-text" data-state="unavailable" data-zh="快照暂时读不到" data-en="Snapshot unreadable right now">快照暂时读不到</span>
       </p>
       <p class="pulse-c-scope" data-pulse-scope data-zh="当前节点观察到" data-en="Observed by this node" hidden>当前节点观察到</p>
 
@@ -129,9 +129,12 @@
       <p class="pulse-empty" data-pulse-feed-empty data-zh="暂无公开活动" data-en="No public activity yet">暂无公开活动</p>
 
       <p class="pulse-caveat" data-zh="观察窗口内计数 · 不是全网精确总量。" data-en="Counts within the observation window · not an exact global total.">观察窗口内计数 · 不是全网精确总量。</p>
+      <!-- 口径行 (2026-09-22): 上面「任务/已完成」是 24h 脉冲事件口径; 链上索引口径 (行数/不同任务/网络)
+           由快照的 activity_totals + chain_id_scope + totals_scope 给, 快照没给就整行隐藏。 -->
+      <p class="pulse-c-totals-line pulse-activity-totals" data-pulse-activity-totals></p>
 
       <p class="pulse-hint" data-pulse-hint>
-        <span data-zh="公开观察入口尚未接入" data-en="Public observation endpoint not connected">公开观察入口尚未接入</span>
+        <span data-zh="快照这次没读到 — 本站的数据源是签名快照 network-pulse.json" data-en="Snapshot not read this round — this site's source is the signed snapshot network-pulse.json">快照这次没读到 — 本站的数据源是签名快照 network-pulse.json</span>
         <span class="pulse-sep" aria-hidden="true">·</span>
         <span data-zh="本机跑着 Bolloon 节点时，在地址后追加 ?pulse= 指向它即可。" data-en="If a Bolloon node runs on your machine, append ?pulse= pointing at it.">本机跑着 Bolloon 节点时，在地址后追加 ?pulse= 指向它即可。</span>
         <span class="cmd-line"><code class="pulse-example">index.html?pulse=http://127.0.0.1:54188/api/public/network/progress</code></span>
@@ -213,6 +216,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>

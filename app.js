@@ -366,6 +366,7 @@ var BOLLOON_IPNS = (function () {
      data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-hint
      data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
      data-pulse-activity-body · data-pulse-activity-empty · data-pulse-activity-source
+     data-pulse-activity-totals                        (口径行: 同源行数/不同任务 + 网络归属 + 两套口径差异)
      data-pulse-feed · data-pulse-feed-empty · data-pulse-notes
      data-pulse-sites · data-pulse-sites-empty            (智能体私有站 IPNS 列表)
      data-pulse-ipns-form · data-pulse-ipns-input · data-pulse-ipns-open · data-pulse-ipns-msg
@@ -564,6 +565,7 @@ var BOLLOON_IPNS = (function () {
       actBody: root.querySelector('[data-pulse-activity-body]'),
       actEmpty: root.querySelector('[data-pulse-activity-empty]'),
       actSource: root.querySelector('[data-pulse-activity-source]'),
+      actTotals: root.querySelector('[data-pulse-activity-totals]'),
       sites: root.querySelector('[data-pulse-sites]'),
       sitesEmpty: root.querySelector('[data-pulse-sites-empty]'),
       feed: root.querySelector('[data-pulse-feed]'),
@@ -571,7 +573,10 @@ var BOLLOON_IPNS = (function () {
       notes: root.querySelector('[data-pulse-notes]')
     };
 
-    var view = { state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '', rawFeed: [], notes: [], sites: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null };
+    var view = {
+      state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '',
+      actTotals: null, chainScope: null, totalsScope: null, rawFeed: [], notes: [], sites: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null,
+    };
     var timer = null, relTimer = null, failCount = 0, started = false, api = null;
 
     function setState(next) {
@@ -732,6 +737,62 @@ var BOLLOON_IPNS = (function () {
         : '本节点暂未观察到链上任务。';
     }
 
+    /**
+     * 口径行 (data-pulse-activity-totals) —— 公开页**不许**出现自相矛盾的展示:
+     * 小结行的「任务/已完成/已验证/签名」是 **24h 脉冲事件口径** (本节点自己上报的),
+     * 而链上活动表的 N 行来自 **链上索引 (全量)** —— 两个数字同屏时, 必须有一行把它们的关系讲明白。
+     * 数据源 = 快照的 activity_totals (与表**同源**, rows 恒等于表里行数) + chain_id_scope + totals_scope。
+     * 纪律: 只读快照给的字段; 缺哪块就不说哪块 (老快照没有这一行 → 整行隐藏); 只写 textContent, 不用 innerHTML;
+     *       数字一律取快照给的同源计数, 前端**不自己数行数**(否则又会变成两个来源打架)。
+     */
+    function renderActivityTotals() {
+      if (!el.actTotals) return;
+      var at = view.actTotals;
+      if (!at) {
+        // 快照没给 activity_totals (老快照) → 整行隐藏, 不留空白行、不自己数行数
+        text(el.actTotals, '');
+        if (el.actTotals.setAttribute) el.actTotals.setAttribute('hidden', '');
+        return;
+      }
+      var en = lang() === 'en';
+      var parts = [];
+      // ① 同源计数 (行数 + 不同任务): 与表里行数同源, 不自己数
+      var rows = num(at.rows);
+      var tasks = num(at.tasks);
+      if (rows != null) {
+        parts.push(en
+          ? rows + (rows === 1 ? ' row' : ' rows') + (tasks != null ? ' / ' + tasks + ' distinct task' + (tasks === 1 ? '' : 's') : '')
+          : rows + ' 行' + (tasks != null ? ' / ' + tasks + ' 个不同任务' : ''));
+      }
+      // ② 上表这批行属于哪条链 (本机 31337 = 本机隔离开发链; 认不出的 chain id 只给数字, 不编网络名)
+      var cis = view.chainScope;
+      if (cis) {
+        var cid = num(cis.activity_chain_id);
+        var clabel = pickBi(cis.activity_chain_label);
+        var pubRows = num(cis.public_network_rows);
+        var net = (en ? 'network: ' : '网络：') + (cid != null ? String(cid) : '—') + (clabel ? '（' + clabel + '）' : '');
+        if (pubRows === 0) net += (en ? ' · no public-network activity' : ' · 不是公网活动');
+        parts.push(net);
+      }
+      // ③ 两套口径的数字不同 → 必须解释 (不许「0 个任务」与「N 行任务」并存而不解释)
+      //    文案不依赖具体页面 (序栏没有表格 → 说「链上索引的 N 行」而不是「本表」)
+      var ts = view.totalsScope;
+      if (ts && ts.differs_from_activity && rows != null && at.source === 'chain-index') {
+        parts.push(en
+          ? 'the tasks / completed / verified / signatures above count pulse events in the 24h window only, while the ' +
+            rows + ' chain-index rows (whole index, not the 24h window) are a different scope — not lost data'
+          : '上方 任务/已完成/已验证/签名 只数 24h 窗口内的脉冲事件，链上索引的 ' +
+            rows + ' 行（全量，不是 24h 窗口）是另一套口径 —— 不是数据丢了');
+      }
+      text(el.actTotals, parts.join(en ? ' · ' : ' · '));
+      // 有内容才显示 (一行都没有就不留空白行)
+      if (parts.length === 0) {
+        if (el.actTotals.setAttribute) el.actTotals.setAttribute('hidden', '');
+      } else if (el.actTotals.removeAttribute) {
+        el.actTotals.removeAttribute('hidden');
+      }
+    }
+
     function renderFeed() {
       if (!el.feed) return;
       clear(el.feed);
@@ -820,11 +881,12 @@ var BOLLOON_IPNS = (function () {
 
     function clearData() {
       view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.sourceKind = null;
+      view.actTotals = null; view.chainScope = null; view.totalsScope = null;
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.signatures, null);
       text(el.snapTime, '—'); text(el.snapAgo, '');
-      renderActivity(); renderFeed(); renderNotes(); renderSites(); renderScope();
+      renderActivity(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderScope();
     }
 
     function applyPayload(payload, state, kind) {
@@ -859,6 +921,14 @@ var BOLLOON_IPNS = (function () {
       // 数据源: 原样读快照给的字符串, 缺就缺 (渲染时写「快照未标注」, 不替它认来源)
       view.actSource = typeof payload.confirmed_activity_source === 'string'
         ? payload.confirmed_activity_source.trim() : '';
+      // 口径行 (与表同源): 只认快照给的 activity_totals / chain_id_scope / totals_scope;
+      // 老快照没有 → 保持 null → 该行整行隐藏 (不自己数行数、不自己造网络名)
+      var at = payload.activity_totals;
+      view.actTotals = (at && typeof at === 'object' && num(at.rows) != null) ? at : null;
+      var cis = payload.chain_id_scope;
+      view.chainScope = (cis && typeof cis === 'object') ? cis : null;
+      var ts = payload.totals_scope;
+      view.totalsScope = (ts && typeof ts === 'object') ? ts : null;
       // 活动流: 与 kind 无关 —— 只认服务端 text {zh,en} (新 kind 直用后端文案, 前端不再造一套)。
       // 没有可显示文案的条目直接丢弃: 宁可不显示一行, 也不渲染空白行 / 不臆造描述。
       // 保留原始双语对象, 语言在 renderFeed 时才取 (切语言重画不串语言)。
@@ -896,7 +966,7 @@ var BOLLOON_IPNS = (function () {
       setOptCount(el.signatures, t.signatures);
       text(el.snapTime, absTime(view.snapAt));
       setState(state);
-      renderScope(); renderActivity(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
+      renderScope(); renderActivity(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
       if (!relTimer) relTimer = setInterval(function () { try { updateRelTimes(); } catch (e) {} }, REL_TICK_MS);
     }
 
@@ -943,6 +1013,7 @@ var BOLLOON_IPNS = (function () {
       sites: function () { return view.sites.slice(); },
       rows: function () { return view.rows.slice(); },
       activitySource: function () { return view.actSource; },
+      activityTotals: function () { return view.actTotals; },
       failCount: function () { return failCount; },
       applyReducedMotion: function () {
         root.setAttribute('data-reduced-motion', isReducedMotion() ? 'true' : 'false');

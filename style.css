@@ -546,6 +546,11 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-fin.is-other, .pulse-fin.is-unknown { color: var(--ink-3); border-style: dashed; }
 .pulse-activity-empty { margin-top: 12px; }
 .pulse-activity-source { margin-top: 10px; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.6px; color: var(--ink-3); }
+/* 口径行 (2026-09-22): 讲清「小结行 (24h 脉冲事件口径)」与「本表 N 行 (链上索引口径)」为什么数字不同,
+   以及这批行属于哪条链。左侧竖线 + 次级字色 —— 它是说明, 不是数据。 */
+.pulse-activity-totals { border-left: 2px solid var(--lime-deep); padding-left: 12px; margin-top: 10px; line-height: 1.7; color: var(--ink-2); max-width: 68em; }
+.pulse-c-totals-line { border-left: 2px solid var(--lime-deep); padding-left: 12px; margin-top: 12px; font-family: var(--mono); font-size: 11.5px; line-height: 1.7; color: var(--ink-3); max-width: 46em; }
+.pulse-compact .pulse-c-totals-line { border-left-width: 1px; padding-left: 10px; max-width: 42em; }
 
 .pulse-feed { list-style: none; }
 .pulse-feed li { display: flex; align-items: baseline; gap: 18px; padding: 10px 0; border-bottom: 1px solid var(--hairline); }

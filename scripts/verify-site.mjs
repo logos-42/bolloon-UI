@@ -31,7 +31,7 @@
  *      缺失 → 小结行整行隐藏, 不编造; 空表要说清 + agent_sites=[] 诚实提示
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=20 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=21 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -40,6 +40,13 @@
  *      加入网络 / Join the Network」; 页面可见文本无 40 位地址 / 64 位哈希
  *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.1.0), 且与线上 .md frontmatter 一致
  *      —— 不再只匹配「1.x.y 形状」(那会漏掉「本机改了、线上没部署」)
+ *   ⑳ 公开页数字不许自相矛盾 (2026-09-22 leo 拍板): 小结行「任务/已完成/已验证/签名」= 24h 脉冲事件口径
+ *      (真快照里是 0), 链上活动表 N 行 = 链上索引口径 —— 两者同屏时, 表格下方**必须**有一行口径行
+ *      (data-pulse-activity-totals) 把行数/不同任务、这批行属于哪条链 (本机 31337 · 不是公网)、
+ *      以及两套口径为什么不同讲明白; 老快照缺这三块 → 整行隐藏 (不自己数行数、不编网络名)。
+ *   ⑳′ 过期假标签防复发: 7 页原始 HTML + 渲染后可见文本 + 导航里都不许再出现
+ *      「尚未接入 / Public observation endpoint not connected」类**现在为假**的文案
+ *      (入口早已接入并在供给 25 行数据); unavailable 态必须说真话 (「快照暂时读不到」+ 真原因)。
  *
  * 活动区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
  * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago
@@ -162,6 +169,11 @@ const pulseProbe = (rootSel) => `(() => {
       emptyShown: empty ? getComputedStyle(empty).display !== 'none' : null,
       emptyText: empty ? empty.textContent.trim() : null,
       source: txt('[data-pulse-activity-source]').trim(),
+      totalsLine: txt('[data-pulse-activity-totals]').trim(),
+      totalsLineShown: (function () {
+        const n = q('[data-pulse-activity-totals]');
+        return n ? getComputedStyle(n).display !== 'none' : null;
+      })(),
     } : null,
     // 旧版网关页的三块内容 (8 个数字格 / 能力分布 / 最近活动) 已不该出现在活动区里
     // (不算 .pulse-sub —— 智能体私有站的标题仍在用这个类)
@@ -451,9 +463,15 @@ async function main() {
       else fulfillJson(p.requestId, FX_EXPIRED);
       return;
     }
-    // 第三档: cMode='full' → FX_LIVE; 'no-tasks' → FX_NO_TASKS (缺 tasks* 且 agent_sites=[])
+    // 第三档: cMode='full' → FX_LIVE; 'no-tasks' → FX_NO_TASKS (缺 tasks* 且 agent_sites=[]);
+    //        'pulse-zero' → FX_PULSE_ZERO (0 任务 + 25 行, 快照自带口径说明);
+    //        'pulse-zero-legacy' → 同形但没有口径三块 (口径行必须整行隐藏)
     if (p.request.url.includes('network-pulse-verify-c')) {
-      fulfillJson(p.requestId, cMode === 'full' ? FX_LIVE : FX_NO_TASKS);
+      fulfillJson(p.requestId,
+        cMode === 'full' ? FX_LIVE
+          : cMode === 'no-tasks' ? FX_NO_TASKS
+            : cMode === 'pulse-zero' ? FX_PULSE_ZERO
+              : FX_PULSE_ZERO_LEGACY);
       return;
     }
     // 第四档: 新事件 kind + 数值变化自动反映 —— 每轮请求都按 growMode 自动回夹具 (不走手工队列),
@@ -600,6 +618,56 @@ async function main() {
     recent_activity: [],
     notes: [],
   };
+  // 「公开页数字不许打架」夹具 (2026-09-22 leo 拍板): 复刻真快照那一幕 ——
+  // 小结行是 totals.tasks=0 / tasks_completed=0 / signatures=0 (24h 脉冲事件口径),
+  // 而 confirmed_activity 有 **25 行** (链上索引口径), 且快照自带 activity_totals (同源计数) +
+  // totals_scope.differs_from_activity + chain_id_scope (本机 31337 · 非公网)。
+  // 页面必须把这两套口径的关系讲在明面上 ——「0 个任务」与「25 行任务」并存而不解释 = 验收失败。
+  const ZERO_TASKS_NOTE = '口径不同, 不是数据丢失: totals.tasks/tasks_completed/tasks_verified/signatures 只数本节点 24h 窗口内的脉冲事件 (本快照 tasks=0 · tasks_completed=0 · tasks_verified=0 · signatures=0); 上表 25 行来自链上索引 (全量, 不是 24h 窗口) —— 同源计数见 activity_totals';
+  const ACT_25 = Array.from({ length: 25 }, (_, i) => ({
+    // 12 个不同任务 (i % 12) × 三种事件 → 与真快照的 25 行 / 12 任务同形
+    task: 'sha256:' + (i % 12 + 16).toString(16).padStart(2, '0').repeat(4),
+    kind: i % 3 === 0 ? 'task_created' : (i % 3 === 1 ? 'task_completed' : 'trade_settled'),
+    state: i % 3 === 1 ? 'active' : (i % 3 === 2 ? 'released' : 'active'),
+    chain_id: 31337, block: 676 - i,
+    tx: 'sha256:' + (i + 48).toString(16).padStart(2, '0').repeat(4),
+    confirmations: 1 + i,
+    finality: i < 4 ? 'confirmed' : 'finalized',
+    at: iso(T0 - i * 60000),
+  }));
+  const FX_PULSE_ZERO = {
+    status: 'live', generated_at: T0 - 60000, fresh_until: T0 + 3600000,
+    scope: 'verified', scope_label: { zh: '网络观察快照', en: 'Verified network snapshot' },
+    totals: { nodes: 3, agents: 4, active_agents: 3, seen_last_24h: 4, tasks: 0, tasks_completed: 0, tasks_verified: 0, signatures: 0 },
+    totals_scope: {
+      source: 'pulse-events', window_ms: 86400000,
+      label: { zh: '只统计本节点 24h 观察窗口内收到的脉冲事件 (本节点自己上报的)', en: 'Only pulse events received by this node within the 24h observation window' },
+      differs_from_activity: true,
+    },
+    confirmed_activity_source: 'chain-index',
+    confirmed_activity: ACT_25,
+    activity_totals: {
+      source: 'chain-index', rows: 25, tasks: 12, tasks_completed: 7, tasks_settled: 6,
+      by_finality: { observed: 0, confirmed: 4, finalized: 21 }, gates: { confirmed: 1, finalized: 12 },
+    },
+    chain_id_scope: {
+      chain_ids: [31337], activity_chain_id: 31337,
+      activity_chain_label: { zh: '本机隔离开发链', en: 'local isolated dev chain' },
+      is_public_network: false, public_network_rows: 0,
+      public_network: { chain_id: 84532, label: { zh: 'Base Sepolia 测试网', en: 'Base Sepolia testnet' } },
+      note: { zh: 'chain_id 归属: 上表 25 行来自 chainId 31337（本机隔离开发链） · 公网链（Base Sepolia 测试网 84532）0 行 —— 这不是公网活动', en: 'chain_id scope: all 25 rows come from chainId 31337' },
+    },
+    agent_sites: [],
+    capabilities: [{ key: 'other', count: 3 }],
+    recent_activity: [],
+    notes: ['多签名来源汇总 (2 个签名节点)', 'confirmed_activity 来自链上索引 (chain-index): 25 行 · 12 个不同任务 · finality 分布 observed=0 / confirmed=4 / finalized=21', ZERO_TASKS_NOTE],
+  };
+  // 老快照 (有 25 行但**没有** activity_totals/totals_scope/chain_id_scope): 口径行必须整行隐藏, 不猜不编
+  const FX_PULSE_ZERO_LEGACY = (() => {
+    const c = { ...FX_PULSE_ZERO };
+    delete c.activity_totals; delete c.totals_scope; delete c.chain_id_scope;
+    return c;
+  })();
   // 下一轮轮询的快照: 一个新 agent 加入 (计数自己变) + 表里多出一条已验证交易
   const FX_GROWN = {
     status: 'live', generated_at: T0 + 60000, fresh_until: T0 + 900000,
@@ -971,8 +1039,8 @@ async function main() {
   await cdp('Fetch.failRequest', { requestId: req4.requestId, errorReason: 'ConnectionRefused' });
   await sleep(800);
   const un = await evalJs(pulseProbe('#pulse'));
-  check('unavailable: 请求失败 → 公开观察入口尚未接入',
-    un.state === 'unavailable' && un.visible.includes('公开观察入口尚未接入') && un.hintShown,
+  check('unavailable: 请求失败 → 快照暂时读不到',
+    un.state === 'unavailable' && un.visible.includes('快照暂时读不到') && un.hintShown,
     JSON.stringify({ s: un.state, v: un.visible, h: un.hintShown }));
   check('unavailable: 提示含 ?pulse= 与本机节点示例',
     un.hint.includes('?pulse=') && un.hint.includes('127.0.0.1:54188'), un.hint.slice(0, 120));
@@ -1002,7 +1070,7 @@ async function main() {
   await sleep(6000);                       // 单次请求超时 = 5s
   const to = await evalJs(pulseProbe('#pulse'));
   check('超时: 请求挂住 6s → 模块自己放弃 (unavailable), 不永久停在 loading',
-    to.state === 'unavailable' && to.visible.includes('公开观察入口尚未接入') && to.act.rowCount === 0,
+    to.state === 'unavailable' && to.visible.includes('快照暂时读不到') && to.act.rowCount === 0,
     JSON.stringify({ s: to.state, v: to.visible }));
   if (reqTimeout) { try { await fulfillJson(reqTimeout.requestId, FX_LIVE); } catch { /* 已 abort, 拦截 id 失效是正常的 */ } }
   await sleep(200);
@@ -1034,9 +1102,36 @@ async function main() {
   const fb = await evalJs(pulseProbe('#pulse'));
   const fbCmd = await evalJs(`(document.getElementById('skill-cmd')||{}).textContent||''`);
   check('回退拿到 404 → unavailable, 页面其它区域仍正常',
-    fb.state === 'unavailable' && fb.visible.includes('公开观察入口尚未接入') && /^read /.test(fbCmd),
+    fb.state === 'unavailable' && fb.visible.includes('快照暂时读不到') && /^read /.test(fbCmd),
     JSON.stringify({ state: fb.state, cmd: fbCmd.slice(0, 40) }));
   await cdp('Fetch.disable');
+
+  // ⑥‴′ 同源**真快照** (无 ?pulse=, 不对真实网络下断言之外的猜测): 线上真数据必须真渲染,
+  //       且「0 个任务 + N 行任务」这类同屏数字必须自带口径解释 —— 这是本页对线上的最终交付断言。
+  console.log('\n[6e] 同源真快照 (无 ?pulse=) → 真行数 + 口径行 + 链归属');
+  const realRaw = await fetchText(`${BASE}/network-pulse.json`);
+  let realObj = null;
+  try { realObj = JSON.parse(realRaw); } catch { realObj = null; }
+  check('同源 network-pulse.json 可读且形状齐 (confirmed_activity + activity_totals + chain_id_scope + totals_scope)',
+    !!realObj && Array.isArray(realObj.confirmed_activity) && !!realObj.activity_totals &&
+    !!realObj.chain_id_scope && !!realObj.totals_scope,
+    realObj ? `rows=${(realObj.confirmed_activity || []).length}` : '读不到 / 不是 JSON');
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
+  await sleep(2000);
+  const real = await evalJs(pulseProbe('#pulse'));
+  const expRows = realObj ? Math.min(realObj.confirmed_activity.length, 60) : -1;   // 前端表格上限 60
+  check('真快照真渲染: 表格行数 = min(快照行数, 60)',
+    real.state === 'live' && expRows > 0 && real.act.rowCount === expRows,
+    JSON.stringify({ s: real.state, rows: real.act.rowCount, exp: expRows }));
+  check('真快照: 数据源 = 链上索引', real.act.source === '链上数据源：链上索引', real.act.source);
+  check('真快照的口径行: 行数与实际一致 + 写明这批行属于哪条链 (不留给读者猜)',
+    real.act.totalsLineShown === true && real.act.totalsLine.includes(expRows + ' 行') &&
+    real.act.totalsLine.includes(String(realObj.chain_id_scope.activity_chain_id)) &&
+    /本机隔离开发链|公网/.test(real.act.totalsLine),
+    real.act.totalsLine);
+  check('★ 真数据反矛盾: 小结行是 0 而表里有行时, 口径行必须把两套口径讲明白 (线上真快照当场验)',
+    !(real.act.rowCount > 0 && real.tasks === '0' && !(real.act.totalsLineShown === true && /24h|24 小时/.test(real.act.totalsLine))),
+    JSON.stringify({ rows: real.act.rowCount, tasks: real.tasks, line: real.act.totalsLine }));
 
   // ⑥′ 聚合计数缺失 + 空表 + agent_sites 为空: 「拿不到就不显示」「空表要说清」「空 ≠ 没数据」
   console.log('\n[6b] 任务计数缺失 + 空表 + 智能体私有站为空 (拿不到就不显示)');
@@ -1066,6 +1161,44 @@ async function main() {
     noT.tasksHidden.sig === true && noT.signatures === '—',
     JSON.stringify({ hidden: noT.tasksHidden.sig, v: noT.signatures }));
   check('缺字段这一轮无 console 错误 / 未捕获异常', consoleErrors.length === cErrStart, consoleErrors.slice(0, 3).join(' | '));
+
+  // ⑥‴ 「0 个任务」与「25 行任务」同屏 —— 页面必须有口径行解释 (2026-09-22 leo 拍板: 不许自相矛盾的展示)
+  console.log('\n[6d′] 0 个任务 与 25 行任务 同屏 → 必须有口径行解释 (不许自相矛盾)');
+  const zErrStart = consoleErrors.length;
+  cMode = 'pulse-zero';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  const zUrl = `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-c.json`)}`;
+  await cdp('Page.navigate', { url: zUrl });
+  await sleep(1500);
+  const pz = await evalJs(pulseProbe('#pulse'));
+  check('25 行真画出来 (与快照 activity_totals.rows 一致)', pz.state === 'live' && pz.act.rowCount === 25,
+    JSON.stringify({ s: pz.state, rows: pz.act.rowCount }));
+  check('小结行如实显示 0 (24h 脉冲事件口径) —— 不为了"好看"改数字',
+    pz.tasks === '0' && pz.tasksDone === '0' && pz.tasksVerified === '0' && pz.signatures === '0',
+    JSON.stringify({ t: pz.tasks, d: pz.tasksDone, v: pz.tasksVerified, sig: pz.signatures }));
+  check('★ 口径行必在: 行数/不同任务 + 两套口径差异 (数字取自快照同源计数)',
+    pz.act.totalsLineShown === true && pz.act.totalsLine.includes('25 行') && pz.act.totalsLine.includes('12 个不同任务') &&
+    pz.act.totalsLine.includes('脉冲事件') && pz.act.totalsLine.includes('链上索引') && pz.act.totalsLine.includes('不是数据丢了'),
+    pz.act.totalsLine);
+  check('★ 口径行写明链归属 (本机隔离开发链 31337 · 不是公网活动) —— 不许读者误读成真网活动',
+    pz.act.totalsLine.includes('31337') && pz.act.totalsLine.includes('本机隔离开发链') && pz.act.totalsLine.includes('不是公网活动'),
+    pz.act.totalsLine);
+  check('★ 反矛盾总断言: 「0 个任务」与「N 行任务」并存时, 页面上必须有解释 (口径行提到 24h 口径)',
+    !(pz.act.rowCount > 0 && pz.tasks === '0' && !(pz.act.totalsLineShown === true && /24h|24 小时/.test(pz.act.totalsLine))),
+    JSON.stringify({ rows: pz.act.rowCount, tasks: pz.tasks, line: pz.act.totalsLine }));
+  check('数据源行仍如实标注 (链上索引)', pz.act.source === '链上数据源：链上索引', pz.act.source);
+  check('口径行这一轮无 console 错误 / 未捕获异常', consoleErrors.length === zErrStart, consoleErrors.slice(0, 3).join(' | '));
+
+  // 老快照 (有 25 行但缺 activity_totals/totals_scope/chain_id_scope) → 口径行整行隐藏, 不自己数行数、不编网络名
+  cMode = 'pulse-zero-legacy';
+  await cdp('Page.navigate', { url: zUrl });
+  await sleep(1500);
+  const pzL = await evalJs(pulseProbe('#pulse'));
+  check('老快照 (缺口径三块) → 口径行整行隐藏 (不自己数行数/不编网络名), 行照旧画 25 行',
+    pzL.state === 'live' && pzL.act.rowCount === 25 && pzL.act.totalsLineShown === false && pzL.act.totalsLine === '',
+    JSON.stringify({ rows: pzL.act.rowCount, shown: pzL.act.totalsLineShown, line: pzL.act.totalsLine }));
+  cMode = 'full';
 
   // ⑥″ IPNS 粘贴框: 真 input + 真按钮, 严格校验, 合法才开新窗口, 本页不发任何网络请求
   console.log('\n[6c] IPNS 粘贴框 (归一化 → 新窗口 / 非法就地报错)');
@@ -1354,8 +1487,8 @@ async function main() {
   await cdp('Fetch.failRequest', { requestId: idxReq3.requestId, errorReason: 'ConnectionRefused' });
   await sleep(800);
   const idxUn = await evalJs(pulseProbe(IDX_ROOT));
-  check('首页 unavailable: 请求失败 → 尚未接入 + 数值清空 + ?pulse= 提示',
-    idxUn.state === 'unavailable' && idxUn.visible.includes('公开观察入口尚未接入') && idxUn.nodes === '—' &&
+  check('首页 unavailable: 请求失败 → 快照暂时读不到 + 数值清空 + ?pulse= 提示',
+    idxUn.state === 'unavailable' && idxUn.visible.includes('快照暂时读不到') && idxUn.nodes === '—' &&
     idxUn.hintShown && idxUn.hint.includes('?pulse=') && idxUn.hint.includes('127.0.0.1:54188'),
     JSON.stringify({ s: idxUn.state, n: idxUn.nodes, h: idxUn.hintShown }));
   let idxBadge = '';
@@ -1431,7 +1564,7 @@ async function main() {
 
   const pair1 = await evalJs(pairProbe);
   check('第二实例取数被拒 → 自己 unavailable 且数值不编造',
-    !pair1.missing && pair1.b.state === 'unavailable' && pair1.b.vis.includes('公开观察入口尚未接入') && pair1.b.nodes === '—',
+    !pair1.missing && pair1.b.state === 'unavailable' && pair1.b.vis.includes('快照暂时读不到') && pair1.b.nodes === '—',
     JSON.stringify(pair1));
   check('第一实例不受影响 (仍 live, 数值 7 未变)',
     !pair1.missing && pair1.a.state === 'live' && pair1.a.vis.includes('实时') && pair1.a.nodes === '7',
@@ -1462,7 +1595,7 @@ async function main() {
     };
   })()`);
   check('第一实例也能独立失败 (A → unavailable, 数值清空, 表格 0 行, 不编造)',
-    pair3.a.state === 'unavailable' && pair3.a.vis.includes('公开观察入口尚未接入') && pair3.a.nodes === '—' && pair3.a.rows === 0,
+    pair3.a.state === 'unavailable' && pair3.a.vis.includes('快照暂时读不到') && pair3.a.nodes === '—' && pair3.a.rows === 0,
     JSON.stringify(pair3.a));
   check('第二实例完全不受第一份失败影响 (仍 stale + 数字 9 + 自己的 scope)',
     pair3.b.state === 'stale' && pair3.b.nodes === '9' && pair3.b.scope === '网络观察快照',
@@ -1489,17 +1622,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=20 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=20 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=21 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=21 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=20');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=21');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=20/.test(html) || !/app\.js\?v=20/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=21/.test(html) || !/app\.js\?v=21/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=20 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=20 + app.js?v=20 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=21 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=21 + app.js?v=21 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计: 旧名 (网络脉冲 / Network pulse / 加入网络) 一个都不该再出现;
@@ -1547,6 +1680,43 @@ async function main() {
       check('首页导航里确实有「链上活动」项 (指向网关页 #pulse)',
         audit.gatewayNav.includes('链上活动'), JSON.stringify(audit.gatewayNav));
     }
+  }
+
+  // ⑲′ 过期假标签防复发 (2026-09-22): 页面与导航里**不得**再出现与事实相反的"尚未接入"类文案 ——
+  //     公开观察入口早已接入 (线上真在供给 25 行链上活动), 说"尚未接入"就是假话。
+  //     扫真站点 7 页: 原始 HTML (含注释/导航) + 渲染后可见文本 + 导航 + unavailable 态文案。
+  console.log('\n[11b] 过期假标签防复发 (页面 + 导航都不许出现"尚未接入"类虚假文案)');
+  const FALSE_LABELS = ['尚未接入', '还没接入', '尚未打通', 'Public observation endpoint not connected', 'observation endpoint not connected'];
+  const falseRaw = [];
+  for (const pg of ALL_PAGES) {
+    const html = await fetchText(`${BASE}/${pg}`);
+    const hits = FALSE_LABELS.filter((w) => html.includes(w));
+    if (hits.length) falseRaw.push(`${pg}:${hits.join('|')}`);
+  }
+  check('7 页原始 HTML (含注释 / 导航 / 静态文案) 都没有"尚未接入"类虚假文案', falseRaw.length === 0, JSON.stringify(falseRaw));
+  for (const pg of ['gateway.html', 'index.html']) {
+    await cdp('Page.navigate', { url: `${BASE}/${pg}` });
+    await sleep(900);
+    const f = await evalJs(`(() => {
+      const labels = ${JSON.stringify(FALSE_LABELS)};
+      const text = document.body.innerText;
+      const nav = Array.from(document.querySelectorAll('.mast-links a')).map((a) => a.textContent.trim()).join(' | ');
+      const un = document.querySelector('.pulse-state-text[data-state="unavailable"]');
+      const hint = document.querySelector('[data-pulse-hint]');
+      return {
+        hits: labels.filter((w) => text.indexOf(w) !== -1),
+        navHits: labels.filter((w) => nav.indexOf(w) !== -1),
+        unavailableText: un ? un.textContent.trim() : null,
+        hintText: hint ? hint.textContent : '',
+      };
+    })()`);
+    check(`${pg} 渲染后: 可见文本与导航都没有"尚未接入"类虚假文案`,
+      f.hits.length === 0 && f.navHits.length === 0, JSON.stringify({ hits: f.hits, navHits: f.navHits }));
+    check(`${pg} unavailable 态文案是真话 (快照暂时读不到), 不是"入口还没接"`,
+      f.unavailableText === '快照暂时读不到', String(f.unavailableText));
+    check(`${pg} unavailable 提示说的是真原因 (签名快照取数失败), 且仍给 ?pulse= 出路`,
+      f.hintText.includes('快照这次没读到') && f.hintText.includes('network-pulse.json') && f.hintText.includes('?pulse='),
+      f.hintText.slice(0, 120));
   }
 
   // console 错误
