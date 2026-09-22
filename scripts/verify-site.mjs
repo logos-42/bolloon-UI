@@ -1391,11 +1391,20 @@ async function main() {
     real.state === 'live' && expRows > 0 && real.act.rowCount === expRows,
     JSON.stringify({ s: real.state, rows: real.act.rowCount, exp: expRows }));
   check('真快照: 数据源 = 链上索引', real.act.source === '链上数据源：链上索引', real.act.source);
+  // 链归属措辞 (2026-09-22 修): 真链数据上线后 8453 用的是「Base 主网」措辞,
+  // 旧正则只认「本机隔离开发链|公网」→ 把真数据判成假红。改为**按链的性质分开要求**(更严):
+  //   公网链 (is_public_network=true) → 必须点明 公网/主网/测试网
+  //   本机链                         → 必须点明 本机隔离开发链
+  const cidScope = realObj.chain_id_scope || {};
+  const cidStr = String(cidScope.activity_chain_id);
+  const chainIsPublic = cidScope.is_public_network === true;
+  const chainWordingOk = chainIsPublic
+    ? /公网|主网|测试网/.test(real.act.totalsLine)
+    : /本机隔离开发链/.test(real.act.totalsLine);
   check('真快照的口径行: 行数与实际一致 + 写明这批行属于哪条链 (不留给读者猜)',
     real.act.totalsLineShown === true && real.act.totalsLine.includes(expRows + ' 行') &&
-    real.act.totalsLine.includes(String(realObj.chain_id_scope.activity_chain_id)) &&
-    /本机隔离开发链|公网/.test(real.act.totalsLine),
-    real.act.totalsLine);
+    real.act.totalsLine.includes(cidStr) && chainWordingOk,
+    JSON.stringify({ line: real.act.totalsLine, cid: cidStr, isPublic: chainIsPublic }));
   check('★ 真数据反矛盾: 小结行是 0 而表里有行时, 口径行必须把两套口径讲明白 (线上真快照当场验)',
     !(real.act.rowCount > 0 && real.tasks === '0' && !(real.act.totalsLineShown === true && /24h|24 小时/.test(real.act.totalsLine))),
     JSON.stringify({ rows: real.act.rowCount, tasks: real.tasks, line: real.act.totalsLine }));
