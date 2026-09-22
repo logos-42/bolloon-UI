@@ -2,15 +2,16 @@
 title: bolloon-UI 当前状态
 source: session
 created: 2026-09-09
-last_confirmed: 2026-09-16
+last_confirmed: 2026-09-22
 audience: self
 stage: draft
-tags: [status, privacy-policy-page, footer-compliance, icons-store-specs]
+tags: [status, privacy-policy-page, footer-compliance, icons-store-specs, on-chain-activity, scoped-counts]
 status: current
 ---
 
 ## 最近更新
 
+- (2026-09-22) **链上活动区去假标签 + 口径行上线（缓存破坏 v=21）**：① 删掉**现在为假**的文案 —— `gateway.html`/`index.html` 共 4 处 `公开观察入口尚未接入`（unavailable 态标签 + 提示首句）+ index 顶部注释 → 改为真话「快照暂时读不到」/「快照这次没读到 — 本站的数据源是签名快照 network-pulse.json」（入口**早已接入**并在真供给 25 行链上活动）。② 新增**口径行** `[data-pulse-activity-totals]`（网关页表格下方 + 首页序栏）：把「上方 任务/已完成/已验证/签名（24h 脉冲事件口径）」与「链上索引 N 行」的关系、以及这批行属于哪条链（31337 本机隔离开发链 · **不是公网活动**）写在明面上；数据取自快照 `activity_totals`/`chain_id_scope`/`totals_scope`，老快照缺这三块 → 整行隐藏。③ `scripts/verify-site.mjs` 加防复发断言：[6d′] 0 任务与 25 行同屏必须有解释、[6e] 同源**真快照**当场验、[11b] 7 页原始 HTML + 渲染文本 + 导航都不得出现"尚未接入"类虚假文案。④ 真跑：本机 **226/0**、部署 `f035d62f.bolloon.pages.dev`、真域名 bolloon.cn **226/0**（`verify-privacy.mjs` 回归 38/0）；线上 dump-dom 实文本：25 行 + 口径行逐字在、「尚未接入」0 次。**未做**：GitHub Pages 通道（需 push，按约定未 push）。
 - (2026-09-19) **Android 0.4.28 发布（品牌迁移后首个 APK）**：`com.hibs.bolloon` 新包名下首个正式签名包 `bolloon-0.4.28.apk`（19,915,587 B / sha256 `d339065a6d6fe397…` / versionCode 28 · versionName 0.4.28 / DN CN=Bolloon），走 **full flavor**（官网直装版，保留无障碍 + Shizuku）。发布三件套：GitHub Release `android-v0.4.28-signed`（asset digest 与本地一致）、同域镜像 `bolloon.cn/dl/bolloon-0.4.28.apk`（200 / Content-Type apk / Length 19,915,587）、`install.html` Android 栏目（直链 + 19.0 MB + 版本 + sha + 校验和/备用下载链接）。CF Pages 部署 `46f89480.bolloon.pages.dev`；iOS 入口未动（仍 `ios-v0.4.24-unsigned`）。
 - (2026-09-16) **已上线 bolloon.cn + 线上验收全绿**：CF Pages direct-upload 部署 **`390e5d0e.bolloon.pages.dev`**（上传 17 文件 / 129 去重，2.4 s）。自定义域立刻生效（`privacy.html` 200 / 20,047 B / 标题「隐私政策 — bolloon」；响应头 `max-age=0, must-revalidate` → **不需要 purge**；`style.css?v=15` 是新 URL 天然绕过缓存）。线上真浏览器验收：`verify-privacy.mjs https://bolloon.cn` **38/38**、`verify-site.mjs https://bolloon.cn` **23/23**；APK 同域镜像 200 / 19,193,025 B 未受影响。顺带把 `deploy-pages.py` 的 `EXCLUDE_DIRS` 加了 **`.kilo`**（本地 git worktree 副本 6.1 MB，旧部署一直公开着 `https://bolloon.cn/.kilo/`=200；已停止上传并实测该路径现在回首页兜底）。**仍未做**：GitHub Pages 通道（需 push 才构建，按约定未 push）；zone 缓存 purge（wrangler OAuth token 只到 `zone (read)`，无 Cache Purge 权限 —— 本次实测不需要）。
 - (2026-09-16) **隐私政策页 privacy.html（应用市场表单要填的那个链接）**：新增 `privacy.html` + 生成器 `scripts/gen-privacy-page.py`（单一来源、可复跑，避免与 App 内摘要/商店表单三处漂移）：七章 + 三张表（数据清单 / 权限 / 第三方服务），中英双语走站点既有 `data-zh/data-en` 机制；事实逐条对着代码写完（无账号体系 · 无统计/崩溃 SDK · 蓝牙 `neverForLocation` · 位置 `maxSdkVersion=30` · 相机不申请 CAMERA · 无障碍与 Shizuku 仅官网直装版 · 境外服务披露 · 注销即时生效 + 最长 7 个工作日 + 链上不可删）。**5 页页脚统一加「隐私政策」链接 + 备案号占位注释块**（备案完成后把注释块展开即公示，链接 beian.miit.gov.cn）；`style.css` 加政策页样式并全站缓存破坏 **v=14 → v=15**。**新增零依赖验收脚本 `scripts/verify-privacy.mjs`（真 Chrome CDP）本地 38/38**（14 个必填要素 + 3 张表 + 中英双语计数一致 + EN 切换真生效 + 5 页页脚链接与备案锚点 + 站内链接全可达 + 无 JS 报错），站点回归 `verify-site.mjs` **23/23** 无退化。
