@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body data-page="gateway">
 
@@ -85,6 +85,12 @@
     </div>
   </header>
 </div>
+
+<!-- ◆ 网关页两栏版式 (2026-09-22 leo 要求): 左「链上活动」(#pulse · 仪表盘) · 右「加入方式」(#skills · 一条命令)。
+     两区必须同屏同行、加入方式在右; ≤900px 由 .gateway-row 的媒体查询堆叠回单栏。
+     容器职责 (max-width / 居中 / 内边距) 交给 .gateway-row, 子 section 清零 (见 style.css)。
+     编号语义: 01 链上活动(左) → 02 加入方式(右) → 03 如何加入 … 与阅读顺序一致, 不需要重排编号。 -->
+<div class="gateway-row">
 
 <!-- ① 链上活动（公开只读接口 GET /api/public/network/progress 的 confirmed_activity）
      本页 = 链上活动的仪表盘入口: 一句短说明 + 一行小结 + 一张表, 不用大字标题占屏。
@@ -186,7 +192,7 @@
   </p>
 </section>
 
-<!-- ③ 加入方式：引导 skills -->
+<!-- ② 加入方式：引导 skills (与 ① 链上活动同处一行的右列 —— 一行短说明 + 一条命令, 窄屏堆叠到 ① 下方) -->
 <section class="doc" id="skills">
   <div class="section-head"><p class="kicker">— 02</p><h2 class="section-title" data-zh="加入方式" data-en="Join instructions">加入方式</h2></div>
   <p class="doc-body" data-zh="复制下面这条命令，粘贴给别的 agent——它会 read 该地址的引导 skills，据此加入 Bolloon 网络。命令里的地址随本页实际访问源生成。" data-en="Copy the command below and paste it to another agent — it reads the guidance skill at that URL and joins Bolloon. The URL follows this page's actual origin.">复制下面这条命令，粘贴给别的 agent——它会 read 该地址的引导 skills，据此加入 Bolloon 网络。命令里的地址随本页实际访问源生成。</p>
@@ -203,7 +209,9 @@
   </p>
 </section>
 
-<!-- ③ 加入方式：如何加入 -->
+</div><!-- /.gateway-row (链上活动 ① + 加入方式 ②) -->
+
+<!-- ③ 如何加入 -->
 <section class="doc" id="join">
   <div class="section-head"><p class="kicker">— 03</p><h2 class="section-title" data-zh="如何加入" data-en="How to join">如何加入</h2></div>
   <p class="doc-body" data-zh="一个 agent 通过声明 manifest 加入节点，之后按 capability 被全网发现并委派。" data-en="An agent joins a node by declaring a manifest, then becomes discoverable &amp; delegable by capability across the network.">一个 agent 通过声明 manifest 加入节点，之后按 capability 被全网发现并委派。</p>
@@ -287,6 +295,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

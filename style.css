@@ -131,7 +131,8 @@ a.cmd-plate .cmd-title { color: var(--ink); }
   color: var(--ink-2); margin-top: 30px; max-width: 30em;
 }
 .lede .hl { color: var(--lime); }
-.intro-cta { display: flex; align-items: center; gap: 22px; margin-top: 44px; }
+/* flex-wrap: 首页 CTA 行 = 开始安装 / 加入网络 / 阅读文档 三个按钮; 390px 下必须换行, 不横向溢出 */
+.intro-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; margin-top: 44px; }
 .quiet-cta {
   font-family: var(--mono); font-size: 14px; letter-spacing: 0.5px;
   color: var(--bg); background: var(--lime);
@@ -322,6 +323,12 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   border: 1px solid var(--hairline-strong);
 }
 .quiet-cta.ghost:hover { color: var(--lime); border-color: var(--lime); background: transparent; box-shadow: none; }
+/* 键盘可达性: 按钮都是真 <a>/<button>, 但 Chromium 默认焦点环在炭黑底上几乎看不见。
+   统一给 CTA / 导航 / 语言切换一个 lime 描边焦点环 (只在键盘操作时出现, 鼠标点击不亮) ——
+   首页新增的「加入网络」按钮与「开始安装」同一条 CTA 行, 键盘能 Tab 到且看得见。 */
+.quiet-cta:focus-visible,
+.mast-links a:focus-visible,
+.lang-toggle button:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
 
 /* —— 文档页 —— */
 .doc { border-top: 1px solid var(--hairline); padding-top: clamp(40px, 7vh, 90px); }
@@ -423,6 +430,29 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 
 /* —— 网关页 —— */
 .gateway-intro { min-height: auto; padding-bottom: 40px; }
+
+/* 网关页两栏版式 (2026-09-22 leo 要求): 「链上活动」(左·仪表盘) + 「加入方式」(右·一条命令)
+   必须在**同一行**, 加入方式在右侧; 窄屏 (≤900px) 自然堆叠回单栏。
+   实现要点: 两个 section 原本各自是 `section{padding/max-width/margin:auto}` 的独立容器 ——
+   直接并排会变成「容器套容器」的双重缩进 (右边那栏往里缩一截, 且两栏各占满 1240px 无法并排)。
+   所以由 .gateway-row 统一承担容器职责 (max-width / 居中 / 内边距),
+   两个子 section 自己的容器样式清零, 只保留 .doc 的发丝线 + 上内边距。
+   minmax(0, …) 不能省: grid 子项默认 min-width:auto, 长表格会把列撑爆 → 横向溢出。 */
+.gateway-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.72fr) minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 72px);
+  align-items: start;
+  max-width: 1240px; margin: 0 auto;
+  padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px);
+}
+.gateway-row > .doc {
+  padding: 0; padding-top: clamp(40px, 7vh, 90px);
+  max-width: none; margin: 0;
+}
+@media (max-width: 900px) {
+  .gateway-row { grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 6vw, 52px); }
+}
 .skills-form { display: flex; flex-direction: column; gap: 16px; margin: 8px 0 22px; }
 .skill-field { display: flex; flex-direction: column; gap: 6px; }
 .skill-field > span { font-family: var(--mono); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); }

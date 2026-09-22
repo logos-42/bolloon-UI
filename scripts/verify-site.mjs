@@ -26,24 +26,36 @@
  *      活动流缺当前语言退回另一种语言 + 相对时间只改文字节点
  *   ⑧ 多实例隔离: 同一页两个 [data-pulse] 实例各自独立取数/降级 (一个失败另一个仍活)
  *   ⑨ 全站 7 页无重复 id
- *   ⑩ 网关页顺序: 链上活动区在「加入方式 / 如何加入」之前 (序厅已删)
+ *   ⑩ 网关页顺序: 链上活动区在「加入方式 / 如何加入」之前 (序厅已删), 且链上活动与加入方式
+ *      同处一行的**左/右两栏** (.gateway-row: 桌面同行 · 加入方式在右, ≤900px 堆叠)
  *   ⑪ 聚合计数「拿不到就不显示」: tasks / tasks_completed / tasks_verified / signatures
  *      缺失 → 小结行整行隐藏, 不编造; 空表要说清 + agent_sites=[] 诚实提示
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=21 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=22 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
  *   ⑰ 数值与表格行变化在下一轮 30s 轮询内自动反映 (新 agent 加入 → 自己变, 页面不刷新)
  *   ⑱ 旧名清除: 7 页原始 HTML + 渲染后可见文本与导航里都没有「网络脉冲 / Network pulse /
- *      加入网络 / Join the Network」; 页面可见文本无 40 位地址 / 64 位哈希
+ *      全球网络脉冲」; 「加入网络」**不是**旧名 (2026-09-22 leo 要的首页 CTA 按钮) ——
+ *      只允许作为首页那一个 <a class="join-network-cta" href="gateway.html"> 出现,
+ *      摘掉该按钮文案后其余位置零命中 (防旧网关序厅 / 旧导航项复发);
+ *      页面可见文本无 40 位地址 / 64 位哈希
  *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.1.0), 且与线上 .md frontmatter 一致
  *      —— 不再只匹配「1.x.y 形状」(那会漏掉「本机改了、线上没部署」)
  *   ⑳ 公开页数字不许自相矛盾 (2026-09-22 leo 拍板): 小结行「任务/已完成/已验证/签名」= 24h 脉冲事件口径
  *      (真快照里是 0), 链上活动表 N 行 = 链上索引口径 —— 两者同屏时, 表格下方**必须**有一行口径行
  *      (data-pulse-activity-totals) 把行数/不同任务、这批行属于哪条链 (本机 31337 · 不是公网)、
  *      以及两套口径为什么不同讲明白; 老快照缺这三块 → 整行隐藏 (不自己数行数、不编网络名)。
+ *   ㉑ 网关页两栏版式 + 首页「加入网络」CTA (2026-09-22 leo 要求, 全部真布局测量):
+ *      #pulse / #skills 同父 (.gateway-row) 且文档顺序 pulse → skills;
+ *      1440px: 两区同一行 (顶边对齐) 且加入方式在链上活动右侧 (右列左边界 ≥ 左列右边界) +
+ *      两栏间距 = 声明的 column-gap; 390px: 加入方式堆叠到链上活动下方 + 同列左右对齐 +
+ *      容器/右列/命令块都不超出视口 (两栏隐藏前后整页横向溢出不变 ⇒ 新两栏不贡献溢出);
+ *      首页「加入网络」= 真 <a href="gateway.html"> 纯文本节点, 位于「开始安装」右侧同一行
+ *      (CTA 顺序 开始安装 → 加入网络 → 阅读文档), 双语文案齐, 切 EN 变 "Join the network";
+ *      真 Tab 键能走到它 (在 Tab 序里) 且焦点环是可见的 lime 2px outline; 390px 换行不溢出。
  *   ⑳′ 过期假标签防复发: 7 页原始 HTML + 渲染后可见文本 + 导航里都不许再出现
  *      「尚未接入 / Public observation endpoint not connected」类**现在为假**的文案
  *      (入口早已接入并在供给 25 行数据); unavailable 态必须说真话 (「快照暂时读不到」+ 真原因)。
@@ -297,6 +309,31 @@ async function main() {
     const r = await cdp('Runtime.evaluate', { expression: code, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.text + ' ' + (r.exceptionDetails.exception?.description || ''));
     return r.result.value;
+  };
+
+  // 等稳定再测量 (2026-09-22 父 agent 定向要求, 治「固定 sleep」会撒谎的毛病):
+  // 渲染慢的那一轮 (实测: 老快照档 rows:0 时探针已取值 = 量到中间态) 用固定 sleep 会偶发假失败,
+  // 也会把「夹具没生效」误报成「页面不对」。这里轮询同一个探针:
+  //   连续两次读数逐字相同 **且** 满足传入的谓词 → 才算稳定, 返回该值;
+  //   超时/谓词始终不满足 → 返回最后一次读数 (断言照旧失败, 但报出来的是真实形态, 不是假的绿)。
+  const waitStable = async (expr, pred, { tries = 40, interval = 150 } = {}) => {
+    let prev, last = null;
+    for (let i = 0; i < tries; i++) {
+      const v = await evalJs(expr).catch(() => null);
+      last = v;
+      if (v !== null && pred(v) && JSON.stringify(v) === JSON.stringify(prev)) return v;
+      prev = v;
+      await sleep(interval);
+    }
+    return last;
+  };
+  // 只等一个布尔条件成立 (不比较两次读数); 超时返回 false。
+  const waitUntil = async (expr, { tries = 40, interval = 150 } = {}) => {
+    for (let i = 0; i < tries; i++) {
+      if ((await evalJs(expr).catch(() => false)) === true) return true;
+      await sleep(interval);
+    }
+    return false;
   };
 
   console.log(`=== bolloon.cn 站点真浏览器验收 (${BASE}) ===\n`);
@@ -1170,8 +1207,8 @@ async function main() {
   await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
   const zUrl = `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-c.json`)}`;
   await cdp('Page.navigate', { url: zUrl });
-  await sleep(1500);
-  const pz = await evalJs(pulseProbe('#pulse'));
+  // 等「状态到 live 且表格真画满 25 行」再断言 —— 固定 sleep 会量到中间态 (实测 rows:0 的假失败)
+  const pz = await waitStable(pulseProbe('#pulse'), (v) => v && v.state === 'live' && v.act.rowCount === 25);
   check('25 行真画出来 (与快照 activity_totals.rows 一致)', pz.state === 'live' && pz.act.rowCount === 25,
     JSON.stringify({ s: pz.state, rows: pz.act.rowCount }));
   check('小结行如实显示 0 (24h 脉冲事件口径) —— 不为了"好看"改数字',
@@ -1193,8 +1230,8 @@ async function main() {
   // 老快照 (有 25 行但缺 activity_totals/totals_scope/chain_id_scope) → 口径行整行隐藏, 不自己数行数、不编网络名
   cMode = 'pulse-zero-legacy';
   await cdp('Page.navigate', { url: zUrl });
-  await sleep(1500);
-  const pzL = await evalJs(pulseProbe('#pulse'));
+  // 同一档换了夹具但 URL 相同, 同样要等「live + 25 行画完」——否则会读到上一轮或中间态
+  const pzL = await waitStable(pulseProbe('#pulse'), (v) => v && v.state === 'live' && v.act.rowCount === 25);
   check('老快照 (缺口径三块) → 口径行整行隐藏 (不自己数行数/不编网络名), 行照旧画 25 行',
     pzL.state === 'live' && pzL.act.rowCount === 25 && pzL.act.totalsLineShown === false && pzL.act.totalsLine === '',
     JSON.stringify({ rows: pzL.act.rowCount, shown: pzL.act.totalsLineShown, line: pzL.act.totalsLine }));
@@ -1498,12 +1535,16 @@ async function main() {
     await sleep(400);
   }
   const idxOthers = await evalJs(`(() => ({
-    cta: document.querySelectorAll('#intro .intro-cta a').length,
+    ctas: Array.from(document.querySelectorAll('#intro .intro-cta a')).map((a) => a.getAttribute('href')),
     year: (document.getElementById('year')||{}).textContent || '',
     capNo: Array.from(document.querySelectorAll('#capabilities .cap-no')).map(e => e.textContent).join(','),
   }))()`);
-  check('首页那份失败不阻断首页其它区域 (序厅 CTA / 能力区 / 徽章 / 页脚正常)',
-    idxOthers.cta === 2 && idxOthers.capNo === '01,02,03' && (!liveVersion || idxBadge === liveVersion) && /^\d{4}$/.test(idxOthers.year),
+  // 序厅 CTA 行现在有 3 个按钮 (开始安装 / 加入网络 → gateway.html / 阅读文档) ——
+  // 断言写成**逐项 href**, 而不是「个数 == 2」这种魔数: 这块要证明的是
+  // 「首页那份取数失败后, 序厅 CTA 行依旧完整渲染」, 不是「按钮永远只有两个」。
+  check('首页那份失败不阻断首页其它区域 (序厅 CTA 行 3 个按钮逐项仍在 / 能力区 / 徽章 / 页脚正常)',
+    JSON.stringify(idxOthers.ctas) === JSON.stringify(['install.html', 'gateway.html', 'docs.html']) &&
+    idxOthers.capNo === '01,02,03' && (!liveVersion || idxBadge === liveVersion) && /^\d{4}$/.test(idxOthers.year),
     JSON.stringify({ ...idxOthers, badge: idxBadge }));
   check('首页那份无 console 错误 / 未捕获异常', consoleErrors.length === idxErrStart, consoleErrors.slice(0, 3).join(' | '));
 
@@ -1622,59 +1663,82 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=21 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=21 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=22 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=22 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=21');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=22');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=21/.test(html) || !/app\.js\?v=21/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=22/.test(html) || !/app\.js\?v=22/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=21 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=21 + app.js?v=21 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=22 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=22 + app.js?v=22 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
-  // ⑫ 命名与可见文本审计: 旧名 (网络脉冲 / Network pulse / 加入网络) 一个都不该再出现;
-  //     页面里也不该有 40 位地址 / 64 位哈希 (长标识一律短写)。
+  // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):
+  //     ① 停用名「网络脉冲 / Network pulse / 全球网络脉冲」全站零出现 (改名不可回退);
+  //     ② 「加入网络」**不再是停用名** —— leo 明确要求首页 CTA 行加一个指向网关页
+  //        (gateway.html) 的「加入网络」按钮。这条断言本来要防的是**旧网关序厅 / 旧导航项**
+  //        (那个已被删除的 `加入网络` 大字 h1 与导航项), 不是防这个按钮。
+  //        所以拆开: 「加入网络」只允许作为首页那一个 <a class="join-network-cta" href="gateway.html">
+  //        出现 —— 原始 HTML 里先把这个标签整体挖掉再看剩下有没有; 渲染后可见文本里先摘掉它的
+  //        中/英标签再扫。摘掉后仍命中 = 页面别处还藏着一个「加入网络」(旧序厅复发) → 失败。
+  //     ③ 页面里也不该有 40 位地址 / 64 位哈希 (长标识一律短写)。
   console.log('\n[11] 旧名清除 + 页面可见文本不含长地址/长哈希');
-  const OLD_NAMES = ['网络脉冲', 'Network pulse', '全球网络脉冲', '加入网络', 'Join the Network'];
-  const nameHits = [], hashHits = [];
+  const DEAD_NAMES = ['网络脉冲', 'Network pulse', '全球网络脉冲'];
+  const JOIN_NAMES = ['加入网络', 'Join the network'];
+  const nameHits = [], hashHits = [], joinRawHits = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const hits = OLD_NAMES.filter((w) => html.includes(w));
+    const hits = DEAD_NAMES.filter((w) => html.includes(w));
     if (hits.length) nameHits.push(`${pg}:${hits.join('|')}`);
+    const stripped = html.replace(/<a[^>]*join-network-cta[^>]*>[\s\S]*?<\/a>/g, '');
+    const jHits = JOIN_NAMES.filter((w) => stripped.includes(w));
+    if (jHits.length) joinRawHits.push(`${pg}:${jHits.join('|')}`);
     if (/\b0x[0-9a-fA-F]{40}\b/.test(html) || /\b[0-9a-fA-F]{64}\b/.test(html)) hashHits.push(pg);
   }
-  check('7 页原始 HTML (含 meta description) 都没有旧名 网络脉冲 / Network pulse / 加入网络 / Join the Network',
+  check('7 页原始 HTML (含 meta description) 都没有旧名 网络脉冲 / Network pulse / 全球网络脉冲',
     nameHits.length === 0, JSON.stringify(nameHits));
+  check('「加入网络」在 7 页原始 HTML 里只出现在首页那个 CTA 按钮标签内 (其余 6 页 / 其余位置零出现)',
+    joinRawHits.length === 0, JSON.stringify(joinRawHits));
   check('7 页原始 HTML 都没有 40 位地址 / 64 位哈希', hashHits.length === 0, JSON.stringify(hashHits));
   for (const pg of ['gateway.html', 'index.html']) {
     await cdp('Page.navigate', { url: `${BASE}/${pg}` });
     await sleep(900);
     const audit = await evalJs(`(() => {
-      const olds = ${JSON.stringify(OLD_NAMES)};
-      const text = document.body.innerText;
+      const deads = ${JSON.stringify(DEAD_NAMES)};
+      const joins = ${JSON.stringify(JOIN_NAMES)};
+      const raw = document.body.innerText;
       const nav = Array.from(document.querySelectorAll('.mast-links a')).map((a) => a.textContent.trim()).join(' | ');
+      // 首页 CTA 上那个「加入网络」按钮的文案不算旧名 —— 先把它从文本里摘掉再扫。
+      // 摘掉后仍命中「加入网络」= 页面别处还藏着一个 (旧序厅复发) → 失败。
+      const cta = document.querySelector('a.join-network-cta');
+      const text = cta ? raw.split(cta.textContent.trim()).join('') : raw;
       return {
         nav: nav,
-        hits: olds.filter((w) => text.indexOf(w) !== -1),
-        navHits: olds.filter((w) => nav.indexOf(w) !== -1),
+        hits: deads.filter((w) => raw.indexOf(w) !== -1),
+        joinHits: joins.filter((w) => text.indexOf(w) !== -1),
+        navHits: deads.concat(joins).filter((w) => nav.indexOf(w) !== -1),
         h1: Array.from(document.querySelectorAll('h1')).map((e) => e.textContent.trim()),
+        titles: Array.from(document.querySelectorAll('.section-title')).map((e) => e.textContent.trim()),
         gatewayNav: Array.from(document.querySelectorAll('.mast-links .nav-menu a')).map((a) => a.textContent.trim()),
-        longAddr: /\\b0x[0-9a-fA-F]{40}\\b/.test(text),
-        longHash: /\\b[0-9a-fA-F]{64}\\b/.test(text),
+        longAddr: /\\b0x[0-9a-fA-F]{40}\\b/.test(raw),
+        longHash: /\\b[0-9a-fA-F]{64}\\b/.test(raw),
       };
     })()`);
     check(`${pg} 渲染后: 可见文本 + 导航(含下拉) 都没有旧名 (导航项: ${String(audit.nav).slice(0, 90)})`,
       audit.hits.length === 0 && audit.navHits.length === 0, JSON.stringify({ hits: audit.hits, navHits: audit.navHits, nav: audit.nav }));
+    check(`${pg} 渲染后: 「加入网络」只作为首页 CTA 按钮出现 (摘掉按钮文案后零命中)`,
+      audit.joinHits.length === 0, JSON.stringify(audit.joinHits));
     check(`${pg} 渲染后: 可见文本没有 40 位地址 / 64 位哈希`,
       audit.longAddr === false && audit.longHash === false, JSON.stringify({ a: audit.longAddr, h: audit.longHash }));
     if (pg === 'gateway.html') {
       check('网关页导航里确实有「链上活动」项 (是改名, 不是删掉)',
         audit.gatewayNav.includes('链上活动'), JSON.stringify(audit.gatewayNav));
-      check('网关页 h1 不再是「加入网络」序厅大字 (页面以链上活动为主体)',
-        audit.h1.every((t) => !/加入网络/.test(t)), JSON.stringify(audit.h1));
+      check('网关页 h1 / 各区标题都不再是「加入网络」序厅 (页面以链上活动为主体)',
+        audit.h1.every((t) => !/加入网络/.test(t)) && audit.titles.every((t) => !/加入网络/.test(t)),
+        JSON.stringify({ h1: audit.h1, titles: audit.titles }));
     }
     if (pg === 'index.html') {
       check('首页导航里确实有「链上活动」项 (指向网关页 #pulse)',
@@ -1718,6 +1782,166 @@ async function main() {
       f.hintText.includes('快照这次没读到') && f.hintText.includes('network-pulse.json') && f.hintText.includes('?pulse='),
       f.hintText.slice(0, 120));
   }
+
+  // ⑬ 网关页两栏版式 + 首页「加入网络」CTA (2026-09-22 leo 要求):
+  //    ① gateway.html: 「加入方式」(#skills) 必须在「链上活动」(#pulse) **右侧**,
+  //       桌面下两者同一行 (链上活动 | 加入方式), 窄屏 (390px) 堆叠且不溢出;
+  //    ② index.html: hero CTA 行新增「加入网络」按钮, 位置在「开始安装」**右侧**,
+  //       指向 gateway.html, 双语, 真 <a> + 键盘 Tab 可达 + 焦点环可见。
+  //    全部用真布局测量 (getBoundingClientRect + 真 Tab 键), 不看 CSS 声明猜。
+  console.log('\n[12] 网关页两栏 (链上活动 左 · 加入方式 右) + 首页「加入网络」按钮');
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
+  // 等第一轮取数落地 (state 不再是 loading) 且布局两次读数一致再测量 —— 不用固定 sleep
+  const duo = await waitStable(`(() => {
+    const p = document.getElementById('pulse'), s = document.getElementById('skills');
+    if (!p || !s) return null;
+    const row = p.parentElement;
+    const kick = (el) => { const k = el.querySelector('.section-head .kicker'); return k ? k.textContent.trim() : null; };
+    return {
+      sameParent: row === s.parentElement,
+      rowClass: row.className,
+      rowIsDiv: row.tagName === 'DIV',
+      pulseBeforeSkills: !!(p.compareDocumentPosition(s) & 4),
+      ids: Array.from(document.querySelectorAll('section[id]')).map((x) => x.id),
+      pulseKicker: kick(p), skillsKicker: kick(s),
+      pulseTitle: p.querySelector('.section-title').textContent.trim(),
+      skillsTitle: s.querySelector('.section-title').textContent.trim(),
+      pulseState: p.getAttribute('data-pulse-state'),
+    };
+  })()`, (v) => v && v.sameParent === true && v.pulseBeforeSkills === true && v.pulseState !== 'loading');
+  check('gateway.html: #pulse 与 #skills 是同一个容器 (.gateway-row) 的两个子项 (两栏版式的地基)',
+    !!duo && duo.sameParent && duo.rowIsDiv && /gateway-row/.test(duo.rowClass), JSON.stringify(duo && { same: duo.sameParent, cls: duo.rowClass }));
+  check('gateway.html: 文档顺序仍是 pulse → skills (锚点 / 导航下拉 / 分节顺序都不变)',
+    !!duo && duo.pulseBeforeSkills === true &&
+    JSON.stringify(duo.ids) === JSON.stringify(['pulse', 'skills', 'join', 'manifest', 'endpoints', 'developer']),
+    JSON.stringify(duo && duo.ids));
+  check('gateway.html: 编号语义自洽 (左 01 链上活动 · 右 02 加入方式, 左→右即阅读顺序)',
+    !!duo && /01/.test(duo.pulseKicker || '') && /02/.test(duo.skillsKicker || '') &&
+    duo.pulseTitle === '链上活动' && duo.skillsTitle === '加入方式',
+    JSON.stringify(duo && [duo.pulseKicker, duo.pulseTitle, duo.skillsKicker, duo.skillsTitle]));
+
+  // 桌面 1440: 两区同一行, 加入方式在右 (真测量, 等稳定)
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  const desk = await waitStable(`(() => {
+    const box = (el) => { const b = el.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top), b: Math.round(b.bottom), w: Math.round(b.width) }; };
+    const p = document.getElementById('pulse'), s = document.getElementById('skills');
+    const row = p.parentElement;
+    const pr = box(p), sr = box(s), rr = box(row), cs = getComputedStyle(row);
+    return { vw: window.innerWidth, pr, sr, rr, display: cs.display, cols: cs.gridTemplateColumns.split(' ').length,
+      gap: Math.round(parseFloat(cs.columnGap)), sameRow: Math.abs(pr.t - sr.t) <= 8,
+      rightOfPulse: sr.l >= pr.r, rowInViewport: rr.r <= window.innerWidth + 1,
+      pulseState: p.getAttribute('data-pulse-state') };
+  })()`, (v) => v && v.display === 'grid' && v.cols === 2 && v.sameRow === true && v.rightOfPulse === true && v.pulseState !== 'loading');
+  check(`1440px: 链上活动与加入方式同一行且加入方式在右侧 (链上活动 x ${desk.pr.l}→${desk.pr.r} · 加入方式 x ${desk.sr.l}→${desk.sr.r} · 顶 y ${desk.pr.t}/${desk.sr.t} · 列宽 ${desk.pr.w}/${desk.sr.w}px)`,
+    desk.display === 'grid' && desk.cols === 2 && desk.sameRow === true && desk.rightOfPulse === true && desk.rowInViewport === true,
+    JSON.stringify(desk));
+  check('1440px: 两栏之间确有一段横向间隔 (不是靠负 margin 叠出来的假并排)',
+    Math.abs(desk.sr.l - desk.pr.r - desk.gap) <= 1 && desk.gap >= 20, JSON.stringify({ gapDeclared: desk.gap, measured: desk.sr.l - desk.pr.r }));
+
+  // 窄屏 390: 堆叠 (加入方式落到链上活动下方) + 不贡献横向溢出
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  const narrow = await waitStable(`(() => {
+    const box = (el) => { const b = el.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top), b: Math.round(b.bottom), w: Math.round(b.width) }; };
+    const p = document.getElementById('pulse'), s = document.getElementById('skills');
+    const row = p.parentElement;
+    const pr = box(p), sr = box(s), rr = box(row);
+    const de = document.documentElement;
+    const overAll = de.scrollWidth - de.clientWidth;
+    const prev = row.style.display; row.style.display = 'none';
+    const overNoRow = de.scrollWidth - de.clientWidth;
+    row.style.display = prev;
+    const cmd = document.querySelector('#skills .skill-cmd');
+    const cmdBox = cmd ? box(cmd) : null;
+    return { vw: window.innerWidth, pr, sr, rr, cols: getComputedStyle(row).gridTemplateColumns,
+      stacked: sr.t >= pr.b, sameLeft: Math.abs(sr.l - pr.l) <= 1 && Math.abs(sr.r - pr.r) <= 1,
+      rowInViewport: rr.r <= window.innerWidth + 1 && sr.r <= window.innerWidth + 1,
+      overAll, overNoRow, cmdBox,
+      cmdOverflow: cmd ? cmd.scrollWidth - cmd.clientWidth : null,
+      pulseState: p.getAttribute('data-pulse-state') };
+  })()`, (v) => v && v.stacked === true && v.cols.split(' ').length === 1 && v.sameLeft === true && v.pulseState !== 'loading');
+  check(`390px: 加入方式堆叠到链上活动下方 (链上活动 y ${narrow.pr.t}→${narrow.pr.b} · 加入方式 y ${narrow.sr.t}→${narrow.sr.b})`,
+    narrow.stacked === true && narrow.cols.split(' ').length === 1 && narrow.sameLeft === true, JSON.stringify(narrow));
+  check(`390px: 两栏容器与右列都不超出视口 (容器 x→${narrow.rr.r} · 右列 x→${narrow.sr.r} · 视口 ${narrow.vw}px), 命令块不横向溢出 (${narrow.cmdOverflow}px)`,
+    narrow.rowInViewport === true && narrow.cmdOverflow === 0, JSON.stringify({ rr: narrow.rr, sr: narrow.sr, cmd: narrow.cmdBox, over: narrow.cmdOverflow }));
+  check(`390px: 两栏自身不贡献页面横向溢出 (整页溢出 隐藏容器前 ${narrow.overAll}px / 后 ${narrow.overNoRow}px —— 老底噪在顶栏, 与新两栏无关)`,
+    narrow.overAll === narrow.overNoRow, JSON.stringify({ overAll: narrow.overAll, overNoRow: narrow.overNoRow }));
+  await cdp('Emulation.clearDeviceMetricsOverride');
+  await sleep(200);
+
+  // 首页 CTA: 「加入网络」按钮在「开始安装」右侧、指向网关页、双语、键盘可达
+  await cdp('Page.navigate', { url: `${BASE}/index.html` });
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  const cta = await waitStable(`(() => {
+    const box = (el) => { const b = el.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top), w: Math.round(b.width) }; };
+    const row = document.querySelector('.intro-cta');
+    const join = document.querySelector('a.join-network-cta');
+    if (!row || !join) return { row: !!row, join: !!join };
+    const install = Array.from(row.querySelectorAll('a')).filter((a) => /开始安装/.test(a.textContent))[0];
+    const jr = box(join), ir = install ? box(install) : null;
+    return { tag: join.tagName, href: join.getAttribute('href'), text: join.textContent.trim(),
+      zh: join.getAttribute('data-zh'), en: join.getAttribute('data-en'), kids: join.childNodes.length,
+      order: Array.from(row.querySelectorAll('a')).map((a) => a.textContent.trim()),
+      jr, ir, rightOfInstall: !!ir && jr.l >= ir.r - 1, sameRowAsInstall: !!ir && Math.abs(jr.t - ir.t) <= 8,
+      tabIndex: join.tabIndex, isAnchor: join.tagName === 'A',
+      inViewport: box(row).r <= window.innerWidth + 1,
+      hasArrowKid: !!join.querySelector('span, em, i, b') };
+  })()`, (v) => v && v.isAnchor === true && v.rightOfInstall === true && v.sameRowAsInstall === true && v.kids === 1);
+  check('首页 hero CTA 行里有「加入网络」按钮 (真 <a>, href=gateway.html, 纯文本节点)',
+    cta.isAnchor === true && cta.href === 'gateway.html' && cta.kids === 1 && cta.text === '加入网络' && cta.hasArrowKid === false,
+    JSON.stringify({ tag: cta.tag, href: cta.href, text: cta.text, kids: cta.kids }));
+  check(`首页: 「加入网络」在「开始安装」右侧且同一行 (开始安装 x→${cta.ir && cta.ir.r} · 加入网络 x ${cta.jr && cta.jr.l}→${cta.jr && cta.jr.r} · 顶 y ${cta.ir && cta.ir.t}/${cta.jr && cta.jr.t})`,
+    cta.rightOfInstall === true && cta.sameRowAsInstall === true,
+    JSON.stringify({ order: cta.order, ir: cta.ir, jr: cta.jr }));
+  check('首页 CTA 顺序 = 开始安装 → 加入网络 → 阅读文档 (加入网络插在安装右侧, 文档仍在最后)',
+    JSON.stringify(cta.order) === JSON.stringify(['开始安装 →', '加入网络', '阅读文档']), JSON.stringify(cta.order));
+  check('首页「加入网络」双语属性齐 (data-zh/data-en), 切 EN 后文字真的变英文且不丢结构',
+    cta.zh === '加入网络' && cta.en === 'Join the network' && cta.href === 'gateway.html', JSON.stringify({ zh: cta.zh, en: cta.en }));
+
+  // 真键盘: 按 Tab 直到焦点落到「加入网络」—— 证明它在 Tab 序里 (不是只能鼠标点), 且焦点环可见
+  await cdp('Page.bringToFront').catch(() => {});
+  await waitUntil(`document.readyState === 'complete' && !!document.querySelector('a.join-network-cta')`);
+  await evalJs(`(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return 1; })()`);
+  let tabbed = null, tabSteps = 0;
+  for (let i = 0; i < 40 && !tabbed; i++) {
+    await cdp('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
+    await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
+    await sleep(70);
+    tabSteps = i + 1;
+    tabbed = await evalJs(`(() => { const a = document.activeElement; return a && a.classList && a.classList.contains('join-network-cta') ? a.textContent.trim() : null; })()`);
+  }
+  const focusRing = await evalJs(`(() => { const a = document.activeElement; const cs = getComputedStyle(a); return { cls: a.className, text: a.textContent.trim(), style: cs.outlineStyle, width: cs.outlineWidth, color: cs.outlineColor, offset: cs.outlineOffset }; })()`);
+  check(`首页「加入网络」在真实 Tab 序里 (第 ${tabSteps} 次 Tab 到达, 焦点落在 ${JSON.stringify(focusRing.text)})`,
+    tabbed === '加入网络', JSON.stringify({ tabbed, tabSteps }));
+  check(`首页「加入网络」键盘焦点环可见 (outline ${focusRing.style} ${focusRing.width} ${focusRing.color})`,
+    focusRing.style === 'solid' && focusRing.width === '2px' && /196,\s*214,\s*64/.test(focusRing.color), JSON.stringify(focusRing));
+
+  const ctaEn = await evalJs(`(() => { document.querySelector('.lang-toggle [data-lang="en"]').click(); const j = document.querySelector('a.join-network-cta'); return { text: j.textContent.trim(), kids: j.childNodes.length, href: j.getAttribute('href') }; })()`);
+  check('首页「加入网络」切 EN 后 = Join the network (仍是同一个 gateway.html 链接)',
+    ctaEn.text === 'Join the network' && ctaEn.kids === 1 && ctaEn.href === 'gateway.html', JSON.stringify(ctaEn));
+  await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
+  await sleep(250);
+
+  // 390px: 三个按钮换行且不溢出 (CTA 行 flex-wrap)
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  const ctaMob = await waitStable(`(() => {
+    const box = (el) => { const b = el.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top) }; };
+    const row = document.querySelector('.intro-cta');
+    const de = document.documentElement;
+    const overAll = de.scrollWidth - de.clientWidth;
+    const prev = row.style.display; row.style.display = 'none';
+    const overNoRow = de.scrollWidth - de.clientWidth;
+    row.style.display = prev;
+    const items = Array.from(row.querySelectorAll('a')).map((a) => Object.assign({ text: a.textContent.trim() }, box(a)));
+    return { vw: window.innerWidth, wrap: getComputedStyle(row).flexWrap, rr: box(row), items,
+      rowInViewport: box(row).r <= window.innerWidth + 1 && items.every((i) => i.r <= window.innerWidth + 1),
+      overAll, overNoRow };
+  })()`, (v) => v && v.wrap === 'wrap' && v.rowInViewport === true && v.items.length === 3);
+  check(`390px: CTA 行换成多行且三个按钮都在视口内 (flex-wrap: ${ctaMob.wrap}; ${ctaMob.items.map((i) => `${i.text} x→${i.r}`).join(' · ')})`,
+    ctaMob.wrap === 'wrap' && ctaMob.rowInViewport === true, JSON.stringify(ctaMob));
+  check(`390px: CTA 行本身不贡献横向溢出 (整页溢出 隐藏 CTA 行前 ${ctaMob.overAll}px / 后 ${ctaMob.overNoRow}px)`,
+    ctaMob.overAll === ctaMob.overNoRow, JSON.stringify({ a: ctaMob.overAll, b: ctaMob.overNoRow }));
+  await cdp('Emulation.clearDeviceMetricsOverride');
+  await sleep(200);
 
   // console 错误
   check('整轮访问无 console 错误 / 未捕获异常', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

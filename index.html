@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body data-page="product">
 
@@ -88,6 +88,11 @@
     </p>
     <div class="intro-cta">
       <a class="quiet-cta" href="install.html">开始安装 <span aria-hidden="true">→</span></a>
+      <!-- 网关入口按钮 (class=join-network-cta): 通往 agent 网关页 (链上活动 + 加入方式),
+           坐在「开始安装」右侧。纯文本节点 + data-zh/data-en, applyLang 直接换文字
+           (不带子元素, 不会丢箭头)。2026-09-22 leo 要求恢复此按钮, href=gateway.html;
+           它与已删除的网关页序厅/旧导航项无关 (验收脚本 [11] 只允许它这一处出现该中文短语)。 -->
+      <a class="quiet-cta ghost join-network-cta" href="gateway.html" data-zh="加入网络" data-en="Join the network">加入网络</a>
       <a class="quiet-cta ghost" href="docs.html">阅读文档</a>
     </div>
 
@@ -216,6 +221,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>
