@@ -93,10 +93,30 @@ function resolveChrome() {
   return null;
 }
 
-let passed = 0, failed = 0;
+let passed = 0, failed = 0, skipped = 0, fxFailures = 0;
+
+// 显式跳过 (只给「本环境本来就不该跑」的断言用): 必须打印 + 单独计数, 不许默默跳过、不许假装通过。
+// 目前全脚本用 0 次 —— 理由: 「靠 CDP Fetch 注入夹具」与站点来源无关 (拦截发生在浏览器网络栈里,
+// 对 127.0.0.1 与真域名语义相同), 真域名上从来没有「夹具断言不该跑」这回事, 只有过
+// 「拦截没命中 → 夹具没生效」这一种真实故障。故障要明确报出来 (见 fxSelfProof), 不是该跳过的项。
+const skip = (name, why) => { skipped++; console.log(`  ⏭️  [显式跳过] ${name} — ${why}`); };
+
+// 当前断言的夹具自证结论 (null = 本节断言不吃夹具)。
+// 夹具没生效时, 失败的断言必须归因到「夹具错」, 不能让读者以为页面坏了 —— 这就是本节的唯一目的。
+let fxNow = null;
 const check = (name, ok, detail = '') => {
-  if (ok) { passed++; console.log(`  ✅ ${name}`); }
-  else { failed++; console.log(`  ❌ ${name}${detail ? ` — ${detail}` : ''}`); }
+  if (ok) { passed++; console.log(`  ✅ ${name}`); return; }
+  failed++;
+  if (fxNow && fxNow.delivered === false) {
+    // 夹具错: 自证没过 (拦截未命中 / 夹具没送达) → 本条失败不代表页面有缺陷
+    fxFailures++;
+    console.log(`  ❌ [夹具错 · 未生效] ${name} — 夹具没生效(${fxNow.reason}); 本条不是页面缺陷` +
+      `${detail ? ` · 现场取值: ${detail}` : ''}`);
+    return;
+  }
+  // 夹具已自证生效 (跑完 fxSelfProof 的三道证, 见输出的「🔒 夹具自证 ✔」行) → 此时失败才真的是页面错
+  const tag = fxNow && fxNow.delivered === true ? '[页面错] ' : '';
+  console.log(`  ❌ ${tag}${name}${detail ? ` — ${detail}` : ''}`);
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -488,22 +508,61 @@ async function main() {
   let cMode = 'full';
   // 新事件 kind / 30s 轮询自动更新 夹具 (第四档) 的开关: base → 新 kind 快照; grown → 新 agent 加入后的快照
   let growMode = 'base';
+
+  // ——— 夹具自证的取证通道 (只记账, 不改拦截行为) ———
+  // 为什么需要: 靠拦截换夹具的断言, 一旦拦截没命中 (请求被放行去了 CDN / 命中缓存 / 超时),
+  // 页面拿到的就是**真快照** —— 那种 DOM 形态与「页面坏了」一模一样, 红的时候分不清谁错。
+  // 这里把「拦到什么、回了哪一份、还是压根没拦住」逐条记下来, 断言前的自证 (fxSelfProof)
+  // 和失败消息都从这里取证 (请求 URL / 拦截模式 / 是否 CDN 接管)。
+  const fxServed = new Map();      // tag → 拦截命中并回了这份夹具的次数 (页面自己的取数请求)
+  const fxServedUrls = new Map();  // tag → 最后一次回夹具的请求 URL
+  const fxFailed = new Map();      // tag → 我方**故意** failRequest 的次数 (unavailable 档夹具)
+  const fxDiag = [];               // 最近 10 条拦截记录 (报错时一起打印)
+  let fxFetchOn = false;           // CDP Fetch.enable 是否已发 (拦截链路的前置条件)
+  let fxPattern = null;            // 当前拦截模式
+  const fxClock = () => new Date().toISOString().slice(11, 19);
+  const fxLog = (line) => { fxDiag.push(`${fxClock()} ${line}`); if (fxDiag.length > 10) fxDiag.shift(); };
+  const fxHit = (tag, url) => { fxServed.set(tag, (fxServed.get(tag) || 0) + 1); fxServedUrls.set(tag, url); };
+  const fxFailHit = (tag, url) => { fxFailed.set(tag, (fxFailed.get(tag) || 0) + 1); fxServedUrls.set(tag, url); };
+  const shortUrl = (u) => String(u || '').replace(/^https?:\/\//, '').slice(0, 96);
+
   on('Fetch.requestPaused', (p) => {
+    // 自证探针优先: 不受本节 shouldIntercept 开关影响, 也永不进手工队列。
+    // 探针 URL 与夹具同 pattern (network-pulse-verify*) —— 它拿回 marker ⇒ 拦截链路对这类 URL 是活的。
+    if (p.request.url.includes('network-pulse-verify-probe')) {
+      const m = /[?&]tag=([^&]+)/.exec(p.request.url);
+      const tag = m ? decodeURIComponent(m[1]) : 'unknown';
+      fxLog(`探针命中 → 回探针夹具 marker=probe:${tag}`);
+      fulfillJson(p.requestId, { __verify_fixture: 'probe:' + tag, probe_tag: tag, served_at: Date.now() });
+      return;
+    }
     // 文档请求也命中 pattern (URL 里带着 ?pulse=<夹具地址>), 必须放行, 否则 Page.navigate 不返回
     if (p.resourceType === 'Document' || !shouldIntercept(p)) {
+      if (p.resourceType !== 'Document') fxLog(`放行(未拦) ${shortUrl(p.request.url)}`);
       cdp('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {});
       return;
     }
     // 第二实例的来源: 按 bMode 直接失败或回过期夹具 (不走手工队列)
     if (p.request.url.includes('network-pulse-verify-b')) {
-      if (bMode === 'fail') cdp('Fetch.failRequest', { requestId: p.requestId, errorReason: 'ConnectionRefused' }).catch(() => {});
-      else fulfillJson(p.requestId, FX_EXPIRED);
+      if (bMode === 'fail') {
+        fxFailHit('b-fail', p.request.url);
+        fxLog(`B 档 → 我方故意 failRequest (ConnectionRefused) ${shortUrl(p.request.url)}`);
+        cdp('Fetch.failRequest', { requestId: p.requestId, errorReason: 'ConnectionRefused' }).catch(() => {});
+      } else {
+        fxHit('expired-b', p.request.url);
+        fxLog(`B 档 → 回过期夹具 (expired-b) ${shortUrl(p.request.url)}`);
+        fulfillJson(p.requestId, FX_EXPIRED);
+      }
       return;
     }
     // 第三档: cMode='full' → FX_LIVE; 'no-tasks' → FX_NO_TASKS (缺 tasks* 且 agent_sites=[]);
     //        'pulse-zero' → FX_PULSE_ZERO (0 任务 + 25 行, 快照自带口径说明);
     //        'pulse-zero-legacy' → 同形但没有口径三块 (口径行必须整行隐藏)
     if (p.request.url.includes('network-pulse-verify-c')) {
+      const tag = cMode === 'full' ? 'live' : cMode === 'no-tasks' ? 'no-tasks'
+        : cMode === 'pulse-zero' ? 'pulse-zero' : 'pulse-zero-legacy';
+      fxHit(tag, p.request.url);
+      fxLog(`C 档 (${cMode}) → 回夹具 ${tag}`);
       fulfillJson(p.requestId,
         cMode === 'full' ? FX_LIVE
           : cMode === 'no-tasks' ? FX_NO_TASKS
@@ -514,14 +573,20 @@ async function main() {
     // 第四档: 新事件 kind + 数值变化自动反映 —— 每轮请求都按 growMode 自动回夹具 (不走手工队列),
     // 这样 30s 自动轮询拿到的是「新 agent 加入后」的快照, 而验收无需手动触发 refresh。
     if (p.request.url.includes('network-pulse-verify-grow')) {
+      const tag = growMode === 'grown' ? 'grown' : 'newkinds';
+      fxHit(tag, p.request.url);
+      fxLog(`Grow 档 (${growMode}) → 回夹具 ${tag}`);
       fulfillJson(p.requestId, growMode === 'grown' ? FX_GROWN : FX_NEWKINDS);
       return;
     }
     // 「让第一个实例失败」开关
     if (aFail && p.request.url.includes('network-pulse-verify.json')) {
+      fxFailHit('a-fail', p.request.url);
+      fxLog(`A 档 → 我方故意 failRequest (aFail) ${shortUrl(p.request.url)}`);
       cdp('Fetch.failRequest', { requestId: p.requestId, errorReason: 'ConnectionRefused' }).catch(() => {});
       return;
     }
+    fxLog(`进手工队列 (等验收侧 fulfill) ${shortUrl(p.request.url)}`);
     const w = pausedWaiters.shift();
     if (w) w(p); else pausedQueue.push(p);
   });
@@ -541,6 +606,12 @@ async function main() {
     ],
     body: Buffer.from(JSON.stringify(obj), 'utf8').toString('base64'),
   });
+  // CDP Fetch 开关的唯一入口 (记账用: 自证要报「拦截模式 / Fetch 是否已开」)
+  const fxEnable = async (pattern) => {
+    await cdp('Fetch.enable', { patterns: [{ urlPattern: pattern, requestStage: 'Request' }] });
+    fxFetchOn = true; fxPattern = pattern;
+  };
+  const fxDisable = async () => { await cdp('Fetch.disable'); fxFetchOn = false; };
 
   const T0 = Date.now();
   // 活动文本故意带 <b>: 用它证明渲染走 textContent 而不是 innerHTML
@@ -732,12 +803,152 @@ async function main() {
     notes: [],
   };
 
+  // ═══════════════ 夹具自证: 让这一节的门**不会撒谎** ═══════════════
+  // 病灶 (2026-09-22 实测): 靠 CDP Fetch 拦快照请求换夹具的断言, 一旦拦截没命中
+  // (请求被放行到线上 / 命中 CDN 缓存 / 页面太慢还没渲染), 页面拿到的是**真快照** ——
+  // 那时 DOM 的形态与「页面坏了」长得一模一样 (rows:0 / [] ), 红的时候分不清谁错。
+  // 处方: 每次注夹具后、断言之前, 先过三道证, 拿不到就在断言前明确失败并给出可操作信息:
+  //   ① 送达证 (拦截器侧): 页面自己的取数请求被拦住, 且我们回给它的就是带 marker 的这份夹具
+  //   ② 链路证 (页面侧): 在页面里 fetch 一个同 pattern 的探针 URL, 必须拿回带 marker 的 JSON
+  //                       —— 拿不到 = 拦截链路整体没生效 → 报「夹具未生效(拦截未命中)」
+  //   ③ 消费证 (DOM 侧): DOM 里出现只有这份夹具才有的标记 (夹具 notes 里的 __vfy:<tag>)
+  //                       —— 拿不到 = 页面没消费夹具 → 报「页面错 · 夹具已送达但页面没渲染」
+  // 断言只加不减: 自证没过时, 该组原有的每条断言照旧计入 failed, 但报的是「夹具错 · 未生效」
+  // (见 check()), 读者一眼知道这不是页面缺陷。三道证都过 → 失败才是真页面错。
+  const FX_MARK_FIELD = '__verify_fixture';
+  // 夹具标记的文本形态: 结尾的 :__ 是**边界符** —— 没有它, tag 'pulse-zero' 会命中
+  // 'pulse-zero-legacy' 的标记 (前缀包含), 自证就成了自欺。
+  const fxNoteText = (tag) => `__vfy:${tag}:__`;
+  const fxMark = (fx, tag) => {
+    fx[FX_MARK_FIELD] = tag;
+    // 标记同时写进 notes: notes 是页面**真会渲染**的字段 (网关页/克隆实例都有),
+    // 于是「DOM 里出现 __vfy:<tag>:__」= 页面确实拿了这份夹具, 且整轮渲染已跑完 (redraw 一次画完)。
+    fx.notes = (fx.notes || []).filter((n) => !/^__vfy:/.test(n)).concat([fxNoteText(tag)]);
+    return fx;
+  };
+  fxMark(FX_LIVE, 'live');
+  fxMark(FX_NO_TASKS, 'no-tasks');
+  fxMark(FX_EXPIRED, 'expired');
+  fxMark(FX_STALE_FLAG, 'stale-flag');
+  fxMark(FX_NEWKINDS, 'newkinds');
+  fxMark(FX_GROWN, 'grown');
+  fxMark(FX_EN_ONLY, 'en-only');
+  fxMark(FX_PULSE_ZERO, 'pulse-zero');
+  fxMark(FX_PULSE_ZERO_LEGACY, 'pulse-zero-legacy');   // 覆盖继承来的 __vfy:pulse-zero
+
+  const fxNotesHas = (tag) => (v) => !!(v && typeof v.notes === 'string' && v.notes.includes(fxNoteText(tag)));
+  // 首页紧凑版没有 notes 元素 → 用「只有夹具才有的形态」当消费证 (夹具值是脚本自己定的, 真快照撞不出来)
+  const fxFeedHas = (text) => (v) => !!(v && Array.isArray(v.feedText) && v.feedText.some((t) => t === text));
+  const fxVals = (obj) => (v) => !!(v && Object.keys(obj).every((k) => v[k] === obj[k]));
+
+  const fxProbeUrl = (tag) => `${BASE}/network-pulse-verify-probe.network-pulse.json?tag=${encodeURIComponent(tag)}&n=${Math.random().toString(36).slice(2)}`;
+  // 探针 URL 特意同时含 'network-pulse-verify'(夹具 pattern) 与 'network-pulse.json'(回退档 pattern),
+  // 这样在任何一节里它都会被拦到 —— 「链路证不适用」这种情况不存在。
+  // ② 链路证: 在**页面里** fetch 探针 URL (与夹具同 pattern)。拿回 marker ⇒ 这类 URL 的拦截是活的;
+  //    拿回 200 text/html / 404 ⇒ 请求根本没被拦到, 被线上 (Pages 的 SPA 兜底 / CDN 缓存 / 404) 接管了。
+  const fxProbe = async (tag) => {
+    const url = fxProbeUrl(tag);
+    const r = await evalJs(`(async () => {
+      try {
+        const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+        const to = ctl ? setTimeout(function () { ctl.abort(); }, 5000) : null;
+        const res = await fetch(${JSON.stringify(url)}, { cache: 'no-store', signal: ctl ? ctl.signal : undefined });
+        if (to) clearTimeout(to);
+        const body = await res.text();
+        let j = null; try { j = JSON.parse(body); } catch (e) { j = null; }
+        return { ok: true, status: res.status, ctype: res.headers.get('content-type') || '',
+                 redirected: res.redirected, finalUrl: res.url, len: body.length,
+                 marker: j ? j[${JSON.stringify(FX_MARK_FIELD)}] : null, head: body.slice(0, 44) };
+      } catch (e) { return { ok: false, err: String((e && e.name) || '') + ' ' + String((e && e.message) || e) }; }
+    })()`).catch((e) => ({ ok: false, err: 'eval 失败: ' + e.message }));
+    return { url, ...(r || { ok: false, err: '无返回值' }) };
+  };
+  const fxProbeDesc = (p) => {
+    if (!p) return '探针没跑起来';
+    if (p.ok === false) return `✘ 探针异常 (${p.err})`;
+    const looks = p.marker === 'probe:__tag__' ? '' : (p.marker ? `marker=${p.marker}` : `marker=无 (head=${JSON.stringify(p.head)})`);
+    return `✘ HTTP ${p.status} · ${p.ctype || '(无 content-type)'}${p.redirected ? ` · 被重定向到 ${p.finalUrl}` : ''} · ${looks}`;
+  };
+
+  // —— 断言前的自证: 等「消费证」出现 (页面渲染是异步的, 固定 sleep 会量到中间态 —— 这是老毛病的根) ——
+  const fxSelfProof = async (tag, { servedKey = tag, domSignal, rootSel = '#pulse', probeExpr = null, timeoutMs = 20000, what = '', mode = 'fulfill', quietOk = false } = {}) => {
+    const t0 = Date.now();
+    const probe = await fxProbe(tag);
+    const probeOk = probe && probe.ok === true && probe.marker === `probe:${tag}`;
+    const signal = domSignal || fxNotesHas(tag);
+    let dom = null, consumed = false;
+    while (Date.now() - t0 < timeoutMs) {
+      dom = await evalJs(probeExpr || pulseProbe(rootSel)).catch(() => null);
+      if (dom && signal(dom)) { consumed = true; break; }
+      await sleep(200);
+    }
+    const waited = ((Date.now() - t0) / 1000).toFixed(1);
+    const served = fxServed.get(servedKey) || 0;
+    const failedN = fxFailed.get(servedKey) || 0;
+    const injected = mode === 'fail' ? failedN : served;      // 「我方真的把这份夹具给了页面」的证据
+    // 送达 = ① 消费证已出现, 或 ② 我方确实把这份夹具回过/把请求打失败过 (fxServed / fxFailed 计数)。
+    // 注意**不把探针通过**算作送达: 探针只证明「拦截链路是活的」, 不证明「这个夹具到了这个页面」。
+    const delivered = consumed || injected > 0;
+    let reason = '';
+    if (!consumed && !delivered) {
+      if (!fxFetchOn) reason = 'CDP Fetch 没启用 (拦截根本没开)';
+      else if (!probeOk) reason = '拦截未命中';
+      else reason = '页面没对本节的夹具 URL 发起请求 (取数走了别的来源)';
+    }
+    const url = fxServedUrls.get(servedKey) || probe.url;
+    const v = { tag, delivered, consumed, reason, probe, probeOk, served, failedN, mode, waited, url, dom, what };
+    // —— 自证结果一律打印出来 (绿也要看见它验了什么; 红要给到能直接定位的信息) ——
+    const head = `[${tag}${what ? ' · ' + what : ''}]`;
+    // 「消费证」到底是哪一种: 默认是夹具 notes 里的标记; 传了 domSignal 的 (失败档 / 首页紧凑版) 是自定义形态。
+    const proofKind = domSignal ? '自定义消费证' : `DOM 标记 ${fxNoteText(tag)}`;
+    const domNow = dom ? `state=${dom.state} rows=${dom.act ? dom.act.rowCount : 'n/a'} notes=${JSON.stringify(String(dom.notes).slice(0, 40))}` : '(探针读不到 DOM)';
+    const servedText = mode === 'fail' ? `我方故意 failRequest ${failedN} 次` : `回夹具 ${served} 次`;
+    if (consumed) {
+      if (!quietOk) {
+        console.log(`  🔒 夹具自证 ${head} ✔ ${servedText} · 链路证 ${probeOk ? `marker=probe:${tag}` : `探针未过(${fxProbeDesc(probe)})`}` +
+          ` · 消费证 ${proofKind} 已满足 (等了 ${waited}s)`);
+      }
+    } else if (delivered) {
+      console.log(`  🔒 夹具自证 ${head} ⚠️ **夹具已送达但页面没消费** (${servedText} · 链路证 ${probeOk ? '✔' : fxProbeDesc(probe)})`);
+      console.log(`       请求 URL  : ${url}`);
+      console.log(`       消费证    : ✘ ${proofKind} 未出现 (等了 ${waited}s) · 现况 ${domNow}`);
+      console.log(`       结论      : 夹具确实到了页面却没渲染出来 → 下面这组失败按「页面错」计`);
+    } else {
+      console.log(`  🔒 夹具自证 ${head} ✘ **夹具未生效(${reason})**`);
+      console.log(`       请求 URL  : ${url}`);
+      console.log(`       拦截模式  : ${fxPattern || '(无)'} · Fetch.enable ${fxFetchOn ? '已发' : '**没发**'} · requestStage=Request`);
+      console.log(`       送达证    : ${mode === 'fail' ? `我方故意 failRequest ${failedN} 次` : `页面取数请求被回夹具 ${served} 次`}`);
+      console.log(`       链路证    : ${probeOk ? `✔ marker=probe:${tag}` : fxProbeDesc(probe)}`);
+      console.log(`       消费证    : ✘ ${proofKind} 未出现 (等了 ${waited}s) · 现况 ${domNow}`);
+      if (fxDiag.length) console.log(`       最近拦截  : ${fxDiag.join(' ; ')}`);
+      console.log(`       结论      : 本节断言按「夹具错 · 未生效」计入失败 —— 它们不代表页面有缺陷`);
+    }
+    fxNow = v;
+    return v;
+  };
+  // 手工 fulfill / failRequest 的记账包装 (自证要的「送达证」对这类请求同样成立)
+  const fxServe = (paused, obj, tag) => { if (paused) fxHit(tag, paused.request.url); return fulfillJson(paused.requestId, obj); };
+  const fxFailServe = (paused, tag) => { if (paused) fxFailHit(tag, paused.request.url); return cdp('Fetch.failRequest', { requestId: paused.requestId, errorReason: 'ConnectionRefused' }); };
+  // 只读自证结论的轻量包装: 给「没等到请求被拦」这类前置条件用 (不带探针, 不改变本次口径)
+  const fxPre = (tag, ok, why) => {
+    const v = { tag, delivered: !!ok, consumed: !!ok, reason: ok ? '' : why, pre: true };
+    if (!ok) {
+      console.log(`  🔒 夹具自证 [${tag}] ✘ **夹具未生效(${why})**`);
+      console.log(`       拦截模式  : ${fxPattern || '(无)'} · Fetch.enable ${fxFetchOn ? '已发' : '**没发**'}`);
+      if (fxDiag.length) console.log(`       最近拦截  : ${fxDiag.join(' ; ')}`);
+      console.log(`       结论      : 本节断言按「夹具错 · 未生效」计入失败 —— 它们不代表页面有缺陷`);
+    }
+    fxNow = v;
+    return v;
+  };
+  const fxOff = () => { fxNow = null; };
+
   // ⑥ 链上活动 (网关页主体 = 一句短说明 + 小结行 + 一张表)
   console.log('\n[6] gateway.html 链上活动 (公开只读接口 / confirmed_activity)');
   const pulseSrc = `${BASE}/network-pulse-verify.json`;
   const errStart = consoleErrors.length;
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');   // 只拦取数请求 (文档已放行)
-  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  await fxEnable(PULSE_PATTERN);
   await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(pulseSrc)}` });
   let req1 = null;
   try { req1 = await nextPaused(9000); } catch { /* 下面按 DOM 判断 */ }
@@ -794,6 +1005,9 @@ async function main() {
   check('活动区内部不再依赖 id (只用 data-pulse-* 钩子, 避免多实例撞 id)',
     !!region && region.idsInside === 0, region && String(region.idsInside));
 
+  // 首次 loading 这批断言吃「请求被拦住挂着」这个前置 (拦不住 = 页面可能已拿到真快照) →
+  // 先自证, 拿不到就在断言前明确报「夹具未生效」, 不把取不到算成页面缺陷。
+  fxPre('live', !!req1, '初始取数请求 9s 内没被 CDP Fetch 拦住 (页面可能已拿到真快照)');
   const loading = await evalJs(pulseProbe('#pulse'));
   check('首次 loading 状态 + 数值占位「—」',
     loading.state === 'loading' && loading.visible.includes('正在读取快照') && loading.nodes === '—' && loading.api,
@@ -803,8 +1017,10 @@ async function main() {
   // 活动区小结数字的字号 = 后面判断「首页那份更轻」的基准
   const gwValueFont = parseFloat(String(await evalJs(`getComputedStyle(document.querySelector('#pulse .pulse-summary b')).fontSize`)));
 
-  if (req1) await fulfillJson(req1.requestId, FX_LIVE);
-  await sleep(700);
+  if (req1) await fxServe(req1, FX_LIVE, 'live');
+  // 断言前先自证夹具生效 (送达证 + 链路证 + 消费证), 并**等**页面把夹具渲染出来 ——
+  // 固定 sleep 在线上会量到中间态 (rows:0 的假红), 那是本节历史上唯一的不稳定来源。
+  await fxSelfProof('live', { what: '网关页 FX_LIVE' });
   const live = await evalJs(pulseProbe('#pulse'));
   const LV = live.act;
   const has = (k, v) => LV.rows.some((r) => r[k] === v);
@@ -1050,9 +1266,11 @@ async function main() {
   // 过期快照 (fresh_until 已过)
   const p2 = nextPaused(7000);
   await evalJs(`(() => { window.__bolloonPulse.refresh(); return 1; })()`);
-  const req2 = await p2;
-  await fulfillJson(req2.requestId, FX_EXPIRED);
-  await sleep(700);
+  let req2 = null;
+  try { req2 = await p2; } catch { /* 没拦到 → 下面自证会明确报「夹具未生效」, 不把取不到算成页面错 */ }
+  fxPre('expired', !!req2, 'refresh() 的取数请求 7s 内没被 CDP Fetch 拦住');
+  if (req2) await fxServe(req2, FX_EXPIRED, 'expired');
+  await fxSelfProof('expired', { what: 'FX_EXPIRED (fresh_until 已过)' });
   const stale = await evalJs(pulseProbe('#pulse'));
   check('stale: fresh_until 已过 → 快照已过期', stale.state === 'stale' && stale.visible.includes('快照已过期'), JSON.stringify({ s: stale.state, v: stale.visible }));
   check('stale: scope=verified → 「网络观察快照」', stale.scope === '网络观察快照' && !stale.scopeHidden, stale.scope);
@@ -1063,18 +1281,22 @@ async function main() {
   // status=stale 单独一条路径
   const p3 = nextPaused(7000);
   await evalJs(`(() => { window.__bolloonPulse.refresh(); return 1; })()`);
-  const req3 = await p3;
-  await fulfillJson(req3.requestId, FX_STALE_FLAG);
-  await sleep(600);
+  let req3 = null;
+  try { req3 = await p3; } catch { /* 同上: 交给自证判「夹具未生效」 */ }
+  fxPre('stale-flag', !!req3, 'refresh() 的取数请求 7s 内没被 CDP Fetch 拦住');
+  if (req3) await fxServe(req3, FX_STALE_FLAG, 'stale-flag');
+  await fxSelfProof('stale-flag', { what: 'FX_STALE_FLAG (status=stale)' });
   const stale2 = await evalJs(pulseProbe('#pulse'));
   check('stale: status="stale" 也被如实标为过期', stale2.state === 'stale' && stale2.visible.includes('快照已过期'), JSON.stringify({ s: stale2.state, v: stale2.visible }));
 
-  // 接口失败 → unavailable, 且不阻断其它区域
+  // 接口失败 → unavailable, 且不阻断其它区域 (这条夹具 = 「我方把请求打失败」, 所以送达证记在 fxFailed)
   const p4 = nextPaused(7000);
   await evalJs(`(() => { window.__bolloonPulse.refresh(); return 1; })()`);
-  const req4 = await p4;
-  await cdp('Fetch.failRequest', { requestId: req4.requestId, errorReason: 'ConnectionRefused' });
-  await sleep(800);
+  let req4 = null;
+  try { req4 = await p4; } catch { /* 同上 */ }
+  fxPre('a-fail', !!req4, 'refresh() 的取数请求 7s 内没被 CDP Fetch 拦住 (无法注入失败)');
+  if (req4) await fxFailServe(req4, 'a-fail');
+  await fxSelfProof('a-fail', { mode: 'fail', domSignal: (v) => !!v && v.state === 'unavailable', what: '取数失败夹具 (unavailable)' });
   const un = await evalJs(pulseProbe('#pulse'));
   check('unavailable: 请求失败 → 快照暂时读不到',
     un.state === 'unavailable' && un.visible.includes('快照暂时读不到') && un.hintShown,
@@ -1100,17 +1322,21 @@ async function main() {
   check('失败后 backoff 生效 (failCount ≥ 1)', (await evalJs('window.__bolloonPulse.failCount()')) >= 1);
 
   // 超时 (5s AbortController): 把请求挂住不放, 模块必须自己放弃 → unavailable, 不卡在 loading
+  // 这里的「夹具」= 我方把请求挂住不放。所以自证 = 请求确实被我方拦住了 (reqTimeout 到手);
+  // 拿不到就明确报「夹具未生效」, 不把「没挂住」当成页面没超时。
   const pTimeout = nextPaused(7000);
   await evalJs(`(() => { window.__bolloonPulse.refresh(); return 1; })()`);
   let reqTimeout = null;
   try { reqTimeout = await pTimeout; } catch { /* 没拦到就按 DOM 判断 */ }
+  fxPre('timeout-hang', !!reqTimeout, '取数请求 7s 内没被拦住 (请求没挂住, 本轮超时断言不成立)');
   await sleep(6000);                       // 单次请求超时 = 5s
   const to = await evalJs(pulseProbe('#pulse'));
   check('超时: 请求挂住 6s → 模块自己放弃 (unavailable), 不永久停在 loading',
     to.state === 'unavailable' && to.visible.includes('快照暂时读不到') && to.act.rowCount === 0,
     JSON.stringify({ s: to.state, v: to.visible }));
-  if (reqTimeout) { try { await fulfillJson(reqTimeout.requestId, FX_LIVE); } catch { /* 已 abort, 拦截 id 失效是正常的 */ } }
+  if (reqTimeout) { try { await fxServe(reqTimeout, FX_LIVE, 'live'); } catch { /* 已 abort, 拦截 id 失效是正常的 */ } }
   await sleep(200);
+  fxOff();   // 下面这组 (配置常量) 不吃夹具
 
   // 轮询与超时常量
   const cfg = await evalJs(`(() => { const p = window.__bolloonPulse; return p ? { poll: p.config.pollMs, timeout: p.config.timeoutMs, backoff: p.config.backoffMs, rel: p.config.relTickMs, feedMax: p.config.feedMax, activityMax: p.config.activityMax, capsMax: p.config.capsMax, refresh: typeof p.refresh, tick: typeof p.tick, src: p.source() } : null; })()`);
@@ -1122,29 +1348,33 @@ async function main() {
     JSON.stringify(cfg));
   // 无 ?pulse= → 回退同源 network-pulse.json (站点上通常不存在 → 如实 unavailable, 不阻断其它区域)
   shouldIntercept = (p) => p.request.url.endsWith('/network-pulse.json');
-  await cdp('Fetch.enable', { patterns: [{ urlPattern: '*network-pulse.json*', requestStage: 'Request' }] });
+  await fxEnable('*network-pulse.json*');
   const p5 = nextPaused(9000);
   await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
   let req5 = null;
   try { req5 = await p5; } catch { /* 下面按结果判断 */ }
+  fxPre('fallback-404', !!req5, '无 ?pulse= 时的同源快照请求 9s 内没被 CDP Fetch 拦住 (无法注入 404)');
   check('无 ?pulse= 时回退到同源 network-pulse.json', !!req5 && /\/network-pulse\.json$/.test(req5.request.url), req5 ? req5.request.url : '未拦到请求');
   if (req5) {
+    fxFailHit('fallback-404', req5.request.url);   // 送达证: 这个 404 是**我方**注入的
     await cdp('Fetch.fulfillRequest', {
       requestId: req5.requestId, responseCode: 404,
       responseHeaders: [{ name: 'Content-Type', value: 'text/plain' }],
       body: Buffer.from('not found', 'utf8').toString('base64'),
     });
   }
-  await sleep(700);
+  await fxSelfProof('fallback-404', { mode: 'fail', domSignal: (v) => !!v && v.state === 'unavailable', what: '回退快照 404 夹具' });
   const fb = await evalJs(pulseProbe('#pulse'));
   const fbCmd = await evalJs(`(document.getElementById('skill-cmd')||{}).textContent||''`);
   check('回退拿到 404 → unavailable, 页面其它区域仍正常',
     fb.state === 'unavailable' && fb.visible.includes('快照暂时读不到') && /^read /.test(fbCmd),
     JSON.stringify({ state: fb.state, cmd: fbCmd.slice(0, 40) }));
-  await cdp('Fetch.disable');
+  await fxDisable();
+  fxOff();
 
   // ⑥‴′ 同源**真快照** (无 ?pulse=, 不对真实网络下断言之外的猜测): 线上真数据必须真渲染,
   //       且「0 个任务 + N 行任务」这类同屏数字必须自带口径解释 —— 这是本页对线上的最终交付断言。
+  //       注: 这一段**故意不注夹具** (要验的就是线上真快照), 所以它不参与夹具自证。
   console.log('\n[6e] 同源真快照 (无 ?pulse=) → 真行数 + 口径行 + 链归属');
   const realRaw = await fetchText(`${BASE}/network-pulse.json`);
   let realObj = null;
@@ -1154,8 +1384,8 @@ async function main() {
     !!realObj.chain_id_scope && !!realObj.totals_scope,
     realObj ? `rows=${(realObj.confirmed_activity || []).length}` : '读不到 / 不是 JSON');
   await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
-  await sleep(2000);
-  const real = await evalJs(pulseProbe('#pulse'));
+  // 真快照是真网络请求 (CDN 更慢) → 等「真渲染出 N 行」再断言, 不用固定 sleep 量中间态
+  const real = await waitStable(pulseProbe('#pulse'), (v) => v && v.act && v.act.rowCount === (realObj ? Math.min(realObj.confirmed_activity.length, 60) : -1), { tries: 80, interval: 150 });
   const expRows = realObj ? Math.min(realObj.confirmed_activity.length, 60) : -1;   // 前端表格上限 60
   check('真快照真渲染: 表格行数 = min(快照行数, 60)',
     real.state === 'live' && expRows > 0 && real.act.rowCount === expRows,
@@ -1175,9 +1405,10 @@ async function main() {
   const cErrStart = consoleErrors.length;
   cMode = 'no-tasks';
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
-  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  await fxEnable(PULSE_PATTERN);
   await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-c.json`)}` });
-  await sleep(1400);
+  // 断言前自证 (送达证 C 档 auto-fulfill + 链路证 + 消费证 __vfy:no-tasks), 并等页面渲染完
+  await fxSelfProof('no-tasks', { what: 'FX_NO_TASKS (缺 tasks* / 空表 / sites=[])' });
   const noT = await evalJs(pulseProbe('#pulse'));
   check('缺 tasks* 三个字段 → 小结行整行隐藏, 且不拿 0 或数字冒充',
     noT.state === 'live' && noT.tasksHidden.tasks === true && noT.tasksHidden.done === true && noT.tasksHidden.verified === true &&
@@ -1204,9 +1435,12 @@ async function main() {
   const zErrStart = consoleErrors.length;
   cMode = 'pulse-zero';
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
-  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  await fxEnable(PULSE_PATTERN);
   const zUrl = `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-c.json`)}`;
   await cdp('Page.navigate', { url: zUrl });
+  // 断言前自证 + 等「消费证」出现 (夹具 notes 里的 __vfy:pulse-zero 出现 = 整轮渲染跑完):
+  // 既治固定 sleep 量到中间态, 也让「夹具没生效」与「页面错」分得开。
+  await fxSelfProof('pulse-zero', { what: 'FX_PULSE_ZERO (0 任务 + 25 行 + 口径三块)' });
   // 等「状态到 live 且表格真画满 25 行」再断言 —— 固定 sleep 会量到中间态 (实测 rows:0 的假失败)
   const pz = await waitStable(pulseProbe('#pulse'), (v) => v && v.state === 'live' && v.act.rowCount === 25);
   check('25 行真画出来 (与快照 activity_totals.rows 一致)', pz.state === 'live' && pz.act.rowCount === 25,
@@ -1230,7 +1464,9 @@ async function main() {
   // 老快照 (有 25 行但缺 activity_totals/totals_scope/chain_id_scope) → 口径行整行隐藏, 不自己数行数、不编网络名
   cMode = 'pulse-zero-legacy';
   await cdp('Page.navigate', { url: zUrl });
-  // 同一档换了夹具但 URL 相同, 同样要等「live + 25 行画完」——否则会读到上一轮或中间态
+  // 同一档换了夹具但 URL 相同 —— 必须等「这一份」的消费证 (__vfy:pulse-zero-legacy) 出现,
+  // 否则会读到上一轮夹具的中间态 (这才是它以前会「时绿时红」的根因)
+  await fxSelfProof('pulse-zero-legacy', { what: 'FX_PULSE_ZERO_LEGACY (缺口径三块)' });
   const pzL = await waitStable(pulseProbe('#pulse'), (v) => v && v.state === 'live' && v.act.rowCount === 25);
   check('老快照 (缺口径三块) → 口径行整行隐藏 (不自己数行数/不编网络名), 行照旧画 25 行',
     pzL.state === 'live' && pzL.act.rowCount === 25 && pzL.act.totalsLineShown === false && pzL.act.totalsLine === '',
@@ -1238,6 +1474,8 @@ async function main() {
   cMode = 'full';
 
   // ⑥″ IPNS 粘贴框: 真 input + 真按钮, 严格校验, 合法才开新窗口, 本页不发任何网络请求
+  // (这节的断言只看控件行为, 不吃夹具数据 → 关掉夹具归因, 免得误标)
+  fxOff();
   console.log('\n[6c] IPNS 粘贴框 (归一化 → 新窗口 / 非法就地报错)');
   const ipnsBox = await evalJs(pulseProbe('#pulse'));
   check('粘贴框 = 真 input + 真 type=submit 按钮 (回车可提交) + aria-label 齐全',
@@ -1323,10 +1561,13 @@ async function main() {
   const kErrStart = consoleErrors.length;
   growMode = 'base';
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
-  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  await fxEnable(PULSE_PATTERN);
   const growSrc = `${BASE}/network-pulse-verify-grow.json`;
   await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(growSrc)}` });
-  await sleep(1600);                       // 夹具由 handler 自动回 (不走手工队列)
+  // ★ 这里原来是一句 `await sleep(1600)` —— 线上冷启动 (308 跳转 + CDN + app.js) 常 >2.5s,
+  //   于是量到「页面还在 loading」的中间态: rows:0 / 空数组, 与「页面坏了」长得一模一样。
+  //   现在改成先自证夹具生效 (等消费证 __vfy:newkinds:__ 出现 = 整轮渲染跑完) 再断言。
+  await fxSelfProof('newkinds', { what: 'FX_NEWKINDS (未知枚举 3 条)' });
   const nk = await evalJs(pulseProbe('#pulse'));
   check('容错: 3 条夹具画成 2 行 (task 与 tx 都空的那条不画), 没有空白行',
     nk.act.rowCount === 2 && nk.act.blankRows === 0, JSON.stringify({ rows: nk.act.rowCount, blank: nk.act.blankRows }));
@@ -1386,6 +1627,9 @@ async function main() {
     }))()`);
     if (growAfter && growAfter.nodes === '8' && growAfter.sig === '42' && growAfter.rows === 3) break;
   }
+  // 断言前自证「第二轮夹具 (grown) 真的生效」: 只认 __vfy:grown:__ 这个消费证;
+  // 拿不到就报「夹具未生效(拦截未命中)」(比如轮询那一次请求没被拦住), 而不是把「数字没变」算成页面错。
+  await fxSelfProof('grown', { what: 'FX_GROWN (30s 轮询那一轮)', timeoutMs: 2000 });
   const growWaited = ((Date.now() - growT0) / 1000).toFixed(1);
   check(`数值与表格行在下一轮 30s 轮询内自动出现 (实测等了 ${growWaited}s; 未刷新页面 / 未手动 refresh / 未导航)`,
     !!growAfter && growBefore.nodes === '7' && growBefore.rows === 2 && growAfter.nodes === '8' &&
@@ -1408,7 +1652,7 @@ async function main() {
   const idxErrStart = consoleErrors.length;
   const IDX_ROOT = '#intro .pulse-compact';
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
-  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  await fxEnable(PULSE_PATTERN);
   const pIdx = nextPaused(9000);
   await cdp('Page.navigate', { url: `${BASE}/index.html?pulse=${encodeURIComponent(pulseSrc)}` });
   let idxReq = null;
@@ -1423,6 +1667,8 @@ async function main() {
     JSON.stringify(idxA11y));
   check('首页紧凑脉冲: 同一句 caveat「不是全网精确总量」',
     !!idxLoading && idxLoading.caveat.includes('不是全网精确总量'), idxLoading && idxLoading.caveat);
+  // 首次 loading / 「拦到请求」这两条吃「请求被拦住挂着」的前置 → 先自证, 拿不到就明确报夹具未生效
+  fxPre('live', !!idxReq, '首页取数请求 9s 内没被 CDP Fetch 拦住 (页面可能已拿到真快照)');
   check('首页紧凑脉冲: 首次 loading + 数值占位「—」',
     !!idxLoading && idxLoading.state === 'loading' && idxLoading.nodes === '—', JSON.stringify(idxLoading && { s: idxLoading.state, n: idxLoading.nodes }));
   const idxInst = await evalJs(`(() => ({ n: window.__bolloonPulses.length, src: window.__bolloonPulses[0].source(), name: window.__bolloonPulses[0].key, feedMax: window.__bolloonPulses[0].config.feedMax }))()`);
@@ -1430,8 +1676,10 @@ async function main() {
     idxInst.n === 1 && idxInst.src === 'endpoint' && idxInst.name === 'hero' && idxInst.feedMax === 1, JSON.stringify(idxInst));
   check('首页紧凑脉冲真的发起取数 (CDP 拦到请求)', !!idxReq, idxReq ? '' : '未拦到请求');
 
-  if (idxReq) await fulfillJson(idxReq.requestId, FX_LIVE);
-  await sleep(700);
+  if (idxReq) await fxServe(idxReq, FX_LIVE, 'live');
+  // 首页紧凑版**没有** notes 元素 → 消费证改用「只有夹具才有的活动流原文」(MARKUP_TEXT 由脚本给定,
+  // 真快照撞不出来)。无论如何, 断言前必须先看到消费证 / 或拿到送达证。
+  await fxSelfProof('live', { rootSel: IDX_ROOT, domSignal: fxFeedHas(MARKUP_TEXT.zh), what: '首页 FX_LIVE' });
   const idxLive = await evalJs(pulseProbe(IDX_ROOT));
   check('首页 live: 状态=实时 + 四个数值 = 7/12/4/5',
     idxLive.state === 'live' && idxLive.visible.includes('实时') && idxLive.nodes === '7' && idxLive.agents === '12' && idxLive.active === '4' && idxLive.h24 === '5',
@@ -1483,9 +1731,12 @@ async function main() {
   // 活动流的语言回落 (缺当前语言退回另一种, 仍是服务端原文) + 相对时间刷新只改文字节点
   const pIdxEnOnly = nextPaused(7000);
   await evalJs(`(() => { window.__bolloonPulses[0].refresh(); return 1; })()`);
-  const idxEnOnlyReq = await pIdxEnOnly;
-  await fulfillJson(idxEnOnlyReq.requestId, FX_EN_ONLY);
-  await sleep(700);
+  let idxEnOnlyReq = null;
+  try { idxEnOnlyReq = await pIdxEnOnly; } catch { /* 交给自证判「夹具未生效」 */ }
+  fxPre('en-only', !!idxEnOnlyReq, '首页 refresh() 的取数请求 7s 内没被拦住');
+  if (idxEnOnlyReq) await fxServe(idxEnOnlyReq, FX_EN_ONLY, 'en-only');
+  // 消费证: 活动流里出现只有这份夹具才有的英文原文 (EN_ONLY_TEXT 由脚本给定)
+  await fxSelfProof('en-only', { rootSel: IDX_ROOT, domSignal: fxFeedHas(EN_ONLY_TEXT), what: '首页 FX_EN_ONLY (只有 en 文案)' });
   const idxEnOnly = await evalJs(pulseProbe(IDX_ROOT));
   check('首页活动流: 只有 en 文案的条目在中文界面下退回 en (服务端原文, 不留空白行)',
     idxEnOnly.feedText.length === 1 && idxEnOnly.feedText[0] === EN_ONLY_TEXT && idxEnOnly.feedBlank === 0,
@@ -1508,9 +1759,13 @@ async function main() {
   // 首页那份: 过期快照 → stale
   const pIdx2 = nextPaused(7000);
   await evalJs(`(() => { window.__bolloonPulses[0].refresh(); return 1; })()`);
-  const idxReq2 = await pIdx2;
-  await fulfillJson(idxReq2.requestId, FX_EXPIRED);
-  await sleep(700);
+  let idxReq2 = null;
+  try { idxReq2 = await pIdx2; } catch { /* 交给自证判「夹具未生效」 */ }
+  fxPre('expired', !!idxReq2, '首页 refresh() 的取数请求 7s 内没被拦住');
+  if (idxReq2) await fxServe(idxReq2, FX_EXPIRED, 'expired');
+  // 紧凑版没有 notes → 消费证 = 「只有夹具才有的形态」: 9 个节点 / 15 个 agent / 24h 2 / 活跃 0 + verified scope。
+  // 这四个值同时从真快照里凑出来的概率可忽略; 就算真凑上, 后面断言也会照旧如实报错 (不放过)。
+  await fxSelfProof('expired', { rootSel: IDX_ROOT, domSignal: fxVals({ nodes: '9', agents: '15', h24: '2', active: '0', scope: '网络观察快照' }), what: '首页 FX_EXPIRED' });
   const idxStale = await evalJs(pulseProbe(IDX_ROOT));
   check('首页 stale: fresh_until 已过 → 快照已过期 + scope=网络观察快照',
     idxStale.state === 'stale' && idxStale.visible.includes('快照已过期') && idxStale.scope === '网络观察快照',
@@ -1520,9 +1775,11 @@ async function main() {
   // 首页那份: 接口失败 → unavailable, 且不阻断首页其它区域
   const pIdx3 = nextPaused(7000);
   await evalJs(`(() => { window.__bolloonPulses[0].refresh(); return 1; })()`);
-  const idxReq3 = await pIdx3;
-  await cdp('Fetch.failRequest', { requestId: idxReq3.requestId, errorReason: 'ConnectionRefused' });
-  await sleep(800);
+  let idxReq3 = null;
+  try { idxReq3 = await pIdx3; } catch { /* 交给自证判「夹具未生效」 */ }
+  fxPre('idx-fail', !!idxReq3, '首页 refresh() 的取数请求 7s 内没被拦住 (无法注入失败)');
+  if (idxReq3) await fxFailServe(idxReq3, 'idx-fail');
+  await fxSelfProof('idx-fail', { mode: 'fail', rootSel: IDX_ROOT, domSignal: (v) => !!v && v.state === 'unavailable', what: '首页取数失败夹具' });
   const idxUn = await evalJs(pulseProbe(IDX_ROOT));
   check('首页 unavailable: 请求失败 → 快照暂时读不到 + 数值清空 + ?pulse= 提示',
     idxUn.state === 'unavailable' && idxUn.visible.includes('快照暂时读不到') && idxUn.nodes === '—' &&
@@ -1551,17 +1808,18 @@ async function main() {
   // ⑧ 多实例隔离: 同一页两个实例, 一个失败另一个仍活
   console.log('\n[8] 多实例隔离 (同一页两个 [data-pulse], 互不干扰)');
   const isoErrStart = consoleErrors.length;
-  await cdp('Fetch.disable');
+  await fxDisable();
   bMode = 'fail';
   aFail = false;
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
-  await cdp('Fetch.enable', { patterns: [{ urlPattern: PULSE_PATTERN, requestStage: 'Request' }] });
+  await fxEnable(PULSE_PATTERN);
   const pIso = nextPaused(9000);
   await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(pulseSrc)}` });
   let isoReq = null;
   try { isoReq = await pIso; } catch { /* 下面按 DOM 判断 */ }
-  if (isoReq) await fulfillJson(isoReq.requestId, FX_LIVE);
-  await sleep(700);
+  fxPre('live', !!isoReq, '多实例: 第一实例的取数请求 9s 内没被拦住');
+  if (isoReq) await fxServe(isoReq, FX_LIVE, 'live');
+  await fxSelfProof('live', { what: '多实例: 第一实例 FX_LIVE' });
   let isoBadge = '';
   for (let i = 0; i < 10; i++) {
     isoBadge = String(await evalJs(`(document.getElementById('version')||{}).textContent || ''`));
@@ -1588,20 +1846,29 @@ async function main() {
   })()`);
   check('运行时可再挂一个实例 (attach 新根 → 共 2 个独立实例)',
     inject.n === 2 && inject.attached === true && inject.id === '', JSON.stringify(inject));
-  await sleep(1000);
 
   const pairProbe = `(() => {
     const roots = Array.from(document.querySelectorAll('[data-pulse]'));
     const A = roots[0], B = roots[1];
     const pick = (root, key) => { const n = root.querySelector('[data-pulse-total="' + key + '"]'); return n ? n.textContent.trim() : null; };
     const vis = (root) => (Array.from(root.querySelectorAll('.pulse-state-text')).filter(e => getComputedStyle(e).display !== 'none')[0] || {}).textContent || '';
+    const notes = (root) => { const n = root.querySelector('[data-pulse-notes]'); return n ? n.textContent : ''; };
     if (!A || !B) return { missing: true, count: roots.length };
     return {
       count: roots.length,
-      a: { state: A.getAttribute('data-pulse-state'), vis: vis(A), nodes: pick(A, 'nodes'), scope: (A.querySelector('[data-pulse-scope]')||{}).textContent },
-      b: { state: B.getAttribute('data-pulse-state'), vis: vis(B), nodes: pick(B, 'nodes') },
+      a: { state: A.getAttribute('data-pulse-state'), vis: vis(A), nodes: pick(A, 'nodes'), scope: (A.querySelector('[data-pulse-scope]')||{}).textContent, notes: notes(A) },
+      b: { state: B.getAttribute('data-pulse-state'), vis: vis(B), nodes: pick(B, 'nodes'), notes: notes(B) },
     };
   })()`;
+  // 第二实例的消费证: 它自己是 #pulse 的克隆 → 也有 [data-pulse-notes], 标记同样能落到它身上
+  const pairSignal = (tag) => (v) => !v.missing && String(v.b.notes || '').includes(fxNoteText(tag));
+
+  // 断言前自证: A 那份 FX_LIVE 真的到了页面 (quiet), B 那份「我方把请求打失败」也真的注入成功
+  const gA = await fxSelfProof('live', { quietOk: true, what: '多实例: A 仍持 FX_LIVE' });
+  const gB = await fxSelfProof('b-fail', { mode: 'fail', probeExpr: pairProbe, quietOk: true,
+    domSignal: (v) => !v.missing && v.b.state === 'unavailable', what: '多实例: B 取数被拒' });
+  fxNow = { ...gB, delivered: gA.delivered && gB.delivered, reason: gB.delivered ? gA.reason : gB.reason };
+  if (fxNow.delivered) console.log('  🔒 夹具自证 [多实例] ✔ A = FX_LIVE 已送达 · B = 取数被拒夹具已注入 (我方 failRequest)');
 
   const pair1 = await evalJs(pairProbe);
   check('第二实例取数被拒 → 自己 unavailable 且数值不编造',
@@ -1614,7 +1881,9 @@ async function main() {
   // 反向: 第二实例给以过期快照 → stale 且仍有数字; 第一实例取数被拒 → unavailable
   bMode = 'expired';
   await evalJs(`(() => { window.__bolloonPulses[1].refresh(); return 1; })()`);
-  await sleep(800);
+  // 断言前自证: B 的过期夹具真的到了它身上 (送达证记在 'expired-b', 消费证 = B 的 notes 里出现该夹具标记)
+  await fxSelfProof('expired', { servedKey: 'expired-b', probeExpr: pairProbe, quietOk: true,
+    domSignal: pairSignal('expired'), what: 'B 换到过期快照' });
   const pair2 = await evalJs(pairProbe);
   check('第二实例换到过期快照 → stale 且数字仍在 (9)',
     !pair2.missing && pair2.b.state === 'stale' && pair2.b.nodes === '9' && pair2.b.vis.includes('快照已过期'),
@@ -1622,7 +1891,12 @@ async function main() {
 
   aFail = true;
   await evalJs(`(() => { window.__bolloonPulses[0].refresh(); return 1; })()`);
-  await sleep(900);
+  // A 的取数被拒 (我方 failRequest) + B 仍持过期夹具: 两侧都先自证, 任一没生效就明确报夹具错
+  const gA3 = await fxSelfProof('a-fail', { mode: 'fail', domSignal: (v) => !!v && v.state === 'unavailable',
+    what: 'A 取数被拒 (aFail)' });
+  const gB3 = await fxSelfProof('expired', { servedKey: 'expired-b', probeExpr: pairProbe, quietOk: true, timeoutMs: 2000,
+    domSignal: pairSignal('expired'), what: 'B 仍持过期快照' });
+  fxNow = { ...gA3, delivered: gA3.delivered && gB3.delivered, reason: gA3.delivered ? gB3.reason : gA3.reason };
   const pair3 = await evalJs(`(() => {
     const roots = Array.from(document.querySelectorAll('[data-pulse]'));
     const A = roots[0], B = roots[1];
@@ -1649,7 +1923,8 @@ async function main() {
 
   // ⑨ 全站无重复 id
   console.log('\n[9] 全站无重复 id (7 页, JS 跑完后实算)');
-  await cdp('Fetch.disable');
+  await fxDisable();
+  fxOff();
   for (const pg of ALL_PAGES) {
     await cdp('Page.navigate', { url: `${BASE}/${pg}` });
     // 固定 sleep 的隐患在「缺失类」断言上更危险: 文档没加载完时 [id] 为空 ⇒ 不可能有重复 id ⇒ **假绿**。
@@ -1950,7 +2225,9 @@ async function main() {
   // console 错误
   check('整轮访问无 console 错误 / 未捕获异常', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));
 
-  console.log(`\n=== 结果: ${passed} passed, ${failed} failed ===`);
+  console.log(`\n=== 结果: ${passed} passed, ${failed} failed, ${skipped} skipped ===`);
+  console.log(`=== 其中「夹具错 · 未生效」(拦截没命中, 不代表页面有缺陷): ${fxFailures} 条 ===`);
+  console.log(`=== 夹具自证纪律: 本节所有吃夹具的断言都在断言前跑过「送达证 + 链路证 + 消费证」; 显式跳过 ${skipped} 条 ===`);
   ws.close();
   proc.kill();
   try { fs.rmSync(userDir, { recursive: true, force: true }); } catch { /* noop */ }
