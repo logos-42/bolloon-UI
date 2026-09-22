@@ -359,12 +359,29 @@ async function main() {
   console.log(`=== bolloon.cn 站点真浏览器验收 (${BASE}) ===\n`);
 
   // live npm 版本 (作为期望值)
+  // 2026-09-22 修 (假红): 原来只在开头取**一次** registry。/latest 在**发布新版本的瞬间**会翻值
+  // (CDN 传播窗口), 而页面徽章是页面自己另取一次 ⇒ 两个独立来源短暂不一致 ⇒ 把「刚发布了新版本」
+  // 这个**正确动作**判成假红 (实测: 页面 dom=0.4.32 而脚本 live=0.4.31 → 真域名 244/2)。
+  // 改为**稳定化取值**: 连续两次读到同一个值才算稳定 (最多 12 次 × 1.5s), 拿到的就是翻值后的最终值。
+  const readRegistryVersion = async () => {
+    try {
+      const r = await fetch('https://registry.npmjs.org/@bolloon/bolloon-agent/latest');
+      if (r.ok) return (await r.json()).version;
+    } catch { /* 网络问题, 后面按 DOM 判断 */ }
+    return null;
+  };
   let liveVersion = null;
-  try {
-    const r = await fetch('https://registry.npmjs.org/@bolloon/bolloon-agent/latest');
-    if (r.ok) liveVersion = (await r.json()).version;
-  } catch { /* 网络问题, 后面按 DOM 判断 */ }
-  console.log(`[0] npm registry latest = ${liveVersion || '(取不到)'}`);
+  {
+    let prev = null;
+    for (let i = 0; i < 12; i++) {
+      const v = await readRegistryVersion();
+      liveVersion = v;
+      if (v && v === prev) break;         // 连续两次一致 = 已稳定
+      prev = v;
+      await sleep(1500);
+    }
+  }
+  console.log(`[0] npm registry latest = ${liveVersion || '(取不到)'} (已稳定化: 连续两次一致才采信)`);
 
   // ① 徽章
   console.log('\n[1] 版本徽章 (5 页)');
