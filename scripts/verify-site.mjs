@@ -42,7 +42,7 @@
  *      只允许作为首页那一个 <a class="join-network-cta" href="gateway.html"> 出现,
  *      摘掉该按钮文案后其余位置零命中 (防旧网关序厅 / 旧导航项复发);
  *      页面可见文本无 40 位地址 / 64 位哈希
- *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.1.0), 且与线上 .md frontmatter 一致
+ *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.2.0), 且与线上 .md frontmatter 一致
  *      —— 不再只匹配「1.x.y 形状」(那会漏掉「本机改了、线上没部署」)
  *   ⑳ 公开页数字不许自相矛盾 (2026-09-22 leo 拍板): 小结行「任务/已完成/已验证/签名」= 24h 脉冲事件口径
  *      (真快照里是 0), 链上活动表 N 行 = 链上索引口径 —— 两者同屏时, 表格下方**必须**有一行口径行
@@ -377,7 +377,7 @@ async function main() {
   check('版本 1.3.0 (逐字)', skillHtml.includes('>1.3.0<'));
   // 版本号必须逐字断言 + 与线上 .md 的 frontmatter 对得上 —— 只匹配「1.x.y 形状」会把
   // 「本机改了、线上没部署」漏过去 (2026-09-22 实测: 线上 skill.html 长期停在 1.0.1)。
-  const SKILL_EXPECT = { 'bolloon-gateway-join': '1.3.0', 'bolloon-network': '1.1.0' };
+  const SKILL_EXPECT = { 'bolloon-gateway-join': '1.3.0', 'bolloon-network': '1.2.0' };
   const mdVersionOf = (md) => {
     const fm = /^---\n([\s\S]*?)\n---/.exec(md);
     if (!fm) return '(无 frontmatter)';
@@ -399,9 +399,9 @@ async function main() {
   console.log('\n[3b] skill.html 站内 skills 索引区 (完整索引)');
   check('有索引区 (id=skills-index + [data-skills-index])',
     skillHtml.includes('id="skills-index"') && skillHtml.includes('data-skills-index'));
-  check('索引区两份 skill 名称 + 具体 version 都在原始 HTML 里 (bolloon-network = 1.1.0, 不再是「1.x.y 形状」)',
+  check('索引区两份 skill 名称 + 具体 version 都在原始 HTML 里 (bolloon-network = 1.2.0, 不再是「1.x.y 形状」)',
     skillHtml.includes('>bolloon-gateway-join<') && skillHtml.includes('>1.3.0<') &&
-    skillHtml.includes('>bolloon-network<') && skillHtml.includes('>1.1.0<'));
+    skillHtml.includes('>bolloon-network<') && skillHtml.includes('>1.2.0<'));
   check('每行都有 read 钩子 + 复制按钮 + 直达 .md 链接',
     (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
     (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
@@ -419,11 +419,11 @@ async function main() {
   check('索引区 read 命令按实际访问源生成 (read <BASE>/<name>.md), 文本节点只 1 个',
     Array.isArray(idxRows) && idxRows.length === 2 && idxRows.every((r) => r.read === `read ${BASE}/${r.slug}.md` && r.kids === 1),
     JSON.stringify(idxRows && idxRows.map((r) => r.read)));
-  check('索引区名称/version/直达链接/复制按钮逐行都对 (bolloon-network 逐字 = 1.1.0)',
+  check('索引区名称/version/直达链接/复制按钮逐行都对 (bolloon-network 逐字 = 1.2.0)',
     idxRows.length === 2 &&
     idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.3.0' &&
     idxRows[0].direct === 'bolloon-gateway-join.md' && idxRows[0].copy === true &&
-    idxRows[1].name === 'bolloon-network' && idxRows[1].version === '1.1.0' &&
+    idxRows[1].name === 'bolloon-network' && idxRows[1].version === '1.2.0' &&
     idxRows[1].direct === 'bolloon-network.md' && idxRows[1].copy === true,
     JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])));
   check('索引区 version 与线上 .md frontmatter 逐字一致 (只改一边必失败)',
@@ -461,8 +461,8 @@ async function main() {
   console.log('\n[5b] /bolloon-network.md 线上正文 (主仓 SKILL.md 镜像)');
   const netDoc = await fetchText(`${BASE}/bolloon-network.md`);
   check('首行就是 frontmatter 起始 (---)，没有前缀空行', netDoc.startsWith('---\n'), JSON.stringify(netDoc.slice(0, 16)));
-  check('frontmatter 头三行原样 + version 逐字 = 1.1.0 (不是「1.x.y 形状」匹配)',
-    /^---\nname: bolloon-network\nversion: 1\.1\.0\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
+  check('frontmatter 头三行原样 + version 逐字 = 1.2.0 (不是「1.x.y 形状」匹配)',
+    /^---\nname: bolloon-network\nversion: 1\.2\.0\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
   check('frontmatter 关键块原样 (status/tier/protocol/capabilities/plannedCapabilities/paymentModes/hardRules)',
     netDoc.includes('\nstatus: active\n') && netDoc.includes('\ntier: capability\n') &&
     netDoc.includes('\nprotocol: bolloon-task/1\n') && netDoc.includes('capabilities:\n  - network.join') &&
@@ -1652,13 +1652,17 @@ async function main() {
   await cdp('Fetch.disable');
   for (const pg of ALL_PAGES) {
     await cdp('Page.navigate', { url: `${BASE}/${pg}` });
-    await sleep(900);
+    // 固定 sleep 的隐患在「缺失类」断言上更危险: 文档没加载完时 [id] 为空 ⇒ 不可能有重复 id ⇒ **假绿**。
+    // 先等到文档就绪且有内容再判; 超时也照原断言判红 (只加等待, 不改判据)。
+    await waitUntil(`document.readyState === 'complete' && document.querySelectorAll('[id]').length > 0`, { tries: 60, interval: 200 });
     const dups = await evalJs(`(() => { const m = {}; document.querySelectorAll('[id]').forEach((e) => { m[e.id] = (m[e.id] || 0) + 1; }); return Object.keys(m).filter((k) => m[k] > 1); })()`);
     check(`${pg} 无重复 id`, Array.isArray(dups) && dups.length === 0, JSON.stringify(dups));
   }
   // 脉冲区内部节点一律用 data-pulse-* 钩子 (不靠 id ⇒ 多实例不会撞 id)
   await cdp('Page.navigate', { url: `${BASE}/index.html` });
-  await sleep(900);
+  // 固定 sleep 会量到「文档还没画完」的中间态 (线上 CDN 更慢 → roots:0 的假红, 2026-09-22 实测)。
+  // 先等到「文档就绪 且 脉冲根节点已出现」再取证; 超时也照原断言判红 (不改判据, 只加等待)。
+  await waitUntil(`document.readyState === 'complete' && document.querySelectorAll('[data-pulse]').length >= 1`, { tries: 60, interval: 200 });
   const hookCheck = await evalJs(`(() => ({ ids: Array.from(document.querySelectorAll('[data-pulse] [id]')).map(e => e.id), roots: document.querySelectorAll('[data-pulse]').length }))()`);
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
