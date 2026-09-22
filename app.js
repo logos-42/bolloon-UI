@@ -148,7 +148,7 @@
     document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
     langButtons.forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-lang') === lang); });
     try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
-    // 动态区域（全球网络脉冲）在此之后重画自己的文字节点, 否则会被上面的 textContent 覆盖
+    // 动态区域（链上活动）在此之后重画自己的文字节点, 否则会被上面的 textContent 覆盖
     try { document.dispatchEvent(new CustomEvent('bolloon:lang', { detail: { lang: lang } })); } catch (e) {}
   }
   langButtons.forEach(function (b) {
@@ -355,7 +355,7 @@ var BOLLOON_IPNS = (function () {
 })();
 
 /* ============================================================
-   全球网络脉冲 / Network pulse —— 多实例隔离模块
+   链上活动 / On-chain activity —— 多实例隔离模块
    数据: 公开只读接口 GET /api/public/network/progress (无认证, 15s 缓存 + ETag)
    取数顺序: ① 根元素 data-pulse-src="<url>" ② 地址 ?pulse=<url>
              ③ 同源 network-pulse.json ④ unavailable
@@ -365,7 +365,7 @@ var BOLLOON_IPNS = (function () {
    区内节点一律靠 data-pulse-* 钩子查找 (不用 id, 不会撞):
      data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-hint
      data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
-     data-pulse-caps · data-pulse-caps-empty
+     data-pulse-activity-body · data-pulse-activity-empty · data-pulse-activity-source
      data-pulse-feed · data-pulse-feed-empty · data-pulse-notes
      data-pulse-sites · data-pulse-sites-empty            (智能体私有站 IPNS 列表)
      data-pulse-ipns-form · data-pulse-ipns-input · data-pulse-ipns-open · data-pulse-ipns-msg
@@ -373,13 +373,25 @@ var BOLLOON_IPNS = (function () {
    聚合计数缺失 (tasks / tasks_completed / tasks_verified / signatures) → 整行隐藏:
    「拿不到就不显示」, 不拿 0 或 — 冒充数据。真实计数 0 照常显示 0。
 
-   活动流 (recent_activity) —— kind 无关: 前端只认 text {zh,en}, 从不 switch kind。
+   链上活动表 (confirmed_activity) —— 网关页主体, 一行 = 一条已确认的链上任务/交易:
+     列 = 任务 | 状态 | 事件 | 网络 | 区块 | 确认数/最终性 | 时间。
+     任务与交易标识一律经 shortRef() 短写 (0x12ab…9f0e / sha256:1a2b…):
+     长地址 / 长哈希不进页面可见文本 (快照给了全长也一样)。
+     state 用中/英单词, finality 三档 (observed/confirmed/finalized) 各上一档颜色徽标;
+     未知 kind / 未知 state / 未知 finality 照原样显示, 不猜、不吞、不报错。
+     一条里 task 与 tx 都空 → 不画这一行: 宁可不显示, 也不留空行。
+     没有数据时不是空白表格, 而是明说「本节点暂未观察到链上任务」;
+     快照本身读不到时说的是「快照不可用…」—— 两种真相不混。
+     数据源 confirmed_activity_source (chain-index / pulse-events / none)
+     在表格下方如实标注, 快照没给这个字段就写「快照未标注」。
+
+   活动流 (recent_activity, 首页序栏紧凑版仍在用) —— kind 无关: 前端只认 text {zh,en}。
    所以后端将来新增任何 kind 都不会报错 / 不会空白:
      · 服务端给了 {zh,en} → 直取当前语言 (缺当前语言就退回另一种, 仍是服务端原文, 不编造);
      · 一条文案都没有 / 文案为空 → 该条不进列表 (宁可不显示一行, 也不留空白行 / 不臆造描述)。
-   语言切换: rawFeed 保留原始双语对象, 只在渲染时取语言 → 切语言重画不会串语言。
-   数值变化靠下一轮轮询自动反映 (POLL_MS), 无需刷新页面 (新节点/新 agent 计数同此路径)。
-   可选根属性: data-pulse-feed-max="N" (本实例活动条数上限, 默认 5)
+   语言切换: 保留原始数据 (双语对象 / 原始字段), 只在渲染时取语言 → 切语言重画不串语言。
+   数值与表格行变化靠下一轮轮询自动反映 (POLL_MS), 无需刷新页面。
+   可选根属性: data-pulse-feed-max="N" (本实例活动流条数上限, 默认 5)
    任何一份实例失败 (含启动即失败) 都不影响另一份或页面其它区域。
    ============================================================ */
 (function () {
@@ -393,11 +405,40 @@ var BOLLOON_IPNS = (function () {
   var BACKOFF_MS = [30000, 60000, 120000];  // 失败退避 30s → 60s → 120s（上限）
   var REL_TICK_MS = 20000;                  // 相对时间刷新（只改文字节点）
   var SNAPSHOT_FILE = 'network-pulse.json'; // 静态签名快照（可能已过期 → 就显示 stale）
-  var FEED_MAX = 5;                         // 活动条数上限 (可被 data-pulse-feed-max 覆盖)
-  var CAPS_MAX = 8;                         // 能力条数上限
+  var FEED_MAX = 5;                         // 活动流条数上限 (可被 data-pulse-feed-max 覆盖)
+  var ACTIVITY_MAX = 60;                    // 链上活动表行数上限
   var SITES_MAX = 20;                       // 智能体私有站条数上限
 
   var instances = [];
+
+  // —— 链上活动表用词 (state / 事件 kind / finality / 数据源) ——
+  // 表里出现的词都是固定枚举的中英对照; 枚举以外的值一律回落成原始字符串,
+  // 未知就显示未知 —— 不吞、不猜、不编。
+  var STATE_WORD = {
+    active:   { zh: '活跃',   en: 'active' },
+    released: { zh: '已释放', en: 'released' },
+    refunded: { zh: '已退款', en: 'refunded' },
+    expired:  { zh: '已过期', en: 'expired' },
+    disputed: { zh: '争议中', en: 'disputed' },
+    unknown:  { zh: '未知',   en: 'unknown' }
+  };
+  var EVENT_WORD = {
+    task_created:   { zh: '任务创建', en: 'task created' },
+    task_accepted:  { zh: '任务接下', en: 'task accepted' },
+    task_completed: { zh: '任务完成', en: 'task completed' },
+    trade_settled:  { zh: '交易结算', en: 'trade settled' },
+    trade_verified: { zh: '交易验真', en: 'trade verified' }
+  };
+  var FINALITY_WORD = {
+    observed:  { zh: '已观察',     en: 'observed' },
+    confirmed: { zh: '已确认',     en: 'confirmed' },
+    finalized: { zh: '已最终确定', en: 'finalized' }
+  };
+  var SOURCE_WORD = {
+    'chain-index':  { zh: '链上索引', en: 'chain index' },
+    'pulse-events': { zh: '脉冲事件', en: 'pulse events' },
+    none:           { zh: '本节点未接入链上数据源', en: 'no on-chain data source on this node' }
+  };
 
   // —— 小工具（全部只写 textContent / 属性, 不碰 innerHTML）——
   function lang() { return document.documentElement.lang === 'en' ? 'en' : 'zh'; }
@@ -465,6 +506,46 @@ var BOLLOON_IPNS = (function () {
     return (isFinite(n) && n > 0 && n <= def) ? n : def;
   }
 
+  // —— 短写: 地址 / 哈希一律截断, 长串永不进页面可见文本 ——
+  //   0x1234…abcd      → 0x1234…abcd   (40 位地址: 头 4 尾 4)
+  //   sha256:1a2b3c4d… → sha256:1a2b…  (算法前缀 + 头 4)
+  //   裸长 hex         → 头 4…尾 4
+  function shortRef(v) {
+    var s = (typeof v === 'string' ? v : (v == null ? '' : String(v))).trim();
+    if (!s) return '';
+    var m = /^(0x)([0-9a-fA-F]{8,})$/.exec(s);
+    if (m) return m[1] + m[2].slice(0, 4) + '…' + m[2].slice(-4);
+    m = /^([A-Za-z][A-Za-z0-9_+.-]{1,15}):([0-9a-fA-F]{8,})$/.exec(s);
+    if (m) return m[1] + ':' + m[2].slice(0, 4) + '…';
+    if (/^[0-9a-fA-F]{20,}$/.test(s)) return s.slice(0, 4) + '…' + s.slice(-4);
+    return s;
+  }
+
+  // 快照时间字段兼容两种写法: ISO 字符串 ("2026-09-22T05:31:00Z") / 毫秒数
+  function parseAt(v) {
+    if (typeof v === 'number' && isFinite(v)) return v > 0 ? v : 0;
+    if (typeof v === 'string' && v.trim()) {
+      var t = Date.parse(v.trim());
+      return isFinite(t) ? t : 0;
+    }
+    return 0;
+  }
+  function isoOf(ms) { try { return new Date(ms).toISOString(); } catch (e) { return ''; } }
+  // 枚举词: 认得出就用中/英对照; 认不出但有原值就显示原值 (诚实优先于好看)
+  function word(table, key, fbZh, fbEn) {
+    var k = typeof key === 'string' ? key.trim() : '';
+    var w = table[k];
+    if (w) return lang() === 'en' ? w.en : w.zh;
+    if (k) return k;
+    return lang() === 'en' ? fbEn : fbZh;
+  }
+  function textNode(tag, cls, value) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    n.textContent = value == null ? '' : String(value);   // 一律 textContent
+    return n;
+  }
+
   // —— 一个实例: 绑定一个 [data-pulse] 根, 全部状态自持 (互不共享) ——
   function createInstance(root) {
     var FEED_LIMIT = readLimit(root.getAttribute('data-pulse-feed-max'), FEED_MAX);
@@ -480,8 +561,9 @@ var BOLLOON_IPNS = (function () {
       tasksCompleted: root.querySelector('[data-pulse-total="tasks_completed"]'),
       tasksVerified: root.querySelector('[data-pulse-total="tasks_verified"]'),
       signatures: root.querySelector('[data-pulse-total="signatures"]'),
-      caps: root.querySelector('[data-pulse-caps]'),
-      capsEmpty: root.querySelector('[data-pulse-caps-empty]'),
+      actBody: root.querySelector('[data-pulse-activity-body]'),
+      actEmpty: root.querySelector('[data-pulse-activity-empty]'),
+      actSource: root.querySelector('[data-pulse-activity-source]'),
       sites: root.querySelector('[data-pulse-sites]'),
       sitesEmpty: root.querySelector('[data-pulse-sites-empty]'),
       feed: root.querySelector('[data-pulse-feed]'),
@@ -489,7 +571,7 @@ var BOLLOON_IPNS = (function () {
       notes: root.querySelector('[data-pulse-notes]')
     };
 
-    var view = { state: 'loading', payload: null, snapAt: 0, capRows: [], rawFeed: [], notes: [], sites: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null };
+    var view = { state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '', rawFeed: [], notes: [], sites: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null };
     var timer = null, relTimer = null, failCount = 0, started = false, api = null;
 
     function setState(next) {
@@ -553,31 +635,101 @@ var BOLLOON_IPNS = (function () {
       text(el.scope, fromApi || fallback);
     }
 
-    function renderCaps() {
-      if (!el.caps) return;
-      clear(el.caps);
-      var rows = view.capRows, max = 0, i;
-      for (i = 0; i < rows.length; i++) if (rows[i].count > max) max = rows[i].count;
-      for (i = 0; i < rows.length; i++) {
-        var li = document.createElement('li');
-        var key = document.createElement('span');
-        key.className = 'pulse-cap-key';
-        key.textContent = rows[i].key === 'other'
-          ? (lang() === 'en' ? 'other (merged)' : '其它（已合并）')
-          : rows[i].key;
-        var bar = document.createElement('span');
-        bar.className = 'pulse-cap-bar';
-        var fill = document.createElement('i');
-        fill.className = 'pulse-cap-fill';
-        fill.style.width = max > 0 ? Math.round(rows[i].count / max * 100) + '%' : '0%';
-        bar.appendChild(fill);
-        var cnt = document.createElement('span');
-        cnt.className = 'pulse-cap-count';
-        cnt.textContent = String(rows[i].count);
-        li.appendChild(key); li.appendChild(bar); li.appendChild(cnt);
-        el.caps.appendChild(li);
+    // —— 链上活动表: 一行 = 一条已确认的链上任务/交易 ——
+    // 列 = 任务 | 状态 | 事件 | 网络 | 区块 | 确认数/最终性 | 时间
+    // 全部用 textContent 造节点; 任务/交易标识短写; 没有可标识的条目根本不进表。
+    function renderActivity() {
+      if (!el.actBody) return;
+      var en = lang() === 'en';
+      clear(el.actBody);
+      for (var i = 0; i < view.rows.length; i++) {
+        var r = view.rows[i];
+        var tr = document.createElement('tr');
+        tr.className = 'pulse-row';
+        tr.setAttribute('data-ref', r.refKind);
+
+        // ① 任务 (一律短写: 快照给全长也只显示头尾)
+        var tdTask = document.createElement('td');
+        tdTask.className = 'pulse-td-task';
+        tdTask.appendChild(textNode('code', '', shortRef(r.ref)));
+
+        // ② 状态 (中/英单词)
+        var tdState = document.createElement('td');
+        var st = textNode('span', 'pulse-state-word', word(STATE_WORD, r.state, '未知', 'unknown'));
+        st.setAttribute('data-state', r.state || 'unknown');
+        tdState.appendChild(st);
+
+        // ③ 事件 (kind 枚举 → 中/英; 认不出的 kind 原样显示, 不猜)
+        var tdKind = document.createElement('td');
+        var kd = textNode('span', 'pulse-kind-word', word(EVENT_WORD, r.kind, '未知', 'unknown'));
+        kd.setAttribute('data-kind', r.kind || 'unknown');
+        tdKind.appendChild(kd);
+
+        // ④ 网络 = 快照给的 chain_id (只显示这个数字, 不替它编网络名)
+        var tdNet = document.createElement('td');
+        tdNet.className = 'pulse-td-net';
+        tdNet.setAttribute('data-chain', r.chainId == null ? '' : String(r.chainId));
+        tdNet.textContent = r.chainId == null ? '—' : String(r.chainId);
+
+        // ⑤ 区块
+        var tdBlock = document.createElement('td');
+        tdBlock.className = 'pulse-td-block';
+        tdBlock.textContent = r.block == null ? '—' : String(r.block);
+
+        // ⑥ 确认数 / 最终性 (observed / confirmed / finalized 三档各一色徽标)
+        var tdFin = document.createElement('td');
+        tdFin.className = 'pulse-td-fin';
+        tdFin.appendChild(textNode('span', 'pulse-conf', r.confirmations == null ? '—' : String(r.confirmations)));
+        var finKey = FINALITY_WORD[r.finality] ? r.finality : (r.finality ? 'other' : 'unknown');
+        var badge = textNode('span', 'pulse-fin is-' + finKey, word(FINALITY_WORD, r.finality, '未知', 'unknown'));
+        badge.setAttribute('data-finality', r.finality || 'unknown');
+        tdFin.appendChild(badge);
+
+        // ⑦ 时间 (快照原文是 ISO 字符串 → 转本地绝对时间; 相对时间留给活动流)
+        var tdTime = document.createElement('td');
+        tdTime.className = 'pulse-td-time';
+        if (r.at) {
+          var t = document.createElement('time');
+          t.setAttribute('datetime', isoOf(r.at));
+          t.textContent = absTime(r.at);
+          tdTime.appendChild(t);
+        } else {
+          tdTime.textContent = '—';
+        }
+
+        tr.appendChild(tdTask); tr.appendChild(tdState); tr.appendChild(tdKind);
+        tr.appendChild(tdNet); tr.appendChild(tdBlock); tr.appendChild(tdFin); tr.appendChild(tdTime);
+        el.actBody.appendChild(tr);
       }
-      toggleEmpty(el.capsEmpty, rows.length === 0);
+      // 空表格要说清是哪种空 (没观察到 ≠ 没拿到), 不留一片空白骗人
+      if (el.actEmpty) {
+        text(el.actEmpty, activityEmptyText());
+        toggleEmpty(el.actEmpty, view.rows.length === 0);
+      }
+      // 数据源如实标注 (快照没给这个字段就写「快照未标注」, 不替它认领一个来源)
+      if (el.actSource) {
+        if (!view.payload) {
+          // 快照本身都没读到 —— 这跟「快照没标注来源」是两回事, 分开说
+          text(el.actSource, en ? 'On-chain data source: no snapshot read this round' : '链上数据源：本次未读到快照');
+        } else {
+          var known = SOURCE_WORD[view.actSource];
+          text(el.actSource, (en ? 'On-chain data source: ' : '链上数据源：') +
+            (known ? (en ? known.en : known.zh) : (view.actSource || (en ? 'not specified by the snapshot' : '快照未标注'))));
+        }
+      }
+    }
+
+    // 空表格的两种真相要分清: 快照在但一条都没有 (没观察到) ≠ 快照根本没拿到
+    function activityEmptyText() {
+      var en = lang() === 'en';
+      if (!view.payload) {
+        return en
+          ? 'Snapshot unavailable — on-chain activity cannot be read right now.'
+          : '快照不可用，此刻读不到链上活动。';
+      }
+      return en
+        ? 'This node has not observed any on-chain task yet.'
+        : '本节点暂未观察到链上任务。';
     }
 
     function renderFeed() {
@@ -663,16 +815,16 @@ var BOLLOON_IPNS = (function () {
 
     function redraw() {
       if (!view.payload) return;
-      renderScope(); renderCaps(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
+      renderScope(); renderActivity(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
     }
 
     function clearData() {
-      view.payload = null; view.snapAt = 0; view.capRows = []; view.rawFeed = []; view.notes = []; view.sites = []; view.sourceKind = null;
+      view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.sourceKind = null;
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.signatures, null);
       text(el.snapTime, '—'); text(el.snapAgo, '');
-      renderCaps(); renderFeed(); renderNotes(); renderSites(); renderScope();
+      renderActivity(); renderFeed(); renderNotes(); renderSites(); renderScope();
     }
 
     function applyPayload(payload, state, kind) {
@@ -681,12 +833,32 @@ var BOLLOON_IPNS = (function () {
       view.snapAt = num(payload.generated_at) || 0;
       view.scopeKey = payload.scope === 'verified' ? 'verified' : 'observed';
       view.scopeLabels = payload.scope_label || null;
-      var caps = Array.isArray(payload.capabilities) ? payload.capabilities : [];
-      view.capRows = caps.filter(function (c) {
-        return c && typeof c.key === 'string' && num(c.count) != null;
-      }).map(function (c) { return { key: c.key, count: num(c.count) }; })
-        .sort(function (a, b) { return b.count - a.count; })
-        .slice(0, CAPS_MAX);
+      // 链上活动: 一行 = 一条已确认的链上任务/交易。task 与 tx 都空 → 这条不画
+      // (宁可不显示一行, 也不留空行)。全长地址/哈希在渲染时才短写, DOM 里不留全文。
+      view.rows = (Array.isArray(payload.confirmed_activity) ? payload.confirmed_activity : [])
+        .map(function (r) {
+          if (!r || typeof r !== 'object') return null;
+          var task = typeof r.task === 'string' ? r.task.trim() : '';
+          var tx = typeof r.tx === 'string' ? r.tx.trim() : '';
+          if (!task && !tx) return null;                     // task 与 tx 都空 → 不画
+          return {
+            ref: task || tx,                                 // task 缺失时才退到 tx
+            refKind: task ? 'task' : 'tx',
+            kind: typeof r.kind === 'string' ? r.kind.trim() : '',
+            state: typeof r.state === 'string' ? r.state.trim() : '',
+            chainId: num(r.chain_id),
+            block: num(r.block),
+            confirmations: num(r.confirmations),
+            finality: typeof r.finality === 'string' ? r.finality.trim() : '',
+            at: parseAt(r.at)
+          };
+        })
+        .filter(function (x) { return !!x; })
+        .sort(function (a, b) { return (b.at || 0) - (a.at || 0); })   // 新的在上 (没有时间的沉底)
+        .slice(0, ACTIVITY_MAX);
+      // 数据源: 原样读快照给的字符串, 缺就缺 (渲染时写「快照未标注」, 不替它认来源)
+      view.actSource = typeof payload.confirmed_activity_source === 'string'
+        ? payload.confirmed_activity_source.trim() : '';
       // 活动流: 与 kind 无关 —— 只认服务端 text {zh,en} (新 kind 直用后端文案, 前端不再造一套)。
       // 没有可显示文案的条目直接丢弃: 宁可不显示一行, 也不渲染空白行 / 不臆造描述。
       // 保留原始双语对象, 语言在 renderFeed 时才取 (切语言重画不串语言)。
@@ -724,7 +896,7 @@ var BOLLOON_IPNS = (function () {
       setOptCount(el.signatures, t.signatures);
       text(el.snapTime, absTime(view.snapAt));
       setState(state);
-      renderScope(); renderCaps(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
+      renderScope(); renderActivity(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
       if (!relTimer) relTimer = setInterval(function () { try { updateRelTimes(); } catch (e) {} }, REL_TICK_MS);
     }
 
@@ -762,13 +934,15 @@ var BOLLOON_IPNS = (function () {
       root: root,
       key: root.id || root.getAttribute('data-pulse-name') || '',
       state: 'loading',
-      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, capsMax: CAPS_MAX },
+      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, activityMax: ACTIVITY_MAX },
       refresh: function () { try { return refresh(); } catch (e) { return null; } },
       tick: function () { try { updateRelTimes(); } catch (e) {} },
       redraw: function () { try { redraw(); } catch (e) {} },
       reducedMotion: isReducedMotion,
       source: function () { var s = resolveSource(); return s ? s.kind : null; },
       sites: function () { return view.sites.slice(); },
+      rows: function () { return view.rows.slice(); },
+      activitySource: function () { return view.actSource; },
       failCount: function () { return failCount; },
       applyReducedMotion: function () {
         root.setAttribute('data-reduced-motion', isReducedMotion() ? 'true' : 'false');

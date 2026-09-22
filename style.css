@@ -469,10 +469,11 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .foot-link:hover { color: var(--lime); }
 
 /* ============================================================
-   全球网络脉冲 (Network pulse) — 2026-09-21; 多实例化 2026-09-21
+   链上活动 (On-chain activity) — 2026-09-21 建; 由「网络脉冲」改名 2026-09-22
    数据: 公开只读接口 GET /api/public/network/progress (见 app.js 末尾多实例模块)
-   钩子: 每个脉冲区是 [data-pulse] 根, 区内为 data-pulse-* 节点 —— 样式一律挂
+   钩子: 每个活动区是 [data-pulse] 根, 区内为 data-pulse-* 节点 —— 样式一律挂
          [data-pulse] 而不挂具体 id, 这样网关页那份与首页序栏紧凑份共用一套规则。
+   网关页 = 短说明 + 小结行 + 一张表; 首页 = 更轻的紧凑份。
    风格: 炭黑 + lime 编辑式排版 —— 大留白 / 发丝线 / 圆角 ≤ 2px / 无阴影渐变
    ============================================================ */
 .gateway-pulse .section-head { margin-bottom: 32px; }
@@ -499,27 +500,53 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-sep { color: var(--ink-3); }
 [data-pulse] [hidden] { display: none !important; }
 
-/* 大数值: 只靠字号和留白分层, 不做卡片墙 */
-.pulse-stats { display: flex; flex-wrap: wrap; align-items: flex-end; gap: clamp(24px, 3.6vw, 46px); margin: clamp(30px, 5vh, 52px) 0; }
-.pulse-stat { display: flex; flex-direction: column; gap: 8px; padding-right: clamp(22px, 4vw, 52px); border-right: 1px solid var(--hairline); }
-.pulse-stat:last-child { border-right: none; padding-right: 0; }
-.pulse-stat-value {
+/* 小结行: 一行六个计数 (节点 / 智能体 / 任务 / 已完成 / 已验证 / 钱包签名)。
+   数值仍是衬线字号, 但不再占屏 —— 网关页的主体现在是下面那张表。 */
+.pulse-summary { list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 30px; margin: clamp(20px, 3.4vh, 34px) 0 clamp(14px, 2.4vh, 24px); }
+.pulse-summary li { display: flex; align-items: baseline; gap: 8px; }
+.pulse-summary b {
   font-family: var(--serif); font-weight: 300;
-  font-size: clamp(2.7rem, 6vw, 4.4rem); line-height: 0.92;
-  color: var(--ink); font-variant-numeric: tabular-nums;
+  font-size: clamp(1.7rem, 2.6vw, 2.1rem); line-height: 1; color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
-.pulse-stat-label { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-3); }
+.pulse-summary span { font-family: var(--mono); font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-3); }
 
-.pulse-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(30px, 5vw, 64px); margin-bottom: clamp(28px, 4vh, 44px); }
-.pulse-block { min-width: 0; }
 .pulse-sub { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--lime); margin-bottom: 16px; }
-.pulse-cap-list { list-style: none; }
-.pulse-cap-list li { display: flex; align-items: baseline; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--hairline); }
-.pulse-cap-list li:first-child { border-top: 1px solid var(--hairline); }
-.pulse-cap-key { font-family: var(--mono); font-size: 13px; color: var(--ink); }
-.pulse-cap-bar { flex: 1 1 auto; display: block; min-width: 12px; height: 1px; background: var(--hairline); }
-.pulse-cap-fill { display: block; height: 1px; background: var(--lime-deep); }
-.pulse-cap-count { font-family: var(--mono); font-size: 13px; color: var(--lime); }
+
+/* —— 链上活动表: 一行 = 一条已确认的链上任务/交易 (2026-09-22) ——
+   编辑式排版: 发丝线分隔 / 等宽字体装标识 / 圆角 ≤ 2px / 窄屏整表横向滚动。
+   最终性三档各一色徽标: 已观察 (中性) · 已确认 (深 lime 描边) · 已最终确定 (lime 实底)。
+   未知/认不出的最终性用虚线徽标 —— 不假装它是三档之一。 */
+.pulse-table-wrap { overflow-x: auto; margin: 0 0 clamp(18px, 2.6vh, 28px); }
+.pulse-table { width: 100%; min-width: 880px; border-collapse: collapse; }
+.pulse-table-cap {
+  caption-side: top; text-align: left; padding: 0 0 12px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-3);
+}
+.pulse-table th, .pulse-table td { text-align: left; padding: 11px 16px 11px 0; vertical-align: baseline; border-bottom: 1px solid var(--hairline); }
+.pulse-table thead th {
+  font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--ink-3); border-bottom-color: var(--line);
+}
+.pulse-table tbody tr:first-child td { border-top: 1px solid var(--hairline); }
+.pulse-table tbody tr:hover td { background: color-mix(in srgb, var(--lime) 4%, transparent); }
+.pulse-td-task code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.pulse-state-word, .pulse-kind-word { font-size: 0.95rem; color: var(--ink-2); }
+.pulse-td-net, .pulse-td-block, .pulse-td-time { font-family: var(--mono); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.pulse-td-time time { font-family: var(--mono); }
+.pulse-td-fin { white-space: nowrap; }
+.pulse-conf { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); margin-right: 10px; }
+.pulse-fin {
+  display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.2px;
+  text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--hairline); border-radius: 2px;
+}
+.pulse-fin.is-observed { color: var(--ink-2); border-color: var(--line); }
+.pulse-fin.is-confirmed { color: var(--lime-deep); border-color: var(--lime-deep); }
+.pulse-fin.is-finalized { color: var(--bg); background: var(--lime); border-color: var(--lime); }
+.pulse-fin.is-other, .pulse-fin.is-unknown { color: var(--ink-3); border-style: dashed; }
+.pulse-activity-empty { margin-top: 12px; }
+.pulse-activity-source { margin-top: 10px; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.6px; color: var(--ink-3); }
+
 .pulse-feed { list-style: none; }
 .pulse-feed li { display: flex; align-items: baseline; gap: 18px; padding: 10px 0; border-bottom: 1px solid var(--hairline); }
 .pulse-feed li:first-child { border-top: 1px solid var(--hairline); }
@@ -605,14 +632,16 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 /* 移动端: 统计纵向堆叠 */
 @media (max-width: 640px) {
   .pulse-head { flex-direction: column; gap: 8px; }
-  .pulse-stats { flex-direction: column; align-items: stretch; gap: 18px; }
-  .pulse-stat {
-    flex-direction: row; align-items: baseline; justify-content: space-between; gap: 14px;
-    padding: 0 0 14px; border-right: none; border-bottom: 1px solid var(--hairline);
+  /* 小结行: 窄屏逐项一行 (值左 · 标签右), 不挤成数字墙 */
+  .pulse-summary { flex-direction: column; align-items: stretch; gap: 10px; }
+  .pulse-summary li {
+    justify-content: space-between; gap: 14px;
+    padding-bottom: 9px; border-bottom: 1px solid var(--hairline);
   }
-  .pulse-stat:last-child { border-bottom: none; padding-bottom: 0; }
-  .pulse-stat-value { font-size: clamp(2.2rem, 12vw, 3rem); }
-  .pulse-grid { grid-template-columns: 1fr; gap: 30px; }
+  .pulse-summary li:last-child { border-bottom: none; padding-bottom: 0; }
+  .pulse-summary b { font-size: 1.5rem; }
+  /* 链上活动表: 窄屏整表横向滚动 (由 .pulse-table-wrap 承接), 列宽不被压扁 */
+  .pulse-table { min-width: 720px; }
   .pulse-feed li { flex-direction: column; gap: 2px; }
   .pulse-feed-time { flex: none; }
   /* 智能体私有站: 列表纵向, 粘贴框纵向 (输入框 + 按钮各占整行, 不横向溢出) */

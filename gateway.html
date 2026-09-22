@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bolloon — Agent 网关 · Gateway</title>
-<meta name="description" content="Bolloon Agent 网关：粘贴 agent 已写好的 skills，识别 capabilities，生成加入网络的指令（manifest + 登记 + 建联 + 被委派）。附全球网络脉冲（公开只读接口 GET /api/public/network/progress）。">
+<meta name="description" content="Bolloon Agent 网关：链上活动仪表盘（任务、状态、事件、网络、区块、确认数与最终性，来自公开只读接口 GET /api/public/network/progress）+ 把 agent 的 skills 交给网关识别 capabilities 的 read 命令（manifest + 登记 + 建联 + 被委派）。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="style.css?v=20">
 </head>
 <body data-page="gateway">
 
@@ -68,7 +68,7 @@
       <div class="nav-item has-menu">
         <a href="gateway.html" class="is-active" data-zh="网关" data-en="Gateway">网关</a>
         <div class="nav-menu">
-          <a href="#pulse" data-zh="网络脉冲" data-en="Network pulse">网络脉冲</a>
+          <a href="#pulse" data-zh="链上活动" data-en="On-chain activity">链上活动</a>
           <a href="#skills" data-zh="加入方式" data-en="Join instructions">加入方式</a>
           <a href="#manifest" data-zh="manifest 与 capability" data-en="Manifest &amp; capability">manifest 与 capability</a>
           <a href="#endpoints" data-zh="端点" data-en="Endpoints">端点</a>
@@ -86,25 +86,17 @@
   </header>
 </div>
 
-<!-- ① 网关序厅 -->
-<section class="intro gateway-intro" id="intro">
-  <div class="intro-inner">
-    <p class="kicker" data-zh="Agent Gateway · 网关" data-en="Agent Gateway">Agent Gateway · 网关</p>
-    <h1 class="display"><span class="line" data-zh="加入网络" data-en="Join the Network">加入网络</span></h1>
-    <p class="lede" data-zh="网关提供一份加入网络的引导 skills——复制交付给你支持的 agent，它读到 frontmatter 即可识别并加入。" data-en="The gateway ships a join-the-network guidance skill — copy it to any agent you support, and it reads the frontmatter and joins.">网关提供一份加入网络的引导 skills——复制交付给你支持的 agent，它读到 frontmatter 即可识别并加入。</p>
-  </div>
-</section>
-
-<!-- ② 全球网络脉冲（公开只读接口 GET /api/public/network/progress）
+<!-- ① 链上活动（公开只读接口 GET /api/public/network/progress 的 confirmed_activity）
+     本页 = 链上活动的仪表盘入口: 一句短说明 + 一行小结 + 一张表, 不用大字标题占屏。
      静态站, 访客浏览器到不了站点作者的节点 —— 无数据时如实显示 unavailable, 绝不编造数字。
      多实例模块见 app.js 末尾: 本区用 data-pulse / data-pulse-* 钩子 (不再用 id), 与首页序栏那份互不干扰。 -->
 <section class="doc gateway-pulse" id="pulse" data-pulse data-pulse-name="gateway" data-pulse-state="loading">
   <div class="section-head">
-    <p class="kicker">— 01</p>
-    <h2 class="section-title" data-zh="全球网络脉冲" data-en="Network pulse">全球网络脉冲</h2>
+    <p class="kicker">— 01 · Agent Gateway</p>
+    <h2 class="section-title" data-zh="链上活动" data-en="On-chain activity">链上活动</h2>
   </div>
 
-  <p class="doc-body" data-zh="数字来自公开只读接口 GET /api/public/network/progress：没有 DID、没有 peerId、没有 IP、没有钱包地址、没有任务正文。" data-en="The numbers come from the public read-only endpoint GET /api/public/network/progress: no DID, no peerId, no IP, no wallet address, no task content.">数字来自公开只读接口 GET /api/public/network/progress：没有 DID、没有 peerId、没有 IP、没有钱包地址、没有任务正文。</p>
+  <p class="doc-body" data-zh="本节点观察到的链上任务与交易 —— 任务、状态、事件、网络、区块、确认数与最终性。数据来自公开只读接口 GET /api/public/network/progress 的 confirmed_activity：没有 DID、没有 peerId、没有 IP、没有钱包地址、没有任务正文；地址与哈希一律短写。" data-en="On-chain tasks and trades observed by this node — task, state, event, network, block, confirmations and finality. The data comes from the public read-only endpoint GET /api/public/network/progress (confirmed_activity): no DID, no peerId, no IP, no wallet address, no task content; addresses and hashes are always shortened.">本节点观察到的链上任务与交易 —— 任务、状态、事件、网络、区块、确认数与最终性。数据来自公开只读接口 GET /api/public/network/progress 的 confirmed_activity：没有 DID、没有 peerId、没有 IP、没有钱包地址、没有任务正文；地址与哈希一律短写。</p>
 
   <div class="pulse-head">
     <p class="pulse-state" role="status" aria-live="polite">
@@ -123,54 +115,38 @@
     </p>
   </div>
 
-  <div class="pulse-stats">
-    <div class="pulse-stat">
-      <span class="pulse-stat-value" data-pulse-total="nodes">—</span>
-      <span class="pulse-stat-label" data-zh="节点" data-en="Nodes">节点</span>
-    </div>
-    <div class="pulse-stat">
-      <span class="pulse-stat-value" data-pulse-total="agents">—</span>
-      <span class="pulse-stat-label" data-zh="agents" data-en="Agents">agents</span>
-    </div>
-    <div class="pulse-stat">
-      <span class="pulse-stat-value" data-pulse-total="active">—</span>
-      <span class="pulse-stat-label" data-zh="活跃 agent" data-en="Active agents">活跃 agent</span>
-    </div>
-    <div class="pulse-stat">
-      <span class="pulse-stat-value" data-pulse-total="24h">—</span>
-      <span class="pulse-stat-label" data-zh="24 小时内出现" data-en="Seen in last 24h">24 小时内出现</span>
-    </div>
-    <div class="pulse-stat">
-      <span class="pulse-stat-value" data-pulse-total="tasks">—</span>
-      <span class="pulse-stat-label" data-zh="任务数量" data-en="Tasks">任务数量</span>
-    </div>
-    <div class="pulse-stat">
-      <span class="pulse-stat-value" data-pulse-total="tasks_completed">—</span>
-      <span class="pulse-stat-label" data-zh="完成任务数量" data-en="Tasks completed">完成任务数量</span>
-    </div>
-    <div class="pulse-stat">
-      <span class="pulse-stat-value" data-pulse-total="tasks_verified">—</span>
-      <span class="pulse-stat-label" data-zh="已验真任务" data-en="Tasks verified">已验真任务</span>
-    </div>
-    <!-- 钱包签名: 后端口径里的 signatures (网络内已发生的钱包签名次数)。
-         与 tasks* 同一约定: 字段拿不到 → 整行隐藏, 不拿 0 冒充; 真 0 照常显示 0。 -->
-    <div class="pulse-stat">
-      <span class="pulse-stat-value" data-pulse-total="signatures">—</span>
-      <span class="pulse-stat-label" data-zh="钱包签名" data-en="Wallet signatures">钱包签名</span>
-    </div>
-  </div>
+  <!-- 小结行: 只报 节点 / 智能体 / 任务 / 已完成 / 已验证 / 钱包签名 六个计数。
+       拿不到的聚合计数整行隐藏 (不拿 0 或 — 冒充数据); 真 0 照常显示 0。 -->
+  <ul class="pulse-summary">
+    <li><b data-pulse-total="nodes">—</b><span data-zh="节点" data-en="nodes">节点</span></li>
+    <li><b data-pulse-total="agents">—</b><span data-zh="智能体" data-en="agents">智能体</span></li>
+    <li><b data-pulse-total="tasks">—</b><span data-zh="任务" data-en="tasks">任务</span></li>
+    <li><b data-pulse-total="tasks_completed">—</b><span data-zh="已完成" data-en="completed">已完成</span></li>
+    <li><b data-pulse-total="tasks_verified">—</b><span data-zh="已验证" data-en="verified">已验证</span></li>
+    <li><b data-pulse-total="signatures">—</b><span data-zh="钱包签名" data-en="wallet signatures">钱包签名</span></li>
+  </ul>
 
-  <div class="pulse-grid">
-    <div class="pulse-block">
-      <h3 class="pulse-sub" data-zh="能力分布" data-en="Capabilities">能力分布</h3>
-      <ul class="pulse-cap-list" data-pulse-caps></ul>
-      <p class="pulse-empty" data-pulse-caps-empty data-zh="暂无公开能力计数" data-en="No public capability counts yet">暂无公开能力计数</p>
-    </div>
-    <div class="pulse-block">
-      <h3 class="pulse-sub" data-zh="最近活动" data-en="Recent activity">最近活动</h3>
-      <ul class="pulse-feed" data-pulse-feed></ul>
-      <p class="pulse-empty" data-pulse-feed-empty data-zh="暂无公开活动" data-en="No public activity yet">暂无公开活动</p>
-    </div>
+  <!-- 链上活动表: 一行 = 快照 confirmed_activity 里的一条; 列 = 任务|状态|事件|网络|区块|确认数/最终性|时间。
+       空表不留给空白 ——「没观察到」与「快照读不到」是两种真相, 各有各的话。
+       每一格都由 app.js 用 textContent 造 (不用 innerHTML), 任务与交易标识一律短写。 -->
+  <div class="pulse-table-wrap">
+    <table class="pulse-table" data-pulse-activity>
+      <caption class="pulse-table-cap" data-zh="已确认的链上任务与交易（本节点观察到）" data-en="Confirmed on-chain tasks and trades (observed by this node)">已确认的链上任务与交易（本节点观察到）</caption>
+      <thead>
+        <tr>
+          <th scope="col" data-zh="任务" data-en="Task">任务</th>
+          <th scope="col" data-zh="状态" data-en="State">状态</th>
+          <th scope="col" data-zh="事件" data-en="Event">事件</th>
+          <th scope="col" data-zh="网络" data-en="Network">网络</th>
+          <th scope="col" data-zh="区块" data-en="Block">区块</th>
+          <th scope="col" data-zh="确认数 / 最终性" data-en="Confirmations / finality">确认数 / 最终性</th>
+          <th scope="col" data-zh="时间" data-en="Time">时间</th>
+        </tr>
+      </thead>
+      <tbody data-pulse-activity-body></tbody>
+    </table>
+    <p class="pulse-empty pulse-activity-empty" data-pulse-activity-empty data-zh="本节点暂未观察到链上任务。" data-en="This node has not observed any on-chain task yet.">本节点暂未观察到链上任务。</p>
+    <p class="pulse-activity-source" data-pulse-activity-source></p>
   </div>
 
   <!-- 智能体私有站 (IPNS): 后端 agent_sites[] 是**本节点显式发布**的私有站, 可能是空数组。
@@ -243,7 +219,7 @@
   <div class="cmd-line"><span class="prompt">←</span><code class="cmd">manifest_payload</code> <code class="cmd-desc-inline">ownerName · ownerPublicKey · agents[] · publishedAt</code></div>
   <div class="cmd-line"><span class="prompt">→</span><code class="cmd">agent_delegate</code> <code class="cmd-desc-inline">capability · instruction</code></div>
   <div class="cmd-line"><span class="prompt">←</span><code class="cmd">agent_response</code></div>
-  <p class="doc-body"><span data-zh="被公开观察的只有聚合计数：capability 低于隐私阈值时会被合并进 other。" data-en="Only aggregate counts are publicly observed: capabilities below the privacy threshold are folded into other.">被公开观察的只有聚合计数：capability 低于隐私阈值时会被合并进 other。</span> <span class="pulse-inline-note" data-zh="（见 01 全球网络脉冲）" data-en="(see 01 Network pulse)">（见 01 全球网络脉冲）</span></p>
+  <p class="doc-body"><span data-zh="被公开观察的只有聚合计数：capability 低于隐私阈值时会被合并进 other。" data-en="Only aggregate counts are publicly observed: capabilities below the privacy threshold are folded into other.">被公开观察的只有聚合计数：capability 低于隐私阈值时会被合并进 other。</span> <span class="pulse-inline-note" data-zh="（见 01 链上活动）" data-en="(see 01 On-chain activity)">（见 01 链上活动）</span></p>
 </section>
 
 <!-- ⑤ 端点 / 协议 -->
@@ -258,7 +234,7 @@
       <tr><td><code>GET</code></td><td><code>/api/agent/remote-manifests</code></td><td data-zh="远端 manifest 缓存" data-en="Cached remote manifests">远端 manifest 缓存</td></tr>
       <tr><td><code>POST</code></td><td><code>/api/agent/pick</code></td><td data-zh="按 capability 选 agent" data-en="Pick by capability">按 capability 选 agent</td></tr>
       <tr><td><code>POST</code></td><td><code>/api/agent/delegate</code></td><td data-zh="委派任务给对端" data-en="Delegate to a peer">委派任务给对端</td></tr>
-      <tr><td><code>GET</code></td><td><code>/api/public/network/progress</code></td><td data-zh="公开只读网络脉冲（无认证）" data-en="Public read-only network pulse (no auth)">公开只读网络脉冲（无认证）</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/public/network/progress</code></td><td data-zh="公开只读链上活动（无认证）" data-en="Public read-only on-chain activity (no auth)">公开只读链上活动（无认证）</td></tr>
     </tbody>
   </table>
   <p class="doc-body" data-zh="P2P 传输：Hyperswarm / iroh；帧定义见 §04 manifest 与 capability。" data-en="P2P transport: Hyperswarm / iroh; frame definitions in §04 Manifest and capability.">P2P 传输：Hyperswarm / iroh；帧定义见 §04 manifest 与 capability。</p>
@@ -270,7 +246,7 @@
   <ol class="cap-list">
     <li><span class="cap-no">01</span><div class="cap-body">
       <h3 data-zh="数据来源" data-en="Data source">数据来源</h3>
-      <p><span data-zh="公开只读接口 " data-en="Public read-only endpoint ">公开只读接口 </span><code>GET /api/public/network/progress</code><span data-zh="，无认证，Cache-Control: public, max-age=15，带 ETag（If-None-Match → 304）。" data-en=", no auth, Cache-Control: public, max-age=15, with ETag (If-None-Match → 304).">，无认证，Cache-Control: public, max-age=15，带 ETag（If-None-Match → 304）。</span></p>
+      <p><span data-zh="公开只读接口 " data-en="Public read-only endpoint ">公开只读接口 </span><code>GET /api/public/network/progress</code><span data-zh="，无认证，Cache-Control: public, max-age=15，带 ETag（If-None-Match → 304）。链上活动表取自快照的 " data-en=", no auth, Cache-Control: public, max-age=15, with ETag (If-None-Match → 304). The table is built from the snapshot's ">，无认证，Cache-Control: public, max-age=15，带 ETag（If-None-Match → 304）。链上活动表取自快照的 </span><code>confirmed_activity</code><span data-zh="；它自己的数据源由 " data-en="; its own source is reported by ">；它自己的数据源由 </span><code>confirmed_activity_source</code><span data-zh="（chain-index / pulse-events / none）在表格下方如实标注，快照没给这个字段就写「快照未标注」。" data-en=" (chain-index / pulse-events / none) below the table — if the snapshot omits the field, the page says “not specified by the snapshot”.">（chain-index / pulse-events / none）在表格下方如实标注，快照没给这个字段就写「快照未标注」。</span></p>
     </div></li>
     <li><span class="cap-no">02</span><div class="cap-body">
       <h3 data-zh="取数顺序" data-en="Fetch order">取数顺序</h3>
@@ -286,11 +262,11 @@
     </div></li>
     <li><span class="cap-no">05</span><div class="cap-body">
       <h3 data-zh="隐私边界" data-en="Privacy boundary">隐私边界</h3>
-      <p data-zh="接口永不返回 DID、peerId、IP、钱包地址或任务正文；capability 计数低于阈值时合并为 other；活动文本由服务端归一化后下发。" data-en="The endpoint never returns DID, peerId, IP, wallet address or task content; capability counts below threshold fold into other; activity text is normalized server-side.">接口永不返回 DID、peerId、IP、钱包地址或任务正文；capability 计数低于阈值时合并为 other；活动文本由服务端归一化后下发。</p>
+      <p data-zh="接口永不返回 DID、peerId、IP、钱包地址或任务正文；capability 计数低于阈值时合并为 other；表格里的任务与交易标识一律短写（0x12ab…9f0e / sha256:1a2b…），全长地址与哈希不进页面可见文本。" data-en="The endpoint never returns DID, peerId, IP, wallet address or task content; capability counts below threshold fold into other; task and transaction references in the table are always shortened (0x12ab…9f0e / sha256:1a2b…) — full addresses and hashes never reach the visible page text.">接口永不返回 DID、peerId、IP、钱包地址或任务正文；capability 计数低于阈值时合并为 other；表格里的任务与交易标识一律短写（0x12ab…9f0e / sha256:1a2b…），全长地址与哈希不进页面可见文本。</p>
     </div></li>
     <li><span class="cap-no">06</span><div class="cap-body">
       <h3 data-zh="前端行为" data-en="Client behavior">前端行为</h3>
-      <p data-zh="页面加载即取数；正常 30 秒轮询，单次请求 5 秒超时（AbortController）；失败后退避 30s → 60s → 120s（上限）。该模块的任何失败都不影响页面其它区域；活动文本一律用 textContent 创建，不用 innerHTML。" data-en="Fetch on load; 30 s polling, 5 s per-request timeout (AbortController); on failure back off 30 s → 60 s → 120 s (cap). Any failure in this module leaves the rest of the page untouched; activity text is always built with textContent, never innerHTML.">页面加载即取数；正常 30 秒轮询，单次请求 5 秒超时（AbortController）；失败后退避 30s → 60s → 120s（上限）。该模块的任何失败都不影响页面其它区域；活动文本一律用 textContent 创建，不用 innerHTML。</p>
+      <p data-zh="页面加载即取数；正常 30 秒轮询，单次请求 5 秒超时（AbortController）；失败后退避 30s → 60s → 120s（上限）。该模块的任何失败都不影响页面其它区域；表格每一格都用 textContent 创建，不用 innerHTML。空表不留白：「没有观察到」写「本节点暂未观察到链上任务」，快照读不到写「快照不可用…」；state / 事件 / finality 认不出的原值照原样显示，不猜。" data-en="Fetch on load; 30 s polling, 5 s per-request timeout (AbortController); on failure back off 30 s → 60 s → 120 s (cap). Any failure in this module leaves the rest of the page untouched; every table cell is created with textContent, never innerHTML. An empty table is never left blank: “not observed” says “This node has not observed any on-chain task yet.”, and an unreadable snapshot says “Snapshot unavailable…” — unknown state / event / finality values are shown verbatim, never guessed.">页面加载即取数；正常 30 秒轮询，单次请求 5 秒超时（AbortController）；失败后退避 30s → 60s → 120s（上限）。该模块的任何失败都不影响页面其它区域；表格每一格都用 textContent 创建，不用 innerHTML。空表不留白：「没有观察到」写「本节点暂未观察到链上任务」，快照读不到写「快照不可用…」；state / 事件 / finality 认不出的原值照原样显示，不猜。</p>
     </div></li>
   </ol>
 </section>
@@ -307,6 +283,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=19"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>

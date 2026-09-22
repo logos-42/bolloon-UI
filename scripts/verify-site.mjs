@@ -12,30 +12,43 @@
  *   ⑤ /bolloon-gateway-join.md 线上正文 = v1.3.0 且含 join_global_gateway / publicKey
  *   ⑤′ /bolloon-network.md 线上正文 = 主仓 skills/bolloon-network/SKILL.md 的原样镜像
  *      (frontmatter 原样: name/version/protocol/paymentModes/hardRules + 正文首尾锚点都在)
- *   ⑥ gateway.html 全球网络脉冲 (公开只读接口 /api/public/network/progress):
- *      loading/live/stale/unavailable 四态 (用 CDP Fetch 拦截夹具数据, 不对真实网络下断言)、
- *      中英切换、活动文本走 textContent、失败不阻断其它区域、30s 轮询 + 5s 超时 + 退避常量、
- *      prefers-reduced-motion、390px 纵向堆叠、回退同源 network-pulse.json、无 console 错误
- *   ⑦ index.html 序栏 (hero) 紧凑版脉冲: 同一数据源、同一诚实四态、紧凑度确实优于网关页
+ *   ⑥ gateway.html 链上活动 (公开只读接口 /api/public/network/progress 的 confirmed_activity):
+ *      页面主体 = 一句短说明 + 小结行 (节点/智能体/任务/已完成/已验证/钱包签名) + 一张表
+ *      (列 = 任务|状态|事件|网络|区块|确认数/最终性|时间)。断言: 表头/行渲染逐格逐字、
+ *      短写 (40 位地址→0x…头4尾4, 64 位 sha256→sha256:头4…)、state 中英单词、
+ *      finality 三档徽标 (data-finality + 三档颜色互不相同)、数据源标注三种取值、
+ *      空态「本节点暂未观察到链上任务」与降级态「快照不可用」文案、
+ *      loading/live/stale/unavailable 四态 (CDP Fetch 拦夹具, 不对真实网络下断言)、
+ *      超时 (请求挂住 6s → 自己放弃)、失败不阻断其它区域、30s 轮询 + 5s 超时 + 退避常量、
+ *      textContent 纪律 (带 <b> 的标识不被解析)、中英切换、prefers-reduced-motion、
+ *      390px 纵向堆叠 + 表格横向滚动、回退同源 network-pulse.json、无 console 错误
+ *   ⑦ index.html 序栏 (hero) 紧凑版: 同一数据源、同一诚实四态、紧凑度确实优于网关页;
+ *      活动流缺当前语言退回另一种语言 + 相对时间只改文字节点
  *   ⑧ 多实例隔离: 同一页两个 [data-pulse] 实例各自独立取数/降级 (一个失败另一个仍活)
  *   ⑨ 全站 7 页无重复 id
- *   ⑩ 网关页新顺序: 脉冲区在「加入方式 / 如何加入」之前
- *   ⑪ 聚合计数「拿不到就不显示」: tasks / tasks_completed / tasks_verified 缺失 → 整行隐藏, 不编造
+ *   ⑩ 网关页顺序: 链上活动区在「加入方式 / 如何加入」之前 (序厅已删)
+ *   ⑪ 聚合计数「拿不到就不显示」: tasks / tasks_completed / tasks_verified / signatures
+ *      缺失 → 小结行整行隐藏, 不编造; 空表要说清 + agent_sites=[] 诚实提示
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=19 一致 (逐页抓原始 HTML)
- *   ⑮ 钱包签名行 (data-pulse-total="signatures"): 网关页全量区必列 + 字段缺失整行隐藏
- *   ⑯ 活动流 kind 无关: 后端 6 个新 kind (task_posted/task_accepted/task_completed/
- *      trade_settled/trade_verified/wallet_signed) 的服务端 {zh,en} 文案直用;
- *      未知 kind 不报错、无文案条目不留空白行、缺当前语言退回另一种语言
- *   ⑰ 数值变化在下一轮 30s 轮询内自动反映 (新 agent 加入 → 计数自己变, 页面不刷新)
+ *   ⑭ 全站资源 ?v=20 一致 (逐页抓原始 HTML)
+ *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
+ *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
+ *      task 与 tx 都空的条目根本不画 (不留空行)
+ *   ⑰ 数值与表格行变化在下一轮 30s 轮询内自动反映 (新 agent 加入 → 自己变, 页面不刷新)
+ *   ⑱ 旧名清除: 7 页原始 HTML + 渲染后可见文本与导航里都没有「网络脉冲 / Network pulse /
+ *      加入网络 / Join the Network」; 页面可见文本无 40 位地址 / 64 位哈希
+ *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.1.0), 且与线上 .md frontmatter 一致
+ *      —— 不再只匹配「1.x.y 形状」(那会漏掉「本机改了、线上没部署」)
  *
- * 脉冲区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
+ * 活动区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
  * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago
  *            / data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
- *            / data-pulse-caps / data-pulse-feed / data-pulse-notes / data-pulse-hint
+ *            / data-pulse-activity-body / data-pulse-activity-empty / data-pulse-activity-source
+ *            / data-pulse-feed / data-pulse-notes / data-pulse-hint
  *            / data-pulse-sites / data-pulse-sites-empty
- *            / data-pulse-ipns-form / data-pulse-ipns-input / data-pulse-ipns-open / data-pulse-ipns-msg。
+ *            / data-pulse-ipns-form / data-pulse-ipns-input / data-pulse-ipns-open / data-pulse-ipns-msg
+ * 改钩子名必须同步三处: markup · app.js 的 querySelector · 本脚本的探针 (踩过这个坑)。
  * 纯函数入口: window.BOLLOON_IPNS.parse/url (归一化) · window.__bolloonIpns (上次真开过的链接快照)。
  *
  * 用法: node scripts/verify-site.mjs [基址]      # 默认 https://bolloon.cn
@@ -69,7 +82,24 @@ const check = (name, ok, detail = '') => {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// 脉冲区探针: 只认 data-pulse-* 钩子 (不依赖 id), 网关页与首页序栏通用
+// 真域名抓取本机常被本地代理/ClashX 搅成 ETIMEDOUT/ECONNRESET (一次抖动就整轮崩) →
+// 所有「抓正文」的请求走这个带重试的包装 (对本地 http.server 也一样的语义)。
+const fetchText = async (url, attempts = 4) => {
+  let lastErr = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.text();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await sleep(1200 * (i + 1));
+    }
+  }
+  throw lastErr;
+};
+
+// 活动区探针: 只认 data-pulse-* 钩子 (不依赖 id), 网关页的链上活动表与首页序栏紧凑份通用
 const pulseProbe = (rootSel) => `(() => {
   const root = document.querySelector(${JSON.stringify(rootSel)});
   if (!root) return null;
@@ -82,6 +112,11 @@ const pulseProbe = (rootSel) => `(() => {
   const hid = (k) => { const n = q('[data-pulse-total="' + k + '"]'); return n ? n.parentNode.hasAttribute('hidden') : null; };
   const form = q('[data-pulse-ipns-form]');
   const sitesEmpty = q('[data-pulse-sites-empty]');
+  const table = q('[data-pulse-activity]');
+  const tbody = q('[data-pulse-activity-body]');
+  const trs = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+  const empty = q('[data-pulse-activity-empty]');
+  const c = (tr, sel) => tr.querySelector(sel);
   return {
     state: root.getAttribute('data-pulse-state'),
     visible: visText.textContent || '',
@@ -94,8 +129,44 @@ const pulseProbe = (rootSel) => `(() => {
     tasksVerified: t('[data-pulse-total="tasks_verified"]'),
     signatures: t('[data-pulse-total="signatures"]'),
     tasksHidden: { tasks: hid('tasks'), done: hid('tasks_completed'), verified: hid('tasks_verified'), sig: hid('signatures') },
-    taskLabels: Array.from(root.querySelectorAll('.pulse-stat-label'))
-      .filter((e) => /任务/.test(e.textContent)).map((e) => e.textContent.trim()),
+    summary: Array.from(root.querySelectorAll('.pulse-summary li')).map((li) => {
+      const b = li.querySelector('b'); const sp = li.querySelector('span');
+      return { value: b ? b.textContent.trim() : null, label: sp ? sp.textContent.trim() : null,
+        key: b ? b.getAttribute('data-pulse-total') : null, hidden: li.hasAttribute('hidden') };
+    }),
+    act: table ? {
+      headers: Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim()),
+      caption: (table.querySelector('caption') || {}).textContent || '',
+      rowCount: trs.length,
+      blankRows: trs.filter((tr) => !tr.textContent.trim()).length,
+      rows: trs.map((tr) => ({
+        cells: Array.from(tr.querySelectorAll('td')).map((td) => td.textContent.trim()),
+        task: c(tr, '.pulse-td-task code') ? c(tr, '.pulse-td-task code').textContent : null,
+        taskKids: c(tr, '.pulse-td-task code') ? c(tr, '.pulse-td-task code').childNodes.length : null,
+        taskHtml: c(tr, '.pulse-td-task code') ? c(tr, '.pulse-td-task code').innerHTML : null,
+        ref: tr.getAttribute('data-ref'),
+        stateKey: c(tr, '.pulse-state-word') ? c(tr, '.pulse-state-word').getAttribute('data-state') : null,
+        stateText: c(tr, '.pulse-state-word') ? c(tr, '.pulse-state-word').textContent.trim() : null,
+        kindKey: c(tr, '.pulse-kind-word') ? c(tr, '.pulse-kind-word').getAttribute('data-kind') : null,
+        kindText: c(tr, '.pulse-kind-word') ? c(tr, '.pulse-kind-word').textContent.trim() : null,
+        chain: c(tr, '.pulse-td-net') ? c(tr, '.pulse-td-net').getAttribute('data-chain') : null,
+        net: c(tr, '.pulse-td-net') ? c(tr, '.pulse-td-net').textContent.trim() : null,
+        block: c(tr, '.pulse-td-block') ? c(tr, '.pulse-td-block').textContent.trim() : null,
+        conf: c(tr, '.pulse-conf') ? c(tr, '.pulse-conf').textContent.trim() : null,
+        fin: c(tr, '.pulse-fin') ? c(tr, '.pulse-fin').getAttribute('data-finality') : null,
+        finText: c(tr, '.pulse-fin') ? c(tr, '.pulse-fin').textContent.trim() : null,
+        finClass: c(tr, '.pulse-fin') ? c(tr, '.pulse-fin').className : null,
+        time: c(tr, '.pulse-td-time time') ? c(tr, '.pulse-td-time time').textContent.trim() : null,
+        timeIso: c(tr, '.pulse-td-time time') ? c(tr, '.pulse-td-time time').getAttribute('datetime') : null,
+      })),
+      emptyShown: empty ? getComputedStyle(empty).display !== 'none' : null,
+      emptyText: empty ? empty.textContent.trim() : null,
+      source: txt('[data-pulse-activity-source]').trim(),
+    } : null,
+    // 旧版网关页的三块内容 (8 个数字格 / 能力分布 / 最近活动) 已不该出现在活动区里
+    // (不算 .pulse-sub —— 智能体私有站的标题仍在用这个类)
+    legacyBlocks: root.querySelectorAll('.pulse-stats, .pulse-stat, .pulse-grid, .pulse-cap-list, [data-pulse-caps], [data-pulse-feed]').length,
+    finality: Array.from(root.querySelectorAll('.pulse-fin')).map((e) => ({ key: e.getAttribute('data-finality'), color: getComputedStyle(e).color, cls: e.className })),
     sites: Array.from(root.querySelectorAll('[data-pulse-sites] li')).map((li) => {
       const a = li.querySelector('a');
       return { label: (li.querySelector('.pulse-site-label') || {}).textContent || '',
@@ -123,8 +194,6 @@ const pulseProbe = (rootSel) => `(() => {
     feedBlank: Array.from(root.querySelectorAll('[data-pulse-feed] li'))
       .filter((li) => { const s = li.querySelector('.pulse-feed-text'); return !s || !s.textContent.trim(); }).length,
     feedAt: Array.from(root.querySelectorAll('[data-pulse-feed] time')).map((e) => e.getAttribute('data-at')),
-    statLabels: Array.from(root.querySelectorAll('.pulse-stat-label')).map((e) => e.textContent.trim()),
-    caps: Array.from(root.querySelectorAll('[data-pulse-caps] li')).map((li) => li.textContent.trim()),
     notes: txt('[data-pulse-notes]').trim(),
     hintShown: hint ? getComputedStyle(hint).display !== 'none' : false,
     hint: hint ? hint.textContent : '',
@@ -247,7 +316,7 @@ async function main() {
   // ② 静态占位 (断网也不谎报): 直接读原始 HTML
   console.log('\n[2] 静态 HTML 不含过期硬编码');
   for (const p of PAGES) {
-    const html = await (await fetch(`${BASE}/${p}`)).text();
+    const html = await fetchText(`${BASE}/${p}`);
     const hard = /id="version">([^<]*)</.exec(html);
     const val = hard ? hard[1].trim() : '(未找到 #version)';
     check(`${p} 占位 = 「${val}」(非过期版本号)`, !/^\d+\.\d+\.\d+$/.test(val), val);
@@ -255,8 +324,21 @@ async function main() {
 
   // ③ skill.html 文档同步
   console.log('\n[3] skill.html 已同步文档 v1.3.0');
-  const skillHtml = await (await fetch(`${BASE}/skill.html`)).text();
-  check('版本 1.3.0', skillHtml.includes('>1.3.0<') || skillHtml.includes('1.3.0'));
+  const skillHtml = await fetchText(`${BASE}/skill.html`);
+  check('版本 1.3.0 (逐字)', skillHtml.includes('>1.3.0<'));
+  // 版本号必须逐字断言 + 与线上 .md 的 frontmatter 对得上 —— 只匹配「1.x.y 形状」会把
+  // 「本机改了、线上没部署」漏过去 (2026-09-22 实测: 线上 skill.html 长期停在 1.0.1)。
+  const SKILL_EXPECT = { 'bolloon-gateway-join': '1.3.0', 'bolloon-network': '1.1.0' };
+  const mdVersionOf = (md) => {
+    const fm = /^---\n([\s\S]*?)\n---/.exec(md);
+    if (!fm) return '(无 frontmatter)';
+    const v = /^version:\s*(\S+)\s*$/m.exec(fm[1]);
+    return v ? v[1] : '(未找到 version)';
+  };
+  const mdVersions = {};
+  for (const slug of Object.keys(SKILL_EXPECT)) mdVersions[slug] = mdVersionOf(await fetchText(`${BASE}/${slug}.md`));
+  check('线上 .md frontmatter 的 version 就是期望值 (两份 skill 都逐字对上)',
+    Object.keys(SKILL_EXPECT).every((s) => mdVersions[s] === SKILL_EXPECT[s]), JSON.stringify(mdVersions));
   check('含「0.1 三条执行路径」', skillHtml.includes('0.1 三条执行路径'));
   check('含手机端路径 A′ (本机内核执行)', skillHtml.includes('路径 A′') && skillHtml.includes('bolloon_gateway_join'));
   check('含 join_global_gateway 工具路径', skillHtml.includes('join_global_gateway'));
@@ -268,9 +350,9 @@ async function main() {
   console.log('\n[3b] skill.html 站内 skills 索引区 (完整索引)');
   check('有索引区 (id=skills-index + [data-skills-index])',
     skillHtml.includes('id="skills-index"') && skillHtml.includes('data-skills-index'));
-  check('索引区两份 skill 名称 + version 都在原始 HTML 里',
+  check('索引区两份 skill 名称 + 具体 version 都在原始 HTML 里 (bolloon-network = 1.1.0, 不再是「1.x.y 形状」)',
     skillHtml.includes('>bolloon-gateway-join<') && skillHtml.includes('>1.3.0<') &&
-    skillHtml.includes('>bolloon-network<') && />1\.[0-9]+\.[0-9]+</.test(skillHtml));
+    skillHtml.includes('>bolloon-network<') && skillHtml.includes('>1.1.0<'));
   check('每行都有 read 钩子 + 复制按钮 + 直达 .md 链接',
     (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
     (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
@@ -288,13 +370,16 @@ async function main() {
   check('索引区 read 命令按实际访问源生成 (read <BASE>/<name>.md), 文本节点只 1 个',
     Array.isArray(idxRows) && idxRows.length === 2 && idxRows.every((r) => r.read === `read ${BASE}/${r.slug}.md` && r.kids === 1),
     JSON.stringify(idxRows && idxRows.map((r) => r.read)));
-  check('索引区名称/version/直达链接/复制按钮逐行都对',
+  check('索引区名称/version/直达链接/复制按钮逐行都对 (bolloon-network 逐字 = 1.1.0)',
     idxRows.length === 2 &&
     idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.3.0' &&
     idxRows[0].direct === 'bolloon-gateway-join.md' && idxRows[0].copy === true &&
-    idxRows[1].name === 'bolloon-network' && /^1\.[0-9]+\.[0-9]+$/.test(idxRows[1].version) &&
+    idxRows[1].name === 'bolloon-network' && idxRows[1].version === '1.1.0' &&
     idxRows[1].direct === 'bolloon-network.md' && idxRows[1].copy === true,
     JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])));
+  check('索引区 version 与线上 .md frontmatter 逐字一致 (只改一边必失败)',
+    idxRows.every((r) => r.version === mdVersions[r.slug]),
+    JSON.stringify({ rows: idxRows.map((r) => [r.slug, r.version]), md: mdVersions }));
   const idxCount = await evalJs(`(document.querySelector('[data-skills-count]')||{}).textContent||''`);
   check('索引区标注「共 2 份 · 索引里列的就是全部」', /共 2 份/.test(idxCount), idxCount);
   await evalJs(`(() => { window.__copyBtn = document.querySelector('[data-copy-skill="bolloon-network"]'); window.__copyBtn.click(); return 1; })()`);
@@ -314,7 +399,7 @@ async function main() {
 
   // ⑤ 文档正文
   console.log('\n[5] /bolloon-gateway-join.md 线上正文');
-  const doc = await (await fetch(`${BASE}/bolloon-gateway-join.md`)).text();
+  const doc = await fetchText(`${BASE}/bolloon-gateway-join.md`);
   check('HTTP 正文含手机端路径 A′', doc.includes('路径 A′'));
   check('HTTP 正文含 version: 1.3.0', doc.includes('version: 1.3.0'));
   check('含 name: bolloon-gateway-join', doc.includes('name: bolloon-gateway-join'));
@@ -325,10 +410,10 @@ async function main() {
 
   // ⑤′ /bolloon-network.md 线上正文 (bolloon 主仓 skills/bolloon-network/SKILL.md 的原样镜像)
   console.log('\n[5b] /bolloon-network.md 线上正文 (主仓 SKILL.md 镜像)');
-  const netDoc = await (await fetch(`${BASE}/bolloon-network.md`)).text();
+  const netDoc = await fetchText(`${BASE}/bolloon-network.md`);
   check('首行就是 frontmatter 起始 (---)，没有前缀空行', netDoc.startsWith('---\n'), JSON.stringify(netDoc.slice(0, 16)));
-  check('frontmatter 头四行原样 (name/version/description)',
-    /^---\nname: bolloon-network\nversion: 1\.[0-9]+\.[0-9]+\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
+  check('frontmatter 头三行原样 + version 逐字 = 1.1.0 (不是「1.x.y 形状」匹配)',
+    /^---\nname: bolloon-network\nversion: 1\.1\.0\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
   check('frontmatter 关键块原样 (status/tier/protocol/capabilities/plannedCapabilities/paymentModes/hardRules)',
     netDoc.includes('\nstatus: active\n') && netDoc.includes('\ntier: capability\n') &&
     netDoc.includes('\nprotocol: bolloon-task/1\n') && netDoc.includes('capabilities:\n  - network.join') &&
@@ -405,6 +490,37 @@ async function main() {
   const T0 = Date.now();
   // 活动文本故意带 <b>: 用它证明渲染走 textContent 而不是 innerHTML
   const MARKUP_TEXT = { zh: '节点 <b>42</b> 发布 manifest & 计数', en: 'Node <b>42</b> published a manifest & counters' };
+  const iso = (ms) => new Date(ms).toISOString();
+  // —— 链上活动夹具 (confirmed_activity 冻结形状) ——
+  // 故意混进 全长 40 位地址 / 全长 64 位 sha256 / 裸 64 位 hex:
+  // 页面必须只显示短写 (0x12ab…b5c6 / sha256:cc33…), 全长绝不进可见文本。
+  const ACT_LONG_ADDR = '0x12ab34cd56ef7890a1b2c3d4e5f60718293a4b5c6';
+  const ACT_LONG_HASH = 'sha256:cc33dd44ee55ff6677889900aabbccddeeff00112233445566778899aabbccdd';
+  const ACT_BARE_HASH = 'a1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff00';
+  // 任务标识里带 <b>: 证明表格单元格也走 textContent (标签不会被解析)
+  const MARKUP_TASK = 'sha256:<b>42</b> probe';
+  const ACT_LIVE = [
+    { task: 'sha256:1a2b3c4d', kind: 'task_created', state: 'active', chain_id: 84532, block: 47142222,
+      tx: 'sha256:9f0e1d2c', confirmations: 12, finality: 'observed', at: iso(T0 - 3 * 60000) },
+    { task: ACT_LONG_ADDR, kind: 'task_completed', state: 'released', chain_id: 84532, block: 47142500,
+      tx: ACT_LONG_HASH, confirmations: 128, finality: 'finalized', at: iso(T0 - 40 * 60000) },
+    { task: 'sha256:aa11bb22', kind: 'task_accepted', state: 'active', chain_id: 84532, block: 47142301,
+      tx: ACT_BARE_HASH, confirmations: 42, finality: 'confirmed', at: iso(T0 - 8 * 60000) },
+    { task: 'sha256:77aa88bb', kind: 'trade_settled', state: 'refunded', chain_id: 84532, block: 47142610,
+      tx: 'sha256:deadbeef', confirmations: 3, finality: 'observed', at: iso(T0 - 20 * 60000) },
+    { task: 'sha256:55cc66dd', kind: 'trade_verified', state: 'expired', chain_id: 84532, block: 47142699,
+      tx: 'sha256:cafebabe', confirmations: 6, finality: 'confirmed', at: iso(T0 - 15 * 60000) },
+    { task: 'sha256:11ee22ff', kind: 'unknown_future_kind_2099', state: 'disputed', chain_id: 84532, block: 47142777,
+      tx: 'sha256:0f1e2d3c', confirmations: 0, finality: 'finalized', at: iso(T0 - 5 * 60000) },
+    { task: 'sha256:99aa00bb', kind: 'task_created', state: 'unknown', chain_id: 84532, block: 47142800,
+      tx: 'sha256:1234abcd', confirmations: 1, finality: 'unknown', at: iso(T0 - 2 * 60000) },
+    // task 缺失 → 用 tx 当任务标识 (仍要画一行, 不能空着)
+    { kind: 'task_accepted', state: 'active', chain_id: 84532, block: 47142900,
+      tx: 'sha256:abcdef12', confirmations: 2, finality: 'observed', at: iso(T0 - 60000) },
+    // task 与 tx 都空 → 这一条不该画出来 (宁可少一行, 不留空行)
+    { task: '', tx: '', kind: 'task_created', state: 'active', chain_id: 84532, block: 47142901,
+      confirmations: 1, finality: 'observed', at: iso(T0 - 30000) },
+  ];
   // IPNS 夹具: 三种合法形态 (裸 k51… / ipns://12D3… / /ipns/k51…) + 一条非法 (必须被丢弃, 不渲染链接)
   const CID_1 = 'k51qzi5uqu5dlvj2baxnqndepeb86cbk3ng7n3i46uzyxzyqj2xjonzllnv0v8';
   const CID_2 = '12D3KooWQq7fUuY8gTZ2mNpRx4vBcDeFkLg';
@@ -413,7 +529,7 @@ async function main() {
   const IPNS_BAD = ['', '   ', 'hello', 'ipns://', '/ipns/', 'javascript:alert(1)', 'https://evil.example/x',
     'k51', 'QmTooShort', 'file:///etc/passwd', 'data:text/html,x', CID_1 + '/extra/path'];
   const FX_LIVE = {
-    status: 'live', generated_at: T0 - 3 * 60000, fresh_until: T0 + 60000,
+    status: 'live', generated_at: T0 - 3 * 60000, fresh_until: T0 + 3600000,
     scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
     totals: { nodes: 7, agents: 12, active_agents: 4, seen_last_24h: 5, tasks: 21, tasks_completed: 13, tasks_verified: 6, signatures: 42 },
     agent_sites: [
@@ -422,6 +538,8 @@ async function main() {
       { label: 'mirror', ipns: '/ipns/' + CID_3, added_at: T0 - 60000 },
       { label: 'bogus', ipns: 'javascript:alert(1)', added_at: T0 },       // 非法 → 必须不渲染
     ],
+    confirmed_activity_source: 'chain-index',
+    confirmed_activity: ACT_LIVE,
     capabilities: [{ key: 'code-review', count: 6 }, { key: 'translation', count: 3 }, { key: 'other', count: 2 }],
     recent_activity: [
       { kind: 'manifest_published', at: T0 - 3 * 60000, text: MARKUP_TEXT },
@@ -429,11 +547,14 @@ async function main() {
     ],
     notes: ['计数按隐私阈值合并', '观察窗口内的聚合值'],
   };
-  // 缺 tasks* 三个聚合计数 + agent_sites 空数组: 证明「拿不到就不显示」「空 ≠ 没数据」
+  // 缺 tasks* 三个聚合计数 + confirmed_activity 空 + agent_sites 空数组:
+  // 证明「拿不到就不显示」「空表要说明白」「空 ≠ 没数据」
   const FX_NO_TASKS = {
-    status: 'live', generated_at: T0 - 60000, fresh_until: T0 + 60000,
+    status: 'live', generated_at: T0 - 60000, fresh_until: T0 + 3600000,
     scope: 'verified', scope_label: { zh: '网络观察快照', en: 'Verified network snapshot' },
     totals: { nodes: 2, agents: 3, active_agents: 0, seen_last_24h: 3 },
+    confirmed_activity_source: 'none',
+    confirmed_activity: [],
     agent_sites: [],
     capabilities: [{ key: 'search', count: 1 }],
     recent_activity: [],
@@ -455,57 +576,59 @@ async function main() {
     capabilities: [], recent_activity: [], notes: ['快照已过期'],
   };
 
-  // ——— 后端新契约: 6 个新活动 kind 的文案由服务端模板生成 (中英齐备) → 前端直用, 不造第二套 ———
-  // 每个 kind 的 text 就是「服务端会发的东西」, 断言里逐字比对 (证明没有被前端改写/二次编造)。
-  const NEWKIND_TEXT = {
-    task_posted: { zh: '有新任务被发布', en: 'A task was posted' },
-    task_accepted: { zh: '有节点接下了任务', en: 'A node accepted a task' },
-    task_completed: { zh: '有任务已完成', en: 'A task was completed' },
-    trade_settled: { zh: '有一笔交易已结算', en: 'A trade was settled' },
-    trade_verified: { zh: '有一笔交易已验真', en: 'A trade was verified' },
-    wallet_signed: { zh: '有一次钱包签名', en: 'A wallet signature was made' },
-  };
+  // ——— 链上活动表的容错契约: 认不出的 kind / state / finality 一律原样显示, 空标识不画行 ———
   const EN_ONLY_TEXT = 'EN-only server text (no zh)';
-  // 第四档基准: 5 个新 kind + 2 个"坏"条目 (无文案 / 只有 en) —— 顺序按 at 从新到旧;
-  // 网关全量区活动上限 = 5, 所以第 6 个新 kind (wallet_signed) 放到下一轮 FX_GROWN 里证明。
+  // 基准轮 3 条: ① 任务标识里带 <b> (证明单元格走 textContent)
+  //             ② 枚举全认不出 (kind/state/finality 原样显示, 不猜)
+  //             ③ task 与 tx 全空 (必须不画这一行)
+  const FX_ACT_ROWS = [
+    { task: MARKUP_TASK, kind: 'task_created', state: 'active', chain_id: 84532, block: 47150000,
+      tx: 'sha256:11112222', confirmations: 2, finality: 'observed', at: iso(T0 - 30000) },
+    { task: 'sha256:abcd1234', kind: 'brand_new_kind_2099b', state: 'settling', chain_id: 1, block: 21000000,
+      tx: 'sha256:33334444', confirmations: 9, finality: 'settled-weird', at: iso(T0 - 40000) },
+    { task: '', tx: '', kind: 'task_completed', state: 'active', chain_id: 84532, block: 47150001,
+      confirmations: 1, finality: 'observed', at: iso(T0 - 50000) },
+  ];
   const FX_NEWKINDS = {
     status: 'live', generated_at: T0 - 60000, fresh_until: T0 + 600000,
     scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
     totals: { nodes: 7, agents: 12, active_agents: 4, seen_last_24h: 5, tasks: 21, tasks_completed: 13, tasks_verified: 6, signatures: 3 },
+    confirmed_activity_source: 'pulse-events',
+    confirmed_activity: FX_ACT_ROWS,
     agent_sites: [],
     capabilities: [{ key: 'code-review', count: 6 }],
-    recent_activity: [
-      // 未知 kind 且没有文案 → 必须整条不显示 (不留空白行, 也不臆造描述)
-      { kind: 'unknown_future_kind_2099', at: T0 - 10000, text: null },
-      // 未知 kind, 只有 en 文案 → 中文界面下退回 en (仍是服务端原文, 不是空白)
-      { kind: 'agent_announced_unknown_kind', at: T0 - 20000, text: { en: EN_ONLY_TEXT } },
-      { kind: 'task_posted', at: T0 - 30000, text: NEWKIND_TEXT.task_posted },
-      { kind: 'task_accepted', at: T0 - 40000, text: NEWKIND_TEXT.task_accepted },
-      { kind: 'task_completed', at: T0 - 50000, text: NEWKIND_TEXT.task_completed },
-      { kind: 'trade_settled', at: T0 - 60000, text: NEWKIND_TEXT.trade_settled },
-      { kind: 'trade_verified', at: T0 - 70000, text: NEWKIND_TEXT.trade_verified },
-    ],
+    recent_activity: [],
     notes: [],
   };
-  // 下一轮轮询的快照: 一个新 agent 加入 (计数全部 +1) + 上一轮被上限截掉的 kind + 一个空白文案条目。
+  // 下一轮轮询的快照: 一个新 agent 加入 (计数自己变) + 表里多出一条已验证交易
   const FX_GROWN = {
     status: 'live', generated_at: T0 + 60000, fresh_until: T0 + 900000,
     scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
     totals: { nodes: 8, agents: 13, active_agents: 5, seen_last_24h: 6, tasks: 22, tasks_completed: 14, tasks_verified: 7, signatures: 42 },
+    confirmed_activity_source: 'chain-index',
+    confirmed_activity: [
+      { task: 'sha256:ffeeddcc', kind: 'trade_verified', state: 'released', chain_id: 84532, block: 47150999,
+        tx: 'sha256:99887766', confirmations: 64, finality: 'finalized', at: iso(T0 - 5000) },
+    ].concat(FX_ACT_ROWS.slice(0, 2)),
     agent_sites: [],
-    capabilities: [{ key: 'code-review', count: 7 }],
-    recent_activity: [
-      { kind: 'brand_new_kind_2099b', at: T0 - 1000, text: { zh: '   ', en: '' } },   // 空白文案 → 不显示
-      { kind: 'wallet_signed', at: T0 - 5000, text: NEWKIND_TEXT.wallet_signed },
-      { kind: 'trade_verified', at: T0 - 15000, text: NEWKIND_TEXT.trade_verified },
-    ],
+    capabilities: [{ key: 'code-review', count: 6 }],
+    recent_activity: [],
     notes: [],
   };
-  const NEWKIND_EXPECT_ZH = [EN_ONLY_TEXT, '有新任务被发布', '有节点接下了任务', '有任务已完成', '有一笔交易已结算'];
-  const NEWKIND_EXPECT_EN = [EN_ONLY_TEXT, 'A task was posted', 'A node accepted a task', 'A task was completed', 'A trade was settled'];
+  // 首页活动流仍在用的「只有一种语言」夹具 (语言回落规则: 缺当前语言退回另一种, 仍是服务端原文)
+  const FX_EN_ONLY = {
+    status: 'live', generated_at: T0 - 30000, fresh_until: T0 + 600000,
+    scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
+    totals: { nodes: 7, agents: 12, active_agents: 4, seen_last_24h: 5, tasks: 21, tasks_completed: 13, tasks_verified: 6, signatures: 42 },
+    confirmed_activity_source: 'chain-index',
+    confirmed_activity: [],
+    agent_sites: [],
+    recent_activity: [{ kind: 'agent_announced_unknown_kind', at: T0 - 20000, text: { en: EN_ONLY_TEXT } }],
+    notes: [],
+  };
 
-  // ⑥ 全球网络脉冲
-  console.log('\n[6] gateway.html 全球网络脉冲 (公开只读接口)');
+  // ⑥ 链上活动 (网关页主体 = 一句短说明 + 小结行 + 一张表)
+  console.log('\n[6] gateway.html 链上活动 (公开只读接口 / confirmed_activity)');
   const pulseSrc = `${BASE}/network-pulse-verify.json`;
   const errStart = consoleErrors.length;
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');   // 只拦取数请求 (文档已放行)
@@ -525,25 +648,45 @@ async function main() {
       role: (s.querySelector('[role="status"]') || {}).getAttribute ? s.querySelector('[role="status"]').getAttribute('role') : null,
       caveat: (s.querySelector('.pulse-caveat') || {}).textContent || '',
       states: Array.from(s.querySelectorAll('.pulse-state-text')).map(e => e.getAttribute('data-state')),
-      hasValueNodes: ['nodes','agents','active','24h'].every(k => !!s.querySelector('[data-pulse-total="' + k + '"]')),
+      summaryKeys: Array.from(s.querySelectorAll('.pulse-summary [data-pulse-total]')).map(e => e.getAttribute('data-pulse-total')),
       order: Array.from(document.querySelectorAll('section[id]')).map(x => x.id),
-      pulseBeforeJoin: before(s, document.getElementById('skills')) && before(s, document.getElementById('join')),
+      pulseFirst: before(s, document.getElementById('skills')) && before(s, document.getElementById('join')),
       idsInside: s.querySelectorAll('[id]').length,
+      legacy: s.querySelectorAll('.pulse-stats, .pulse-stat, .pulse-grid, .pulse-cap-list, [data-pulse-caps], [data-pulse-feed]').length,
+      h1: (document.querySelector('h1') || {}).textContent || '',
+      headers: Array.from(s.querySelectorAll('.pulse-table thead th')).map((th) => th.textContent.trim()),
+      hasTable: !!s.querySelector('[data-pulse-activity]'),
+      hasBody: !!s.querySelector('[data-pulse-activity-body]'),
+      hasEmpty: !!s.querySelector('[data-pulse-activity-empty]'),
+      hasSource: !!s.querySelector('[data-pulse-activity-source]'),
+      caption: (s.querySelector('.pulse-table caption') || {}).textContent || '',
     };
   })()`);
-  check('gateway.html 存在 #pulse 网络脉冲区域', !!region, '未找到 #pulse');
-  check('脉冲区有 aria-live=polite + role=status', !!region && region.ariaLive && region.role === 'status', JSON.stringify(region && { a: region.ariaLive, r: region.role }));
+  check('gateway.html 存在 #pulse 链上活动区 (根 = [data-pulse])', !!region, '未找到 #pulse');
+  check('活动区有 aria-live=polite + role=status', !!region && region.ariaLive && region.role === 'status', JSON.stringify(region && { a: region.ariaLive, r: region.role }));
   check('四种状态文案都在 DOM (loading/live/stale/unavailable)',
     !!region && ['loading', 'live', 'stale', 'unavailable'].every((s) => region.states.includes(s)),
     JSON.stringify(region && region.states));
   check('「不是全网精确总量」可见 (zh)', !!region && region.caveat.includes('不是全网精确总量'), region && region.caveat);
-  check('四个大数值节点齐备 (nodes/agents/active/24h)', !!region && region.hasValueNodes);
-  check('页面顺序: 序厅 → 脉冲 → 加入方式 → manifest → 端点 → 开发者',
-    !!region && JSON.stringify(region.order) === JSON.stringify(['intro', 'pulse', 'skills', 'join', 'manifest', 'endpoints', 'developer']),
+  check('活动表四个钩子齐 (table / tbody / 空态 / 数据源标注)',
+    !!region && region.hasTable && region.hasBody && region.hasEmpty && region.hasSource,
+    JSON.stringify(region && { t: region.hasTable, b: region.hasBody, e: region.hasEmpty, s: region.hasSource }));
+  check('表头 7 列 = 任务|状态|事件|网络|区块|确认数 / 最终性|时间',
+    !!region && JSON.stringify(region.headers) === JSON.stringify(['任务', '状态', '事件', '网络', '区块', '确认数 / 最终性', '时间']),
+    JSON.stringify(region && region.headers));
+  check('小结行钩子 = nodes/agents/tasks/tasks_completed/tasks_verified/signatures (不再有 active/24h)',
+    !!region && JSON.stringify(region.summaryKeys) === JSON.stringify(['nodes', 'agents', 'tasks', 'tasks_completed', 'tasks_verified', 'signatures']),
+    JSON.stringify(region && region.summaryKeys));
+  check('旧三块 (8 个数字格 / 能力分布 / 最近活动) 在网关页活动区里已不存在',
+    !!region && region.legacy === 0, String(region && region.legacy));
+  check('网关页已去掉「加入网络」序厅 (页面里没有大字 h1 占屏)',
+    !!region && !/加入网络/.test(region.h1), JSON.stringify(region && region.h1));
+  check('页面顺序: 链上活动 → 加入方式 → 如何加入 → manifest → 端点 → 开发者',
+    !!region && JSON.stringify(region.order) === JSON.stringify(['pulse', 'skills', 'join', 'manifest', 'endpoints', 'developer']),
     JSON.stringify(region && region.order));
-  check('新顺序: 脉冲区在「加入方式 / 如何加入」之前 (人类先看到网络脉冲)',
-    !!region && region.pulseBeforeJoin === true, JSON.stringify(region && region.pulseBeforeJoin));
-  check('脉冲区内部不再依赖 id (只用 data-pulse-* 钩子, 避免多实例撞 id)',
+  check('链上活动区在「加入方式 / 如何加入」之前 (仪表盘入口先给数据)',
+    !!region && region.pulseFirst === true, JSON.stringify(region && region.pulseFirst));
+  check('活动区内部不再依赖 id (只用 data-pulse-* 钩子, 避免多实例撞 id)',
     !!region && region.idsInside === 0, region && String(region.idsInside));
 
   const loading = await evalJs(pulseProbe('#pulse'));
@@ -552,28 +695,74 @@ async function main() {
     JSON.stringify({ s: loading.state, v: loading.visible, n: loading.nodes, api: loading.api }));
   check('?pulse= 参数被当作接口地址', (await evalJs('window.__bolloonPulse.source()')) === 'endpoint');
   check('请求真的发出 (CDP 拦到 #pulse 的取数)', !!req1, req1 ? '' : '未拦到请求 — 可能没发起');
-  // 网关页那份的大数值字号 = 后面判断「首页那份更轻」的基准
-  const gwValueFont = parseFloat(String(await evalJs(`getComputedStyle(document.querySelector('#pulse .pulse-stat-value')).fontSize`)));
+  // 活动区小结数字的字号 = 后面判断「首页那份更轻」的基准
+  const gwValueFont = parseFloat(String(await evalJs(`getComputedStyle(document.querySelector('#pulse .pulse-summary b')).fontSize`)));
 
   if (req1) await fulfillJson(req1.requestId, FX_LIVE);
   await sleep(700);
   const live = await evalJs(pulseProbe('#pulse'));
+  const LV = live.act;
+  const has = (k, v) => LV.rows.some((r) => r[k] === v);
   check('live: 状态标签 = 实时', live.state === 'live' && live.visible.includes('实时'), JSON.stringify({ s: live.state, v: live.visible }));
-  check('live: 四个大数值 = 接口总数 (7/12/4/5)',
-    live.nodes === '7' && live.agents === '12' && live.active === '4' && live.h24 === '5',
-    JSON.stringify({ n: live.nodes, a: live.agents, ac: live.active, d: live.h24 }));
-  check('live: 三行任务计数 = 接口原值 (21/13/6), 行可见',
-    live.tasks === '21' && live.tasksDone === '13' && live.tasksVerified === '6' &&
-    live.tasksHidden.tasks === false && live.tasksHidden.done === false && live.tasksHidden.verified === false,
-    JSON.stringify({ t: live.tasks, d: live.tasksDone, v: live.tasksVerified, h: live.tasksHidden }));
-  check('live: 三行标签 = 任务数量 / 完成任务数量 / 已验真任务',
-    JSON.stringify(live.taskLabels) === JSON.stringify(['任务数量', '完成任务数量', '已验真任务']), JSON.stringify(live.taskLabels));
-  check('live: 新增「钱包签名」行 = 接口原值 (42) 且行可见',
-    live.signatures === '42' && live.tasksHidden.sig === false,
-    JSON.stringify({ sig: live.signatures, hidden: live.tasksHidden.sig }));
-  check('live: 八行标签顺序 = 节点/agents/活跃 agent/24h/任务数量/完成任务数量/已验真任务/钱包签名',
-    JSON.stringify(live.statLabels) === JSON.stringify(['节点', 'agents', '活跃 agent', '24 小时内出现', '任务数量', '完成任务数量', '已验真任务', '钱包签名']),
-    JSON.stringify(live.statLabels));
+  check('live: 小结行 6 个计数 = 接口原值 (节点 7 / 智能体 12 / 任务 21 / 已完成 13 / 已验证 6 / 钱包签名 42)',
+    live.nodes === '7' && live.agents === '12' && live.tasks === '21' && live.tasksDone === '13' &&
+    live.tasksVerified === '6' && live.signatures === '42' &&
+    live.tasksHidden.tasks === false && live.tasksHidden.done === false && live.tasksHidden.verified === false && live.tasksHidden.sig === false,
+    JSON.stringify({ n: live.nodes, a: live.agents, t: live.tasks, d: live.tasksDone, v: live.tasksVerified, s: live.signatures, h: live.tasksHidden }));
+  check('live: 小结行标签 = 节点 / 智能体 / 任务 / 已完成 / 已验证 / 钱包签名',
+    JSON.stringify(live.summary.map((r) => r.label)) === JSON.stringify(['节点', '智能体', '任务', '已完成', '已验证', '钱包签名']),
+    JSON.stringify(live.summary.map((r) => r.label)));
+  check('live: 9 条夹具画成 8 行 (task 与 tx 都空的那条不画), 没有空白行',
+    LV.rowCount === 8 && LV.blankRows === 0, JSON.stringify({ rows: LV.rowCount, blank: LV.blankRows }));
+  check('live: 每行 7 格 (表头 7 列的列数一致)',
+    LV.rows.every((r) => r.cells.length === 7), JSON.stringify(LV.rows.map((r) => r.cells.length)));
+  check('live: 任务列短写 —— sha256:1a2b3c4d 显示成「sha256:1a2b…」(逐字)',
+    has('task', 'sha256:1a2b…'), JSON.stringify(LV.rows.map((r) => r.task)));
+  check('live: 40 位地址短写成 0x 头 4…尾 4, 全长不进页面文本',
+    !has('task', ACT_LONG_ADDR) && !has('task', ACT_LONG_HASH) && LV.rows.some((r) => /^0x[0-9a-f]{4}…[0-9a-f]{4}$/.test(r.task || '')),
+    JSON.stringify(LV.rows.map((r) => r.task)));
+  check('live: task 缺失的条目退到 tx 当任务标识 (该行 data-ref=tx), 不留空任务格',
+    LV.rows.some((r) => r.ref === 'tx' && /^sha256:/.test(r.task || '')), JSON.stringify(LV.rows.map((r) => [r.ref, r.task])));
+  const LV_BLOCKS = ['47142900', '47142800', '47142222', '47142777', '47142301', '47142699', '47142610', '47142500'];
+  check('live: 表格按快照时间从新到旧 (实测区块顺序与夹具的 at 顺序一致)',
+    JSON.stringify(LV.rows.map((r) => r.block)) === JSON.stringify(LV_BLOCKS),
+    JSON.stringify(LV.rows.map((r) => r.block)));
+  check('live: 状态列 = 中/英单词里的中文词 (活跃 / 已释放 / 已退款 / 已过期 / 争议中 / 未知)',
+    ['活跃', '已释放', '已退款', '已过期', '争议中', '未知'].every((w) => LV.rows.some((r) => r.stateText === w)) &&
+    LV.rows.every((r) => r.stateKey && r.stateKey.length > 0),
+    JSON.stringify([...new Set(LV.rows.map((r) => r.stateText))]));
+  check('live: 事件列 = 中文事件词 (任务创建 / 任务接下 / 任务完成 / 交易结算 / 交易验真)',
+    ['任务创建', '任务接下', '任务完成', '交易结算', '交易验真'].every((w) => LV.rows.some((r) => r.kindText === w)),
+    JSON.stringify([...new Set(LV.rows.map((r) => r.kindText))]));
+  check('live: 认不出的 kind 原样显示 (不猜、不吞、不报错)',
+    has('kindText', 'unknown_future_kind_2099') && has('kindKey', 'unknown_future_kind_2099'),
+    JSON.stringify([...new Set(LV.rows.map((r) => r.kindText))]));
+  check('live: 网络列 = 快照 chain_id (84532), 区块列 = 快照 block (逐行都在)',
+    LV.rows.every((r) => r.chain === '84532' && /^47\d{6}$/.test(r.block || '')),
+    JSON.stringify(LV.rows.map((r) => [r.chain, r.block])));
+  check('live: 确认数/最终性同格 (确认数原文 + 三档文案 已观察/已确认/已最终确定)',
+    LV.rows.some((r) => r.conf === '128' && r.finText === '已最终确定') &&
+    LV.rows.some((r) => r.finText === '已确认') && LV.rows.some((r) => r.finText === '已观察'),
+    JSON.stringify(LV.rows.map((r) => [r.conf, r.finText])));
+  check('live: finality 三档各有 data-finality 且三档颜色互不相同 (徽标真的分档上色)',
+    ['observed', 'confirmed', 'finalized'].every((k) => live.finality.some((f) => f.key === k)) &&
+    new Set(['observed', 'confirmed', 'finalized'].map((k) => (live.finality.find((f) => f.key === k) || {}).color)).size === 3,
+    JSON.stringify(live.finality.slice(0, 8)));
+  check('live: 认不出的 finality → 原值照原样 + 虚线「其他」徽标 is-other (不假装是三档之一)',
+    has('fin', 'unknown') && LV.rows.some((r) => r.fin === 'unknown' && /is-other/.test(r.finClass || '') && r.finText === 'unknown'),
+    JSON.stringify(LV.rows.map((r) => [r.fin, r.finText, r.finClass])));
+  check('live: 时间列 = <time datetime=ISO> + 本地绝对时间 (YYYY-MM-DD HH:MM:SS)',
+    LV.rows.every((r) => /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(r.timeIso || '') && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(r.time || '')),
+    JSON.stringify(LV.rows.slice(0, 2).map((r) => [r.timeIso, r.time])));
+  check('live: 数据源标注 = 「链上数据源：链上索引」(confirmed_activity_source = chain-index)',
+    LV.source === '链上数据源：链上索引', LV.source);
+  check('live: 有行时不显示空态文案', LV.emptyShown === false, JSON.stringify({ shown: LV.emptyShown, text: LV.emptyText }));
+  const longScan = await evalJs(`(() => {
+    const t = document.body.innerText;
+    return { addr: /\\b0x[0-9a-fA-F]{40}\\b/.test(t), hash: /\\b[0-9a-fA-F]{64}\\b/.test(t) };
+  })()`);
+  check('live: 页面可见文本里没有 40 位地址 / 64 位哈希 (夹具给了全长, 页面只显示短写)',
+    longScan.addr === false && longScan.hash === false, JSON.stringify(longScan));
   check('live: agent_sites 三种 ipns 形态都归一化成 https://ipfs.io/ipns/<cid> (非法条目被丢弃)',
     live.sites.length === 3 && live.sites.map((s) => s.href).join('|') ===
       [`https://ipfs.io/ipns/${CID_1}`, `https://ipfs.io/ipns/${CID_2}`, `https://ipfs.io/ipns/${CID_3}`].join('|') &&
@@ -583,59 +772,74 @@ async function main() {
     live.sites.length === 3 && live.sites.every((s) => s.rel === 'noopener noreferrer' && s.target === '_blank' &&
       s.kids === 1 && s.text === s.href.replace('https://ipfs.io/ipns/', '')),
     JSON.stringify(live.sites));
-  check('live: 脉冲区内没有任何 javascript: 链接 (非法 ipns 没被渲染)',
+  check('live: 活动区内没有任何 javascript: 链接 (非法 ipns 没被渲染)',
     (await evalJs(`Array.from(document.querySelectorAll('#pulse a')).every((a) => !/^javascript:/i.test(a.getAttribute('href') || ''))`)) === true);
   check('live: scope=observed → 「当前节点观察到」', live.scope === '当前节点观察到' && !live.scopeHidden, live.scope);
-  check('live: 快照时间 + 相对时间 (3 分钟前)',
-    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(live.snap) && /\d+ 分钟前/.test(live.feed[0] || ''),
-    JSON.stringify({ snap: live.snap, feed0: live.feed[0] }));
-  check('live: 活动流 2 条 + capability 分布 3 项 (含 other)',
-    live.feed.length === 2 && live.caps.length === 3 && live.caps[0].includes('code-review') && live.caps.some((c) => c.includes('其它')),
-    JSON.stringify({ feed: live.feed.length, caps: live.caps }));
+  check('live: 快照时间 + 相对时间都在 (快照时间 YYYY-MM-DD HH:MM:SS)',
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(live.snap || '') && /\d+ (分钟前|小时前|刚刚)/.test(live.ago || ''),
+    JSON.stringify({ snap: live.snap, ago: live.ago }));
   check('live: 服务端 notes 文字可见', live.notes.includes('隐私阈值'), live.notes);
-  check('live: 活动文本 = 服务端原文 (zh)', live.feedText[0] === MARKUP_TEXT.zh, JSON.stringify(live.feedText));
-  const textNodes = await evalJs(`(() => {
-    const s = document.querySelector('#pulse [data-pulse-feed] .pulse-feed-text');
-    return { kids: s.childNodes.length, type: s.childNodes[0] && s.childNodes[0].nodeType, text: s.textContent, html: s.innerHTML, tag: s.children.length };
-  })()`);
-  check('活动文本只用 textContent (夹具里的 <b> 未被解析)',
-    textNodes.kids === 1 && textNodes.type === 3 && textNodes.tag === 0 &&
-    textNodes.text === MARKUP_TEXT.zh && textNodes.html.includes('&lt;b&gt;'),
-    JSON.stringify(textNodes));
-  const appSrc = await (await fetch(`${BASE}/app.js`)).text();
+  check('live: 表格每一格的任务标识都只 1 个文本节点 (textContent 造节点, 不拼 HTML)',
+    LV.rows.every((r) => r.taskKids === 1), JSON.stringify(LV.rows.map((r) => r.taskKids)));
+  const appSrc = await fetchText(`${BASE}/app.js`);
   check('app.js 不写 innerHTML / outerHTML / insertAdjacentHTML',
     !/\.innerHTML\s*(\+?=|\.)/.test(appSrc) && !/\.outerHTML\s*(\+?=)/.test(appSrc) && !appSrc.includes('insertAdjacentHTML') && !appSrc.includes('document.write'),
     '源码里出现 innerHTML 赋值');
-  const gwHtml = await (await fetch(`${BASE}/gateway.html`)).text();
-  check('网关页静态 HTML 就有签名行 (data-pulse-total="signatures" 恰好 1 处 + 双语标签, JS 挂了也读得到)',
+  const gwHtml = await fetchText(`${BASE}/gateway.html`);
+  check('网关页静态 HTML 就有小结行签名钩子 (data-pulse-total="signatures" 恰好 1 处 + 双语标签, JS 挂了也读得到)',
     (gwHtml.match(/data-pulse-total="signatures"/g) || []).length === 1 &&
-    /data-zh="钱包签名" data-en="Wallet signatures"/.test(gwHtml),
+    /data-zh="钱包签名" data-en="wallet signatures"/.test(gwHtml),
     JSON.stringify({ n: (gwHtml.match(/data-pulse-total="signatures"/g) || []).length }));
+  check('网关页静态 HTML 就有表格钩子 (table 自身的 data-pulse-activity + -body/-empty/-source 各 1 处)',
+    gwHtml.includes('data-pulse-activity>') &&
+    (gwHtml.match(/data-pulse-activity-body/g) || []).length === 1 &&
+    (gwHtml.match(/data-pulse-activity-empty/g) || []).length === 1 &&
+    (gwHtml.match(/data-pulse-activity-source/g) || []).length === 1);
   check('app.js 真的绑定 signatures 钩子 (取数赋值 + 加载/失败时清空)',
     /data-pulse-total="signatures"/.test(appSrc) && (appSrc.match(/setOptCount\(el\.signatures/g) || []).length === 2);
-  check('app.js 从不按活动 kind 分支 (无 item.kind 比较 / 无 switch) — 未知 kind 不可能报错',
+  check('app.js 真的绑定表格三个钩子 (data-pulse-activity-body / -empty / -source)',
+    appSrc.includes('[data-pulse-activity-body]') && appSrc.includes('[data-pulse-activity-empty]') && appSrc.includes('[data-pulse-activity-source]'));
+  check('app.js 从不按活动 kind 分支渲染 (无 item.kind 比较 / 无 switch) — 未知 kind 不可能报错',
     !/\bitem\.kind\b/.test(appSrc) && !/\bit\.kind\b/.test(appSrc) && !/\bswitch\s*\(/.test(appSrc),
     'app.js 里出现按活动 kind 分支');
 
-  // 中英切换
+  // 中英切换: 表头 / 状态词 / 事件词 / finality / 小结标签 / 数据源标注 都要跟着变
   await evalJs(`document.querySelector('.lang-toggle [data-lang="en"]').click()`);
   await sleep(300);
   const en = await evalJs(pulseProbe('#pulse'));
   const enTitle = await evalJs(`document.querySelector('#pulse .section-title').textContent.trim()`);
   const enCaveat = await evalJs(`document.querySelector('#pulse .pulse-caveat').textContent.trim()`);
-  const enKickers = await evalJs(`Array.from(document.querySelectorAll('#pulse .pulse-sub')).map(e=>e.textContent.trim())`);
-  check('EN: 脉冲区标题 = Network pulse', enTitle === 'Network pulse', enTitle);
-  check('EN: 状态/scope/活动文案都变英文',
-    en.visible.includes('Live') && en.scope === 'Observed by this node' && en.feedText[0] === MARKUP_TEXT.en,
-    JSON.stringify({ v: en.visible, s: en.scope, f: en.feedText }));
-  check('EN: 相对时间英文 (minutes ago)', /minutes ago/.test(en.feed[0] + en.ago), en.feed[0] + ' ' + en.ago);
+  const enSubs = await evalJs(`Array.from(document.querySelectorAll('#pulse .pulse-sub')).map(e=>e.textContent.trim())`);
+  check('EN: 活动区标题 = On-chain activity', enTitle === 'On-chain activity', enTitle);
+  check('EN: 状态/scope 都变英文 (Live + Observed by this node)',
+    en.visible.includes('Live') && en.scope === 'Observed by this node',
+    JSON.stringify({ v: en.visible, s: en.scope }));
+  check('EN: 表头 7 列英文 = Task|State|Event|Network|Block|Confirmations / finality|Time',
+    JSON.stringify(en.act.headers) === JSON.stringify(['Task', 'State', 'Event', 'Network', 'Block', 'Confirmations / finality', 'Time']),
+    JSON.stringify(en.act.headers));
+  check('EN: 状态列英文单词 (active/released/refunded/expired/disputed/unknown) + 事件列英文词',
+    ['active', 'released', 'refunded', 'expired', 'disputed', 'unknown'].every((w) => en.act.rows.some((r) => r.stateText === w)) &&
+    ['task created', 'task accepted', 'task completed', 'trade settled', 'trade verified'].every((w) => en.act.rows.some((r) => r.kindText === w)),
+    JSON.stringify([...new Set(en.act.rows.map((r) => r.stateText))]));
+  check('EN: finality 徽标英文 (observed / confirmed / finalized) + 认不出的仍原样',
+    ['observed', 'confirmed', 'finalized'].every((w) => en.act.rows.some((r) => r.finText === w)) &&
+    en.act.rows.some((r) => r.finText === 'unknown'),
+    JSON.stringify([...new Set(en.act.rows.map((r) => r.finText))]));
+  check('EN: 短写不受语言影响 (sha256:1a2b… 仍在)',
+    en.act.rows.some((r) => r.task === 'sha256:1a2b…'), JSON.stringify(en.act.rows.map((r) => r.task)));
+  const enSummary = await evalJs(`Array.from(document.querySelectorAll('#pulse .pulse-summary span')).map(e=>e.textContent.trim())`);
+  check('EN: 小结行标签英文 = nodes/agents/tasks/completed/verified/wallet signatures',
+    JSON.stringify(enSummary) === JSON.stringify(['nodes', 'agents', 'tasks', 'completed', 'verified', 'wallet signatures']),
+    JSON.stringify(enSummary));
+  check('EN: 数据源标注英文 (On-chain data source: chain index)',
+    en.act.source === 'On-chain data source: chain index', en.act.source);
+  check('EN: 空态文案英文 (未显示但有英文原文)',
+    /not observed any on-chain task/.test(en.act.emptyText || '') || en.act.emptyShown === false, en.act.emptyText);
   check('EN: 「not an exact global total」可见', enCaveat.includes('not an exact global total'), enCaveat);
-  check('EN: 能力/活动/私有站小标题英文',
-    JSON.stringify(enKickers) === JSON.stringify(['Capabilities', 'Recent activity', 'Agent private sites']), JSON.stringify(enKickers));
-  const enStatLabels = await evalJs(`Array.from(document.querySelectorAll('#pulse .pulse-stat-label')).map(e=>e.textContent.trim())`);
-  check('EN: 八个数值标签英文 (含 Tasks / Tasks completed / Tasks verified / Wallet signatures)',
-    JSON.stringify(enStatLabels) === JSON.stringify(['Nodes', 'Agents', 'Active agents', 'Seen in last 24h', 'Tasks', 'Tasks completed', 'Tasks verified', 'Wallet signatures']),
-    JSON.stringify(enStatLabels));
+  check('EN: 智能体私有站小标题英文',
+    JSON.stringify(enSubs) === JSON.stringify(['Agent private sites']), JSON.stringify(enSubs));
+  check('EN: 相对时间英文 (minutes ago / hours ago / just now)',
+    /minutes ago|hours ago|just now/.test(String(en.ago)), String(en.ago));
   const enIpns = await evalJs(`(() => {
     const f = document.querySelector('#pulse [data-pulse-ipns-form]');
     const i = f.querySelector('[data-pulse-ipns-input]');
@@ -656,11 +860,27 @@ async function main() {
     /in a new window/.test(enIpns.siteAria), JSON.stringify(enIpns));
   await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
   await sleep(250);
+  const zhBack = await evalJs(pulseProbe('#pulse'));
+  check('切回中文: 状态/事件/finality 词复原 (原始值只存一份, 渲染时才取语言)',
+    zhBack.act.rows.some((r) => r.stateText === '活跃') && zhBack.act.rows.some((r) => r.kindText === '任务创建') &&
+    zhBack.act.rows.some((r) => r.finText === '已最终确定') && zhBack.act.source === '链上数据源：链上索引',
+    JSON.stringify([...new Set(zhBack.act.rows.map((r) => r.stateText))]));
 
-  // 相对时间只改文字节点, 不重建列表
-  const tickBefore = await evalJs(`(() => { const t = document.querySelector('#pulse [data-pulse-feed] time'); window.__feedTime0 = t; const li = document.querySelector('#pulse [data-pulse-feed] li'); window.__feedLi0 = li; t.setAttribute('data-at', String(Date.now() - 7200000)); window.__bolloonPulse.tick(); return { same: document.querySelector('#pulse [data-pulse-feed] time') === window.__feedTime0, liSame: document.querySelector('#pulse [data-pulse-feed] li') === window.__feedLi0, text: t.textContent, count: document.querySelectorAll('#pulse [data-pulse-feed] li').length }; })()`);
-  check('相对时间刷新只改文字节点 (同类节点复用, 不重建列表)',
-    tickBefore.same && tickBefore.liSame && /2 小时前/.test(tickBefore.text) && tickBefore.count === 2,
+  // 相对时间刷新: 只改文字节点, 表格行不重建 (行是「新数据来了才重画」)
+  const tickBefore = await evalJs(`(() => {
+    const ago = document.querySelector('#pulse [data-pulse-ago]');
+    const tr = document.querySelector('#pulse [data-pulse-activity-body] tr');
+    window.__ago0 = ago; window.__tr0 = tr;
+    window.__bolloonPulse.tick();
+    return {
+      sameAgo: document.querySelector('#pulse [data-pulse-ago]') === window.__ago0,
+      sameRow: document.querySelector('#pulse [data-pulse-activity-body] tr') === window.__tr0,
+      rows: document.querySelectorAll('#pulse [data-pulse-activity-body] tr').length,
+      ago: ago.textContent,
+    };
+  })()`);
+  check('相对时间刷新 (tick) 只改文字节点: 表格行与节点复用, 不重建',
+    tickBefore.sameAgo === true && tickBefore.sameRow === true && tickBefore.rows === 8 && /前|刚刚/.test(tickBefore.ago),
     JSON.stringify(tickBefore));
 
   // prefers-reduced-motion (live 状态下先确认动画存在, 再确认 reduce 时关掉)
@@ -673,12 +893,34 @@ async function main() {
     JSON.stringify({ animOn, rm }));
   await cdp('Emulation.setEmulatedMedia', { features: [] });
 
-  // 手机宽度: 统计纵向堆叠
+  // 手机宽度: 小结行纵向堆叠 + 表格在容器里横向滚动 (且表格不贡献页面横向溢出)
+  // 注: 390px 下页面本身有 ~155px 横向溢出, 但那是顶栏 (nav-menu / mast-meta) 的老问题,
+  //     与活动表无关 —— 这里用「把表格藏起来前后, 页面溢出不变」把责任划清。
   await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await sleep(350);
-  const mob = await evalJs(`(() => ({ w: window.innerWidth, dir: getComputedStyle(document.querySelector('#pulse .pulse-stats')).flexDirection, cols: getComputedStyle(document.querySelector('#pulse .pulse-grid')).gridTemplateColumns }))()`);
-  check('390px: 统计改纵向堆叠', mob.w <= 640 && mob.dir === 'column', JSON.stringify(mob));
-  check('390px: 能力/活动两栏各自堆叠', mob.cols.split(' ').length === 1, mob.cols);
+  const mob = await evalJs(`(() => {
+    const de = document.documentElement;
+    const sum = document.querySelector('#pulse .pulse-summary');
+    const wrap = document.querySelector('#pulse .pulse-table-wrap');
+    const overAll = de.scrollWidth - de.clientWidth;
+    const prev = wrap.style.display;
+    wrap.style.display = 'none';
+    const overNoTable = de.scrollWidth - de.clientWidth;
+    wrap.style.display = prev;
+    return {
+      w: window.innerWidth,
+      dir: getComputedStyle(sum).flexDirection,
+      wrapOverflow: getComputedStyle(wrap).overflowX,
+      wrapClient: wrap.clientWidth,
+      wrapScroll: wrap.scrollWidth,
+      overAll: overAll,
+      overNoTable: overNoTable,
+    };
+  })()`);
+  check('390px: 小结行改纵向堆叠 (值左 · 标签右)', mob.w <= 640 && mob.dir === 'column', JSON.stringify(mob));
+  check('390px: 活动表在容器里横向滚动 (容器 overflow-x:auto + 表格比容器宽), 表格不贡献页面横向溢出',
+    mob.wrapOverflow === 'auto' && mob.wrapScroll > mob.wrapClient && mob.overAll === mob.overNoTable,
+    JSON.stringify(mob));
   const mobIpns = await evalJs(`(() => {
     const de = document.documentElement;
     const f = document.querySelector('#pulse [data-pulse-ipns-form]');
@@ -709,7 +951,9 @@ async function main() {
   const stale = await evalJs(pulseProbe('#pulse'));
   check('stale: fresh_until 已过 → 快照已过期', stale.state === 'stale' && stale.visible.includes('快照已过期'), JSON.stringify({ s: stale.state, v: stale.visible }));
   check('stale: scope=verified → 「网络观察快照」', stale.scope === '网络观察快照' && !stale.scopeHidden, stale.scope);
-  check('stale: 仍显示快照数字 (9) 且活动为空占位', stale.nodes === '9' && stale.feed.length === 0, JSON.stringify({ n: stale.nodes, f: stale.feed.length }));
+  check('stale: 仍显示快照数字 (9); 该快照没有 confirmed_activity → 0 行 + 明说「本节点暂未观察到链上任务」(不是一片空白)',
+    stale.nodes === '9' && stale.act.rowCount === 0 && stale.act.emptyShown === true && /暂未观察到链上任务/.test(stale.act.emptyText),
+    JSON.stringify({ n: stale.nodes, rows: stale.act.rowCount, shown: stale.act.emptyShown, text: stale.act.emptyText }));
 
   // status=stale 单独一条路径
   const p3 = nextPaused(7000);
@@ -732,7 +976,11 @@ async function main() {
     JSON.stringify({ s: un.state, v: un.visible, h: un.hintShown }));
   check('unavailable: 提示含 ?pulse= 与本机节点示例',
     un.hint.includes('?pulse=') && un.hint.includes('127.0.0.1:54188'), un.hint.slice(0, 120));
-  check('unavailable: 数值清空 → 不编造数字', un.nodes === '—' && un.agents === '—' && un.feed.length === 0, JSON.stringify({ n: un.nodes, f: un.feed.length }));
+  check('unavailable: 数值清空 + 表格 0 行 + 空态说「快照不可用」+ 数据源标注也说读不到快照 (两种空法不混)',
+    un.nodes === '—' && un.agents === '—' && un.act.rowCount === 0 && un.act.emptyShown === true &&
+    /快照不可用/.test(un.act.emptyText) && /未读到快照/.test(un.act.source),
+    JSON.stringify({ n: un.nodes, rows: un.act.rowCount, empty: un.act.emptyText, src: un.act.source }));
+  check('unavailable: 快照不可用时不会编造任何行 (0 行, 且没有空白行)', un.act.rowCount === 0 && un.act.blankRows === 0);
   const others = await evalJs(`(() => ({
     badge: (document.getElementById('version')||{}).textContent || '',
     cmd: (document.getElementById('skill-cmd')||{}).textContent || '',
@@ -746,12 +994,27 @@ async function main() {
     JSON.stringify(others));
   check('失败后 backoff 生效 (failCount ≥ 1)', (await evalJs('window.__bolloonPulse.failCount()')) >= 1);
 
+  // 超时 (5s AbortController): 把请求挂住不放, 模块必须自己放弃 → unavailable, 不卡在 loading
+  const pTimeout = nextPaused(7000);
+  await evalJs(`(() => { window.__bolloonPulse.refresh(); return 1; })()`);
+  let reqTimeout = null;
+  try { reqTimeout = await pTimeout; } catch { /* 没拦到就按 DOM 判断 */ }
+  await sleep(6000);                       // 单次请求超时 = 5s
+  const to = await evalJs(pulseProbe('#pulse'));
+  check('超时: 请求挂住 6s → 模块自己放弃 (unavailable), 不永久停在 loading',
+    to.state === 'unavailable' && to.visible.includes('公开观察入口尚未接入') && to.act.rowCount === 0,
+    JSON.stringify({ s: to.state, v: to.visible }));
+  if (reqTimeout) { try { await fulfillJson(reqTimeout.requestId, FX_LIVE); } catch { /* 已 abort, 拦截 id 失效是正常的 */ } }
+  await sleep(200);
+
   // 轮询与超时常量
-  const cfg = await evalJs(`(() => { const p = window.__bolloonPulse; return p ? { poll: p.config.pollMs, timeout: p.config.timeoutMs, backoff: p.config.backoffMs, rel: p.config.relTickMs, feedMax: p.config.feedMax, refresh: typeof p.refresh, tick: typeof p.tick, src: p.source() } : null; })()`);
+  const cfg = await evalJs(`(() => { const p = window.__bolloonPulse; return p ? { poll: p.config.pollMs, timeout: p.config.timeoutMs, backoff: p.config.backoffMs, rel: p.config.relTickMs, feedMax: p.config.feedMax, activityMax: p.config.activityMax, capsMax: p.config.capsMax, refresh: typeof p.refresh, tick: typeof p.tick, src: p.source() } : null; })()`);
   check('30 秒轮询 + 5 秒超时 + 退避 30/60/120 上限 120',
     !!cfg && cfg.poll === 30000 && cfg.timeout === 5000 && JSON.stringify(cfg.backoff) === JSON.stringify([30000, 60000, 120000]),
     JSON.stringify(cfg));
-  check('轮询/刷新函数存在 (refresh + tick)', !!cfg && cfg.refresh === 'function' && cfg.tick === 'function');
+  check('轮询/刷新函数存在 (refresh + tick) + 表格行上限 activityMax, 旧 capsMax 已移除',
+    !!cfg && cfg.refresh === 'function' && cfg.tick === 'function' && cfg.activityMax === 60 && cfg.capsMax === undefined,
+    JSON.stringify(cfg));
   // 无 ?pulse= → 回退同源 network-pulse.json (站点上通常不存在 → 如实 unavailable, 不阻断其它区域)
   shouldIntercept = (p) => p.request.url.endsWith('/network-pulse.json');
   await cdp('Fetch.enable', { patterns: [{ urlPattern: '*network-pulse.json*', requestStage: 'Request' }] });
@@ -775,8 +1038,8 @@ async function main() {
     JSON.stringify({ state: fb.state, cmd: fbCmd.slice(0, 40) }));
   await cdp('Fetch.disable');
 
-  // ⑥′ 聚合计数缺失 + agent_sites 为空: 「拿不到就不显示」, 空 ≠ 没数据
-  console.log('\n[6b] 任务计数缺失 + 智能体私有站为空 (拿不到就不显示)');
+  // ⑥′ 聚合计数缺失 + 空表 + agent_sites 为空: 「拿不到就不显示」「空表要说清」「空 ≠ 没数据」
+  console.log('\n[6b] 任务计数缺失 + 空表 + 智能体私有站为空 (拿不到就不显示)');
   const cErrStart = consoleErrors.length;
   cMode = 'no-tasks';
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
@@ -784,17 +1047,22 @@ async function main() {
   await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-c.json`)}` });
   await sleep(1400);
   const noT = await evalJs(pulseProbe('#pulse'));
-  check('缺 tasks* 三个字段 → 三行整行隐藏, 且不拿 0 或数字冒充',
+  check('缺 tasks* 三个字段 → 小结行整行隐藏, 且不拿 0 或数字冒充',
     noT.state === 'live' && noT.tasksHidden.tasks === true && noT.tasksHidden.done === true && noT.tasksHidden.verified === true &&
     noT.tasks === '—' && noT.tasksDone === '—' && noT.tasksVerified === '—',
     JSON.stringify({ s: noT.state, h: noT.tasksHidden, v: [noT.tasks, noT.tasksDone, noT.tasksVerified] }));
-  check('缺字段时四个老数值照常显示 (2/3/0/3) — 只有拿不到的才不显示 (真 0 照常显示 0)',
-    noT.nodes === '2' && noT.agents === '3' && noT.active === '0' && noT.h24 === '3',
-    JSON.stringify({ n: noT.nodes, a: noT.agents, ac: noT.active, d: noT.h24 }));
+  check('缺字段时节点/智能体照常显示 (2/3) — 只有拿不到的才不显示 (真 0 照常显示 0)',
+    noT.nodes === '2' && noT.agents === '3' && noT.summary.filter((r) => r.hidden).length === 4,
+    JSON.stringify({ n: noT.nodes, a: noT.agents, rows: noT.summary.map((r) => [r.key, r.hidden]) }));
+  check('confirmed_activity=[] → 0 行 + 明说「本节点暂未观察到链上任务」(不是空白表格)',
+    noT.act.rowCount === 0 && noT.act.emptyShown === true && noT.act.emptyText === '本节点暂未观察到链上任务。',
+    JSON.stringify({ rows: noT.act.rowCount, shown: noT.act.emptyShown, text: noT.act.emptyText }));
+  check('confirmed_activity_source=none → 表格下方如实标注「本节点未接入链上数据源」',
+    noT.act.source === '链上数据源：本节点未接入链上数据源', noT.act.source);
   check('agent_sites=[] → 0 条链接 + 诚实空提示 (没发布 ≠ 没数据)',
     noT.sites.length === 0 && noT.sitesEmptyShown === true && /暂未发布智能体私有站/.test(noT.sitesEmptyText),
     JSON.stringify({ n: noT.sites.length, shown: noT.sitesEmptyShown, text: noT.sitesEmptyText }));
-  check('缺 signatures 字段 → 签名行整行隐藏 (不拿 0 冒充, 也不显示假 0)',
+  check('缺 signatures 字段 → 小结行里的签名项整行隐藏 (不拿 0 冒充, 也不显示假 0)',
     noT.tasksHidden.sig === true && noT.signatures === '—',
     JSON.stringify({ hidden: noT.tasksHidden.sig, v: noT.signatures }));
   check('缺字段这一轮无 console 错误 / 未捕获异常', consoleErrors.length === cErrStart, consoleErrors.slice(0, 3).join(' | '));
@@ -880,8 +1148,8 @@ async function main() {
   check('粘贴框这几轮无 console 错误 / 未捕获异常', consoleErrors.length === cErrStart, consoleErrors.slice(0, 3).join(' | '));
   cMode = 'full';
 
-  // ⑥‴ 新事件 kind (服务端文案直用) + 数值变化在下一轮 30s 轮询内自动反映
-  console.log('\n[6d] 新事件 kind 兼容 (后端文案直用) + 数值变化自动反映 (30s 轮询)');
+  // ⑥‴ 表格容错 (认不出的枚举原样显示 / 空标识不画行) + 数值变化在下一轮 30s 轮询内自动反映
+  console.log('\n[6d] 表格枚举容错 (textContent) + 数值变化自动反映 (30s 轮询)');
   const kErrStart = consoleErrors.length;
   growMode = 'base';
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
@@ -890,35 +1158,46 @@ async function main() {
   await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(growSrc)}` });
   await sleep(1600);                       // 夹具由 handler 自动回 (不走手工队列)
   const nk = await evalJs(pulseProbe('#pulse'));
-  check(`新 kind: ${Object.keys(NEWKIND_TEXT).length} 个新 kind 的文案直用服务端 {zh,en} (中文逐字一致, 前端没再造一套)`,
-    JSON.stringify(nk.feedText) === JSON.stringify(NEWKIND_EXPECT_ZH), JSON.stringify(nk.feedText));
-  check('新 kind: 未知 kind + 无文案条目整条不显示; 缺 zh 的条目退回 en (都不留空白)',
-    nk.feed.length === 5 && nk.feedText[0] === EN_ONLY_TEXT, JSON.stringify(nk.feed));
-  check('新 kind: 活动流没有任何空白行 (每条都有非空文案)', nk.feedBlank === 0, `blank=${nk.feedBlank}`);
-  check('新 kind: 这一轮无 console 错误 / 未捕获异常 (未知 kind 不报错)', consoleErrors.length === kErrStart, consoleErrors.slice(0, 3).join(' | '));
+  check('容错: 3 条夹具画成 2 行 (task 与 tx 都空的那条不画), 没有空白行',
+    nk.act.rowCount === 2 && nk.act.blankRows === 0, JSON.stringify({ rows: nk.act.rowCount, blank: nk.act.blankRows }));
+  check('容错: 未知 kind / 未知 state / 未知 finality 全部原样显示 (不猜、不吞、不报错)',
+    nk.act.rows.some((r) => r.kindText === 'brand_new_kind_2099b' && r.stateText === 'settling' && r.finText === 'settled-weird'),
+    JSON.stringify(nk.act.rows.map((r) => [r.kindText, r.stateText, r.finText])));
+  check('容错: 认不出的 finality 徽标 = 虚线 is-other (不假装是三档之一)',
+    nk.act.rows.some((r) => r.fin === 'settled-weird' && /is-other/.test(r.finClass || '')),
+    JSON.stringify(nk.act.rows.map((r) => [r.fin, r.finClass])));
+  check('容错: 任务标识里的 <b> 只当文字 (单元格只 1 个文本节点 + 标签被转义, 没走 innerHTML)',
+    nk.act.rows.some((r) => r.task === MARKUP_TASK && r.taskKids === 1 && /&lt;b&gt;/.test(r.taskHtml || '')),
+    JSON.stringify(nk.act.rows.map((r) => [r.task, r.taskKids, r.taskHtml])));
+  check('容错: 数据源标注随快照变 (pulse-events → 「链上数据源：脉冲事件」)',
+    nk.act.source === '链上数据源：脉冲事件', nk.act.source);
+  check('容错这一轮无 console 错误 / 未捕获异常 (未知枚举不报错)', consoleErrors.length === kErrStart, consoleErrors.slice(0, 3).join(' | '));
 
   await evalJs(`document.querySelector('.lang-toggle [data-lang="en"]').click()`);
   await sleep(350);
   const nkEn = await evalJs(pulseProbe('#pulse'));
-  check('新 kind: 切 EN 后同一批条目显示服务端 en 文案 (语言在渲染时才取, 不串语言)',
-    JSON.stringify(nkEn.feedText) === JSON.stringify(NEWKIND_EXPECT_EN), JSON.stringify(nkEn.feedText));
+  check('容错: 切 EN 后已知 kind 出英文词, 未知 kind/state/finality 仍原样 (语言在渲染时才取)',
+    nkEn.act.rows.some((r) => r.kindText === 'task created') &&
+    nkEn.act.rows.some((r) => r.kindText === 'brand_new_kind_2099b' && r.stateText === 'settling' && r.finText === 'settled-weird'),
+    JSON.stringify(nkEn.act.rows.map((r) => [r.kindText, r.stateText, r.finText])));
   await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
   await sleep(300);
   const nkZh = await evalJs(pulseProbe('#pulse'));
-  check('新 kind: 切回中文文案复原 (rawFeed 保留原始双语对象, 不是被覆盖过的文本)',
-    JSON.stringify(nkZh.feedText) === JSON.stringify(NEWKIND_EXPECT_ZH), JSON.stringify(nkZh.feedText));
+  check('容错: 切回中文复原 (原始枚举只存一份, 不是被覆盖过的文本)',
+    nkZh.act.rows.some((r) => r.kindText === '任务创建') && nkZh.act.rows.some((r) => r.finText === 'settled-weird'),
+    JSON.stringify(nkZh.act.rows.map((r) => [r.kindText, r.finText])));
 
   // —— 数值变化: 只改「下游夹具」+ 只读 DOM, 不调 refresh() / 不导航 / 不刷新页面 ——
   const growBefore = await evalJs(`(() => ({
     mark: (window.__growMark = 'no-reload'),
     nodes: (document.querySelector('#pulse [data-pulse-total="nodes"]') || {}).textContent,
     agents: (document.querySelector('#pulse [data-pulse-total="agents"]') || {}).textContent,
-    active: (document.querySelector('#pulse [data-pulse-total="active"]') || {}).textContent,
-    h24: (document.querySelector('#pulse [data-pulse-total="24h"]') || {}).textContent,
     sig: (document.querySelector('#pulse [data-pulse-total="signatures"]') || {}).textContent,
+    rows: document.querySelectorAll('#pulse [data-pulse-activity-body] tr').length,
+    source: (document.querySelector('[data-pulse-activity-source]') || {}).textContent,
     state: document.getElementById('pulse').getAttribute('data-pulse-state'),
   }))()`);
-  growMode = 'grown';                      // 下一轮轮询将拿到「一个新 agent 加入后」的快照
+  growMode = 'grown';                      // 下一轮轮询将拿到「一个新 agent 加入 + 多一条交易」的快照
   const growT0 = Date.now();
   let growAfter = null;
   for (let i = 0; i < 100; i++) {          // 最多 ~50s (自动轮询间隔 30s + 余量)
@@ -926,32 +1205,32 @@ async function main() {
     growAfter = await evalJs(`(() => ({
       nodes: (document.querySelector('#pulse [data-pulse-total="nodes"]') || {}).textContent,
       agents: (document.querySelector('#pulse [data-pulse-total="agents"]') || {}).textContent,
-      active: (document.querySelector('#pulse [data-pulse-total="active"]') || {}).textContent,
-      h24: (document.querySelector('#pulse [data-pulse-total="24h"]') || {}).textContent,
       sig: (document.querySelector('#pulse [data-pulse-total="signatures"]') || {}).textContent,
+      rows: document.querySelectorAll('#pulse [data-pulse-activity-body] tr').length,
+      source: (document.querySelector('[data-pulse-activity-source]') || {}).textContent,
+      firstKind: (document.querySelector('#pulse .pulse-kind-word') || {}).textContent,
+      tasks: (document.querySelector('#pulse [data-pulse-total="tasks"]') || {}).textContent,
       mark: window.__growMark,
       state: document.getElementById('pulse').getAttribute('data-pulse-state'),
-      feedText: Array.from(document.querySelectorAll('#pulse [data-pulse-feed] .pulse-feed-text')).map((e) => e.textContent),
-      blank: Array.from(document.querySelectorAll('#pulse [data-pulse-feed] li')).filter((li) => {
-        const s = li.querySelector('.pulse-feed-text'); return !s || !s.textContent.trim(); }).length,
+      blank: Array.from(document.querySelectorAll('#pulse [data-pulse-activity-body] tr')).filter((tr) => !tr.textContent.trim()).length,
     }))()`);
-    if (growAfter && growAfter.nodes === '8' && growAfter.sig === '42') break;
+    if (growAfter && growAfter.nodes === '8' && growAfter.sig === '42' && growAfter.rows === 3) break;
   }
   const growWaited = ((Date.now() - growT0) / 1000).toFixed(1);
-  check(`数值变化在下一轮 30s 轮询内自动出现 (实测等了 ${growWaited}s; 未刷新页面 / 未手动 refresh / 未导航)`,
-    !!growAfter && growBefore.nodes === '7' && growAfter.nodes === '8' && growAfter.state === 'live' && Number(growWaited) < 40,
-    JSON.stringify({ before: growBefore.nodes, after: growAfter && growAfter.nodes, waited: growWaited }));
-  check('新 agent 加入 → 节点/agents/活跃 agent/24h 计数自己变 (+1/+1/+1/+1), 刷新后才能新数字不算',
-    !!growAfter && growAfter.agents === '13' && growAfter.active === '5' && growAfter.h24 === '6',
+  check(`数值与表格行在下一轮 30s 轮询内自动出现 (实测等了 ${growWaited}s; 未刷新页面 / 未手动 refresh / 未导航)`,
+    !!growAfter && growBefore.nodes === '7' && growBefore.rows === 2 && growAfter.nodes === '8' &&
+    growAfter.rows === 3 && growAfter.state === 'live' && Number(growWaited) < 40,
+    JSON.stringify({ before: [growBefore.nodes, growBefore.rows], after: [growAfter && growAfter.nodes, growAfter && growAfter.rows], waited: growWaited }));
+  check('新 agent 加入 → 智能体/任务/签名计数自己变 (12→13, 21→22, 3→42)',
+    !!growAfter && growAfter.agents === '13' && growAfter.tasks === '22' && growAfter.sig === '42',
     JSON.stringify(growAfter));
-  check('新 agent 加入 → 签名行也跟着自己变 (3 → 42)',
-    !!growAfter && growBefore.sig === '3' && growAfter.sig === '42',
-    JSON.stringify({ before: growBefore.sig, after: growAfter && growAfter.sig }));
+  check('新增的链上活动那行也跟着出现 (事件 = 交易验真), 且没有空白行',
+    !!growAfter && growAfter.firstKind === '交易验真' && growAfter.blank === 0,
+    JSON.stringify({ first: growAfter && growAfter.firstKind, blank: growAfter && growAfter.blank }));
+  check('数据源标注也跟着快照自己变 (pulse-events → chain index)',
+    !!growAfter && /链上索引/.test(growAfter.source || ''), String(growAfter && growAfter.source));
   check('页面从未重新加载 (标记变量存活 ⇒ 数字是自己变的, 不是刷新带出来的)',
     !!growAfter && growAfter.mark === 'no-reload', JSON.stringify({ mark: growAfter && growAfter.mark }));
-  check('第二轮活动流也直用后端文案 + 无空白行 (含本轮才出现的 wallet_signed)',
-    !!growAfter && JSON.stringify(growAfter.feedText) === JSON.stringify(['有一次钱包签名', '有一笔交易已验真']) && growAfter.blank === 0,
-    JSON.stringify(growAfter && growAfter.feedText));
   check('自动轮询那一轮也无 console 错误 / 未捕获异常', consoleErrors.length === kErrStart, consoleErrors.slice(0, 3).join(' | '));
 
   // ⑦ 首页序栏紧凑版脉冲 (同一数据源, 同一诚实四态)
@@ -1031,6 +1310,31 @@ async function main() {
   await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
   await sleep(250);
 
+  // 活动流的语言回落 (缺当前语言退回另一种, 仍是服务端原文) + 相对时间刷新只改文字节点
+  const pIdxEnOnly = nextPaused(7000);
+  await evalJs(`(() => { window.__bolloonPulses[0].refresh(); return 1; })()`);
+  const idxEnOnlyReq = await pIdxEnOnly;
+  await fulfillJson(idxEnOnlyReq.requestId, FX_EN_ONLY);
+  await sleep(700);
+  const idxEnOnly = await evalJs(pulseProbe(IDX_ROOT));
+  check('首页活动流: 只有 en 文案的条目在中文界面下退回 en (服务端原文, 不留空白行)',
+    idxEnOnly.feedText.length === 1 && idxEnOnly.feedText[0] === EN_ONLY_TEXT && idxEnOnly.feedBlank === 0,
+    JSON.stringify({ f: idxEnOnly.feedText, blank: idxEnOnly.feedBlank }));
+  const idxTick = await evalJs(`(() => {
+    const t = document.querySelector('${IDX_ROOT} [data-pulse-feed] time');
+    window.__idxTick0 = t;
+    const li = document.querySelector('${IDX_ROOT} [data-pulse-feed] li');
+    window.__idxLi0 = li;
+    t.setAttribute('data-at', String(Date.now() - 7200000));
+    window.__bolloonPulses[0].tick();
+    return { same: document.querySelector('${IDX_ROOT} [data-pulse-feed] time') === window.__idxTick0,
+      liSame: document.querySelector('${IDX_ROOT} [data-pulse-feed] li') === window.__idxLi0,
+      text: t.textContent, count: document.querySelectorAll('${IDX_ROOT} [data-pulse-feed] li').length };
+  })()`);
+  check('首页活动流: 相对时间刷新只改文字节点 (同类节点复用, 不重建列表)',
+    idxTick.same && idxTick.liSame && /2 小时前/.test(idxTick.text) && idxTick.count === 1,
+    JSON.stringify(idxTick));
+
   // 首页那份: 过期快照 → stale
   const pIdx2 = nextPaused(7000);
   await evalJs(`(() => { window.__bolloonPulses[0].refresh(); return 1; })()`);
@@ -1066,7 +1370,7 @@ async function main() {
     capNo: Array.from(document.querySelectorAll('#capabilities .cap-no')).map(e => e.textContent).join(','),
   }))()`);
   check('首页那份失败不阻断首页其它区域 (序厅 CTA / 能力区 / 徽章 / 页脚正常)',
-    idxOthers.cta === 3 && idxOthers.capNo === '01,02,03' && (!liveVersion || idxBadge === liveVersion) && /^\d{4}$/.test(idxOthers.year),
+    idxOthers.cta === 2 && idxOthers.capNo === '01,02,03' && (!liveVersion || idxBadge === liveVersion) && /^\d{4}$/.test(idxOthers.year),
     JSON.stringify({ ...idxOthers, badge: idxBadge }));
   check('首页那份无 console 错误 / 未捕获异常', consoleErrors.length === idxErrStart, consoleErrors.slice(0, 3).join(' | '));
 
@@ -1151,14 +1455,14 @@ async function main() {
     const pick = (root, key) => { const n = root.querySelector('[data-pulse-total="' + key + '"]'); return n ? n.textContent.trim() : null; };
     const vis = (root) => (Array.from(root.querySelectorAll('.pulse-state-text')).filter(e => getComputedStyle(e).display !== 'none')[0] || {}).textContent || '';
     return {
-      a: { state: A.getAttribute('data-pulse-state'), vis: vis(A), nodes: pick(A, 'nodes'), feed: A.querySelectorAll('[data-pulse-feed] li').length },
+      a: { state: A.getAttribute('data-pulse-state'), vis: vis(A), nodes: pick(A, 'nodes'), rows: A.querySelectorAll('[data-pulse-activity-body] tr').length },
       b: { state: B.getAttribute('data-pulse-state'), vis: vis(B), nodes: pick(B, 'nodes'), scope: (B.querySelector('[data-pulse-scope]')||{}).textContent },
       page: { cmd: (document.getElementById('skill-cmd')||{}).textContent || '' },
       api: { first: window.__bolloonPulse === window.__bolloonPulses[0], n: window.__bolloonPulses.length },
     };
   })()`);
-  check('第一实例也能独立失败 (A → unavailable, 数值清空, 不编造)',
-    pair3.a.state === 'unavailable' && pair3.a.vis.includes('公开观察入口尚未接入') && pair3.a.nodes === '—' && pair3.a.feed === 0,
+  check('第一实例也能独立失败 (A → unavailable, 数值清空, 表格 0 行, 不编造)',
+    pair3.a.state === 'unavailable' && pair3.a.vis.includes('公开观察入口尚未接入') && pair3.a.nodes === '—' && pair3.a.rows === 0,
     JSON.stringify(pair3.a));
   check('第二实例完全不受第一份失败影响 (仍 stale + 数字 9 + 自己的 scope)',
     pair3.b.state === 'stale' && pair3.b.nodes === '9' && pair3.b.scope === '网络观察快照',
@@ -1185,18 +1489,65 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=19 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=19 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=20 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=20 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
-    const html = await (await fetch(`${BASE}/${pg}`)).text();
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=19');
+    const html = await fetchText(`${BASE}/${pg}`);
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=20');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=19/.test(html) || !/app\.js\?v=19/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=20/.test(html) || !/app\.js\?v=20/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=19 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=19 + app.js?v=19 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=20 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=20 + app.js?v=20 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
+
+  // ⑫ 命名与可见文本审计: 旧名 (网络脉冲 / Network pulse / 加入网络) 一个都不该再出现;
+  //     页面里也不该有 40 位地址 / 64 位哈希 (长标识一律短写)。
+  console.log('\n[11] 旧名清除 + 页面可见文本不含长地址/长哈希');
+  const OLD_NAMES = ['网络脉冲', 'Network pulse', '全球网络脉冲', '加入网络', 'Join the Network'];
+  const nameHits = [], hashHits = [];
+  for (const pg of ALL_PAGES) {
+    const html = await fetchText(`${BASE}/${pg}`);
+    const hits = OLD_NAMES.filter((w) => html.includes(w));
+    if (hits.length) nameHits.push(`${pg}:${hits.join('|')}`);
+    if (/\b0x[0-9a-fA-F]{40}\b/.test(html) || /\b[0-9a-fA-F]{64}\b/.test(html)) hashHits.push(pg);
+  }
+  check('7 页原始 HTML (含 meta description) 都没有旧名 网络脉冲 / Network pulse / 加入网络 / Join the Network',
+    nameHits.length === 0, JSON.stringify(nameHits));
+  check('7 页原始 HTML 都没有 40 位地址 / 64 位哈希', hashHits.length === 0, JSON.stringify(hashHits));
+  for (const pg of ['gateway.html', 'index.html']) {
+    await cdp('Page.navigate', { url: `${BASE}/${pg}` });
+    await sleep(900);
+    const audit = await evalJs(`(() => {
+      const olds = ${JSON.stringify(OLD_NAMES)};
+      const text = document.body.innerText;
+      const nav = Array.from(document.querySelectorAll('.mast-links a')).map((a) => a.textContent.trim()).join(' | ');
+      return {
+        nav: nav,
+        hits: olds.filter((w) => text.indexOf(w) !== -1),
+        navHits: olds.filter((w) => nav.indexOf(w) !== -1),
+        h1: Array.from(document.querySelectorAll('h1')).map((e) => e.textContent.trim()),
+        gatewayNav: Array.from(document.querySelectorAll('.mast-links .nav-menu a')).map((a) => a.textContent.trim()),
+        longAddr: /\\b0x[0-9a-fA-F]{40}\\b/.test(text),
+        longHash: /\\b[0-9a-fA-F]{64}\\b/.test(text),
+      };
+    })()`);
+    check(`${pg} 渲染后: 可见文本 + 导航(含下拉) 都没有旧名 (导航项: ${String(audit.nav).slice(0, 90)})`,
+      audit.hits.length === 0 && audit.navHits.length === 0, JSON.stringify({ hits: audit.hits, navHits: audit.navHits, nav: audit.nav }));
+    check(`${pg} 渲染后: 可见文本没有 40 位地址 / 64 位哈希`,
+      audit.longAddr === false && audit.longHash === false, JSON.stringify({ a: audit.longAddr, h: audit.longHash }));
+    if (pg === 'gateway.html') {
+      check('网关页导航里确实有「链上活动」项 (是改名, 不是删掉)',
+        audit.gatewayNav.includes('链上活动'), JSON.stringify(audit.gatewayNav));
+      check('网关页 h1 不再是「加入网络」序厅大字 (页面以链上活动为主体)',
+        audit.h1.every((t) => !/加入网络/.test(t)), JSON.stringify(audit.h1));
+    }
+    if (pg === 'index.html') {
+      check('首页导航里确实有「链上活动」项 (指向网关页 #pulse)',
+        audit.gatewayNav.includes('链上活动'), JSON.stringify(audit.gatewayNav));
+    }
+  }
 
   // console 错误
   check('整轮访问无 console 错误 / 未捕获异常', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

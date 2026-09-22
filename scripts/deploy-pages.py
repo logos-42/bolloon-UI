@@ -18,6 +18,7 @@ https://bolloon.cn/dl/<file>，与 GitHub Release 互为备份。
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import pathlib
 import shutil
@@ -66,6 +67,15 @@ def mirror() -> list[pathlib.Path]:
         print(f"[deploy-pages]   dl/{apk.name}  ({apk.stat().st_size/1048576:.2f} MiB)")
     if not apks:
         print("[deploy-pages]   (dl/ 里没有 apk —— 站点将不带同域镜像)")
+    # 指纹: 让「部署产物陈旧 / 部署没生效」在日志里就能看出来 ——
+    # build-site/ 每次都是从仓库根重建 (mirror() 先 rmtree), 所以这里的哈希应当与仓库根逐字一致;
+    # 一旦不一致就是拷贝环节出了问题 (而不是线上缓存)。部署后可用同一条 curl 对齐线上文件。
+    for rel in ("skill.html", "bolloon-network.md", "bolloon-gateway-join.md", "gateway.html", "app.js", "style.css"):
+        p = BUILD / rel
+        if p.exists():
+            digest = hashlib.sha256(p.read_bytes()).hexdigest()[:16]
+            same = (ROOT / rel).exists() and hashlib.sha256((ROOT / rel).read_bytes()).hexdigest()[:16] == digest
+            print(f"[deploy-pages]   {rel} sha256:{digest}{'' if same else '  ⚠️ 与仓库根不一致'}")
     return apks
 
 
