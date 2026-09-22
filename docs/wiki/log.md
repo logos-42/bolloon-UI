@@ -52,3 +52,11 @@
 - **修法**: ① **夹具自证** —— 每次 CDP Fetch 注入夹具后、断言之前, 先验证夹具真生效(链路证 marker 回夹具次数 + 消费证 DOM 标记 `__vfy:<mode>:__`), 打印 `🔒 夹具自证 … 已满足`;② 拿不到则明确报「夹具未生效(拦截未命中)」而非笼统 `[]`, 失败消息一眼可区分「页面错 vs 夹具错」;③ 断言只加不减;④ 结果行改 `=== 结果: N passed, M failed, K skipped ===`(skipped 透明可见, 不许默默跳过)。
 - **我独立复跑(4 遍)**: 本机 `246 passed / 0 failed / 0 skipped`(EXIT=0) · 真域名第 1 遍 `246/0/0` · 第 2 遍 `246/0/0` · 前面那遍干净本机 `246/0/0`。**`skipped = 0` 说明不是靠跳过刷绿**(每条夹具断言都带自证真跑)。
 - **未提交**: `scripts/shots.mjs`(截图助手, 子智能体遗留)与空目录 `scripts/fixtures/`(夹具为运行时生成)。
+
+## [2026-09-22] fix(refresh-pulse) | 部署守卫假阳性修正 — 真链数据(含合法 wallet_signed 事件)曾被当泄漏拒部署
+
+- **现象**: 重生成后的快照含 **3 条真实链上活动**,其中事件类型是白名单里的 **`wallet_signed`**;而 `refresh-pulse.sh` 的私有字段自检用**裸子串**扫 `['did',...,'wallet','address',...]`(扫整份文本) ⇒ 命中 `wallet` ⇒ `拒绝部署: 快照含私有字段 ['wallet']`。**真数据被当成泄漏拦住**。
+- **修法(精确化, 不删防护)**: ① 只对**键名**精确匹配(不再扫文本) ② 值形态判真泄漏(`0x` 地址 / `did:*` / multiaddr `/ip4|ip6|dns4|dns6|tcp|udp|p2p/` / libp2p `12D3Koo…` / IPNS `k51…`) ③ 整值 64 位十六进制只在**非** hash/sig/tx/proof/task 键下才算可疑(否则撞签名与哈希)。
+- **对照测试 7/7**: 真快照 → **通过**;注入 `privateKey` 键 / `address` 键 / DID 值 / multiaddr 值 / 非安全键下的裸 64 位十六进制 → **全部被拒**;`kind: wallet_signed`(合法) → **通过**。⇒ 是"改精确", 不是"放松"。
+- **我自己的失误(如实)**: 第一个补丁把 heredoc 开头的 `python3 - <<'PY'` 一起替换掉了 → 守卫变成 shell 语句报 `import: command not found`、部署未按预期走;已修 + `bash -n` 语法自查。
+- **另一个坑**: `refresh-pulse.sh` 在「观察内容未变」时会**跳过部署**(省配额), 而线上仍是旧快照 ⇒ 需直接 `python3 scripts/deploy-pages.py` 强制部署。
