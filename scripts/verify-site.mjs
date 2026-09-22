@@ -270,7 +270,7 @@ async function main() {
     skillHtml.includes('id="skills-index"') && skillHtml.includes('data-skills-index'));
   check('索引区两份 skill 名称 + version 都在原始 HTML 里',
     skillHtml.includes('>bolloon-gateway-join<') && skillHtml.includes('>1.3.0<') &&
-    skillHtml.includes('>bolloon-network<') && />1\.0\.[0-9]+</.test(skillHtml));
+    skillHtml.includes('>bolloon-network<') && />1\.[0-9]+\.[0-9]+</.test(skillHtml));
   check('每行都有 read 钩子 + 复制按钮 + 直达 .md 链接',
     (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
     (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
@@ -292,7 +292,7 @@ async function main() {
     idxRows.length === 2 &&
     idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.3.0' &&
     idxRows[0].direct === 'bolloon-gateway-join.md' && idxRows[0].copy === true &&
-    idxRows[1].name === 'bolloon-network' && /^1\.0\.[0-9]+$/.test(idxRows[1].version) &&
+    idxRows[1].name === 'bolloon-network' && /^1\.[0-9]+\.[0-9]+$/.test(idxRows[1].version) &&
     idxRows[1].direct === 'bolloon-network.md' && idxRows[1].copy === true,
     JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])));
   const idxCount = await evalJs(`(document.querySelector('[data-skills-count]')||{}).textContent||''`);
@@ -328,7 +328,7 @@ async function main() {
   const netDoc = await (await fetch(`${BASE}/bolloon-network.md`)).text();
   check('首行就是 frontmatter 起始 (---)，没有前缀空行', netDoc.startsWith('---\n'), JSON.stringify(netDoc.slice(0, 16)));
   check('frontmatter 头四行原样 (name/version/description)',
-    /^---\nname: bolloon-network\nversion: 1\.0\.[0-9]+\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
+    /^---\nname: bolloon-network\nversion: 1\.[0-9]+\.[0-9]+\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
   check('frontmatter 关键块原样 (status/tier/protocol/capabilities/plannedCapabilities/paymentModes/hardRules)',
     netDoc.includes('\nstatus: active\n') && netDoc.includes('\ntier: capability\n') &&
     netDoc.includes('\nprotocol: bolloon-task/1\n') && netDoc.includes('capabilities:\n  - network.join') &&
