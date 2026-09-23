@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=24">
 </head>
 <body data-page="product">
 
@@ -140,9 +140,12 @@
       <ul class="pulse-feed" data-pulse-feed></ul>
       <p class="pulse-empty" data-pulse-feed-empty data-zh="暂无公开活动" data-en="No public activity yet">暂无公开活动</p>
 
-      <p class="pulse-caveat" data-zh="观察窗口内计数 · 不是全网精确总量。" data-en="Counts within the observation window · not an exact global total.">观察窗口内计数 · 不是全网精确总量。</p>
-      <!-- 口径行 (2026-09-22): 上面「任务/已完成」是 24h 脉冲事件口径; 链上索引口径 (行数/不同任务/网络)
-           由快照的 activity_totals + chain_id_scope + totals_scope 给, 快照没给就整行隐藏。 -->
+      <p class="pulse-caveat" data-zh="观察窗口 24h" data-en="24h observation window">观察窗口 24h</p>
+      <!-- 作用域标记 (2026-09-22 立 · 2026-09-23 精简): 小结行那四个数 (任务/已完成/已验证/签名) 是
+           24h 脉冲事件口径 —— 就近只留这一行极短标记, 不写整句、不否定句兜底 (「不是全网…」这类
+           长解释已删)。链上索引口径 (行数/不同任务/网络) 由快照的 activity_totals + chain_id_scope
+           给, 快照没给就整行隐藏。两套口径各带各自短标记 (这里「观察窗口 24h」+ 口径行「链上索引 ·
+           全量」), 读者一眼知道两边的数不是一回事 —— 这条由 scripts/verify-site.mjs 的门守着。 -->
       <p class="pulse-c-totals-line pulse-activity-totals" data-pulse-activity-totals></p>
 
       <p class="pulse-hint" data-pulse-hint>
@@ -228,6 +231,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=23"></script>
+<script src="app.js?v=24"></script>
 </body>
 </html>

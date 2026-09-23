@@ -32,7 +32,7 @@
  *      缺失 → 小结行整行隐藏, 不编造; 空表要说清 + agent_sites=[] 诚实提示
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=23 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=24 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -44,10 +44,22 @@
  *      页面可见文本无 40 位地址 / 64 位哈希
  *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.2.0), 且与线上 .md frontmatter 一致
  *      —— 不再只匹配「1.x.y 形状」(那会漏掉「本机改了、线上没部署」)
- *   ⑳ 公开页数字不许自相矛盾 (2026-09-22 leo 拍板): 小结行「任务/已完成/已验证/签名」= 24h 脉冲事件口径
- *      (真快照里是 0), 链上活动表 N 行 = 链上索引口径 —— 两者同屏时, 表格下方**必须**有一行口径行
- *      (data-pulse-activity-totals) 把行数/不同任务、这批行属于哪条链 (本机 31337 · 不是公网)、
- *      以及两套口径为什么不同讲明白; 老快照缺这三块 → 整行隐藏 (不自己数行数、不编网络名)。
+ *   ⑳ 公开页数字不许自相矛盾 (2026-09-22 leo 拍板 · 2026-09-23 文案精简后更严): 小结行
+ *      「任务/已完成/已验证/签名」= 24h 脉冲事件口径 (真快照里是 0), 链上活动表 N 行 = 链上索引口径
+ *      —— 两者同屏时, **两套口径必须各自带一个就近的极短标记**:
+ *        ① 统计区 (小结行下) 必须有「观察窗口」类短标记 (.pulse-caveat, 如「观察窗口 24h」);
+ *        ② 表区 (口径行 data-pulse-activity-totals, 老快照没有它时退到表下 data-pulse-activity-source)
+ *           必须有「链上索引」+「全量」类短标记 + 行数/不同任务 + 这批行属于哪条链 (本机 31337 · 不是公网)。
+ *      少任何一个标记 = 红 (删成一片空白也红)。整句解释已删 (2026-09-23 leo 要求页面干净):
+ *      两套口径的差异靠上面两个短标记就近承接, 不靠长句、也不靠「不是全网…」这类否定句兜底 ——
+ *      本脚本同时反向断言这些长句/夸大措辞不再出现在可见文案里。
+ *      老快照缺 activity_totals/chain_id_scope → 口径行整行隐藏 (不自己数行数、不编网络名)。
+ *   ⑳² 文案预算 (2026-09-23 leo: 「这些内容不用显示, 简洁最好」): 脉冲区三个动态文案节点
+ *      (caveat / 口径行 / 数据源行) 一律**不写整句** —— 不得出现句号「。」「；」或「 —— 」这类
+ *      成句标点, 且每个节点长度有硬上限; 「智能体私有网站」的列表说明整句已删, 空态压成
+ *      「空 = 未发布（不是没数据）」这类极短诚实标记 (空 ≠ 没数据 这条没被删掉, 也没被改成假 0)。
+ *      真正的设计意图 (公开只读接口 / 无 DID·peerId·IP·钱包地址·任务正文 / 短写) 保留在 HTML 注释里
+ *      —— 注释不算可见文本, 但断言要求它还在 (不是把诚实性一起删掉, 是只把长句从可见处拿掉)。
  *   ㉑ 网关页两栏版式 + 首页「加入网络」CTA (2026-09-22 leo 要求, 全部真布局测量):
  *      #pulse / #skills 同父 (.gateway-row) 且文档顺序 pulse → skills;
  *      1440px: 两区同一行 (顶边对齐) 且加入方式在链上活动右侧 (右列左边界 ≥ 左列右边界) +
@@ -273,6 +285,57 @@ const pulseProbe = (rootSel) => `(() => {
     api: !!window.__bolloonPulse,
   };
 })()`;
+
+// ═══ 文案预算 / 口径短标记 (2026-09-23 精简: 「这些内容不用显示, 简洁最好」) ═══
+// 精简不是把诚实性删掉, 而是把长句换成**就近的极短标记**。所以这一轮的门分两半:
+//   ① 要求短标记在 (统计区「观察窗口」类 + 表区「链上索引/全量」类, 少一个都红 —— 删成一片空白也红);
+//   ② 要求长句/夸大措辞不在 (被删的五段一旦回来就红, 且不许反向改成「全网总量」这类更大口径)。
+// 两半都硬编码在这里, 各断言共用, 免得各写一套正则。
+const SCOPE_WINDOW_MARK = /观察窗口|24h|24 小时|24 hour/i;          // 统计区 (24h 脉冲事件口径)
+const SCOPE_WHOLE_MARK = /全量|链上索引|whole index|chain index/i;  // 表区 (链上索引全量口径)
+const SENTENCE_PUNCT = /。|；|;|——/;                                 // 成句标点 = 又写成整句了
+const PROSE_CAP = { caveat: 24, source: 30, totals: 96 };           // 每个文案节点的字符上限
+// 被删掉的那几段长文案的特征串 (可见文案里再出现 = 精简被回退)
+const KILLED_PROSE = [
+  '不是全网精确总量', 'not an exact global total',
+  '观察窗口内计数', 'counts within the observation window',
+  '不是数据丢了', 'not lost data', '另一套口径',
+  '链上数据源：', 'on-chain data source:',
+  '列表为空', 'list means none were published',
+  '没有 did', 'no did', '没有 peerid', 'no peerid',
+];
+// 页面可见文案 (剥掉脚本/样式/服务端 notes —— notes 是签名快照里的数据原文, 不是本站文案;
+// 同时剥掉 HTML 注释节点 —— textContent 会带上注释文字, 而设计意图正是留在注释里的)。
+const PAGE_PROSE_JS = `(() => {
+  const c = document.body.cloneNode(true);
+  const w = document.createTreeWalker(c, NodeFilter.SHOW_COMMENT, null);
+  const cs = []; while (w.nextNode()) cs.push(w.currentNode);
+  cs.forEach((n) => n.parentNode && n.parentNode.removeChild(n));
+  c.querySelectorAll('script, style, [data-pulse-notes], .pulse-notes').forEach((n) => n.remove());
+  return c.textContent.replace(/\\s+/g, ' ');
+})()`;
+const killedHits = (text) => KILLED_PROSE.filter((k) => String(text || '').toLowerCase().includes(k));
+const proseBudgetOk = (v) => {
+  const nodes = [['caveat', v.caveat], ['totals', v.act && v.act.totalsLine], ['source', v.act && v.act.source]];
+  const bad = [];
+  for (const [k, t] of nodes) {
+    const s = String(t || '').trim();
+    if (!s) continue;
+    if (SENTENCE_PUNCT.test(s)) bad.push(`${k}: 有整句标点「${s}」`);
+    if (s.length > PROSE_CAP[k]) bad.push(`${k}: ${s.length} 字 > 上限 ${PROSE_CAP[k]}「${s}」`);
+  }
+  return bad;
+};
+// 「两套口径各自带就近短标记」: 统计区标记 + 表区标记必须同时在场。
+// 表区标记可以落在口径行 (activity_totals 在时) 或表下数据源行 (老快照没有口径行时的回退)。
+const scopeMarkers = (v) => {
+  const stats = String(v.caveat || '');
+  const table = [v.act && v.act.totalsLine, v.act && v.act.source].filter(Boolean).join(' · ');
+  return { stats, table,
+    statsOk: SCOPE_WINDOW_MARK.test(stats),
+    tableOk: SCOPE_WHOLE_MARK.test(table),
+    both: SCOPE_WINDOW_MARK.test(stats) && SCOPE_WHOLE_MARK.test(table) };
+};
 
 async function main() {
   const chrome = resolveChrome();
@@ -1096,7 +1159,11 @@ async function main() {
   check('四种状态文案都在 DOM (loading/live/stale/unavailable)',
     !!region && ['loading', 'live', 'stale', 'unavailable'].every((s) => region.states.includes(s)),
     JSON.stringify(region && region.states));
-  check('「不是全网精确总量」可见 (zh)', !!region && region.caveat.includes('不是全网精确总量'), region && region.caveat);
+  const pageProse = await evalJs(PAGE_PROSE_JS);
+  check('统计区有「观察窗口」类短标记 (zh) —— 原来那句「观察窗口内计数 · 不是全网精确总量。」已删, 只留极短标记',
+    !!region && SCOPE_WINDOW_MARK.test(region.caveat) && !SENTENCE_PUNCT.test(region.caveat), region && region.caveat);
+  check('★ 反夸大: 网关页可见文案里不再出现「全网精确总量 / not an exact global total」类措辞 (删长句 ≠ 把口径改大)',
+    killedHits(pageProse).length === 0, JSON.stringify(killedHits(pageProse).concat([pageProse.slice(0, 160)])));
   check('活动表四个钩子齐 (table / tbody / 空态 / 数据源标注)',
     !!region && region.hasTable && region.hasBody && region.hasEmpty && region.hasSource,
     JSON.stringify(region && { t: region.hasTable, b: region.hasBody, e: region.hasEmpty, s: region.hasSource }));
@@ -1188,8 +1255,12 @@ async function main() {
   check('live: 时间列 = <time datetime=ISO> + 本地绝对时间 (YYYY-MM-DD HH:MM:SS)',
     LV.rows.every((r) => /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(r.timeIso || '') && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(r.time || '')),
     JSON.stringify(LV.rows.slice(0, 2).map((r) => [r.timeIso, r.time])));
-  check('live: 数据源标注 = 「链上数据源：链上索引」(confirmed_activity_source = chain-index)',
-    LV.source === '链上数据源：链上索引', LV.source);
+  check('live: 表区口径短标记 = 「链上索引 · 全量」(confirmed_activity_source = chain-index) —— 原来的「链上数据源：链上索引」长前缀已删',
+    SCOPE_WHOLE_MARK.test(LV.source) && LV.source === '链上索引 · 全量', LV.source);
+  check('★ live: 两套口径各自带就近短标记 (统计区「观察窗口」+ 表区「链上索引 · 全量」)',
+    scopeMarkers(live).both, JSON.stringify({ stats: scopeMarkers(live).stats, table: scopeMarkers(live).table }));
+  check('★ live: 脉冲区文案不写整句、且都在长度上限内 (口径行/数据源行/caveat)',
+    proseBudgetOk(live).length === 0, JSON.stringify(proseBudgetOk(live)));
   check('live: 有行时不显示空态文案', LV.emptyShown === false, JSON.stringify({ shown: LV.emptyShown, text: LV.emptyText }));
   const longScan = await evalJs(`(() => {
     const t = document.body.innerText;
@@ -1229,6 +1300,24 @@ async function main() {
     (gwHtml.match(/data-pulse-activity-body/g) || []).length === 1 &&
     (gwHtml.match(/data-pulse-activity-empty/g) || []).length === 1 &&
     (gwHtml.match(/data-pulse-activity-source/g) || []).length === 1);
+  // ★ 静态文案预算 (2026-09-23 精简): 那几段长文案不许再出现在**可见** HTML 里 (注释剥掉后再查);
+  //   同时要求设计意图仍在注释里 —— 删的是长句, 不是诚实性本身。
+  const gwVisibleHtml = gwHtml.replace(/<!--[\s\S]*?-->/g, '');
+  const idxHtml = await fetchText(`${BASE}/index.html`);
+  const idxVisibleHtml = idxHtml.replace(/<!--[\s\S]*?-->/g, '');
+  check('网关页可见 HTML 不再有那几段长文案 (口径整句 / 隐私整句 / 「链上数据源：」前缀 / 私有站整句)',
+    killedHits(gwVisibleHtml).length === 0 && !/显式发布、公开可读的智能体私有站/.test(gwVisibleHtml),
+    JSON.stringify(killedHits(gwVisibleHtml)));
+  check('首页可见 HTML 不再有口径长句 (「观察窗口内计数 · 不是全网精确总量。」等)',
+    killedHits(idxVisibleHtml).length === 0, JSON.stringify(killedHits(idxVisibleHtml)));
+  check('★ 删长句 ≠ 删诚实性: 被删的作用域/隐私声明仍以 HTML 注释留在网关页源码里 (公开只读接口 + 无 DID/peerId/IP/钱包地址/任务正文 + 短写)',
+    /<!--[^]*?GET \/api\/public\/network\/progress[^]*?没有 DID[^]*?短写[^]*?-->/.test(gwHtml) && /<!--[^]*?精简[^]*?-->/.test(gwHtml));
+  check('★ 「智能体私有网站」的整句说明 <p class="pulse-sites-note"> 已删 (只剩标题 + 极短空态), 空态诚实标记仍在 (空 = 未发布（不是没数据）, 双语齐)',
+    !/pulse-sites-note/.test(gwVisibleHtml) &&
+    /data-pulse-sites-empty[^>]*data-zh="空 = 未发布（不是没数据）"[^>]*data-en="Empty = none published \(not missing data\)"/.test(gwHtml));
+  check('★ app.js 的**可执行代码**里不再有那几段长文案 (注释里保留的说明不算)',
+    killedHits(appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '')).length === 0,
+    JSON.stringify(killedHits(appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, ''))));
   check('app.js 真的绑定 signatures 钩子 (取数赋值 + 加载/失败时清空)',
     /data-pulse-total="signatures"/.test(appSrc) && (appSrc.match(/setOptCount\(el\.signatures/g) || []).length === 2);
   check('app.js 真的绑定表格三个钩子 (data-pulse-activity-body / -empty / -source)',
@@ -1265,11 +1354,12 @@ async function main() {
   check('EN: 小结行标签英文 = nodes/agents/tasks/completed/verified/wallet signatures',
     JSON.stringify(enSummary) === JSON.stringify(['nodes', 'agents', 'tasks', 'completed', 'verified', 'wallet signatures']),
     JSON.stringify(enSummary));
-  check('EN: 数据源标注英文 (On-chain data source: chain index)',
-    en.act.source === 'On-chain data source: chain index', en.act.source);
+  check('EN: 表区口径短标记英文 (chain index · whole index) —— 原来的「On-chain data source:」前缀已删',
+    en.act.source === 'chain index · whole index', en.act.source);
   check('EN: 空态文案英文 (未显示但有英文原文)',
     /not observed any on-chain task/.test(en.act.emptyText || '') || en.act.emptyShown === false, en.act.emptyText);
-  check('EN: 「not an exact global total」可见', enCaveat.includes('not an exact global total'), enCaveat);
+  check('EN: 统计区短标记英文 (24h observation window) + 不写成整句、不出现「exact global total」类措辞',
+    SCOPE_WINDOW_MARK.test(enCaveat) && !SENTENCE_PUNCT.test(enCaveat) && !/global total/i.test(enCaveat), enCaveat);
   check('EN: 智能体私有站小标题英文',
     JSON.stringify(enSubs) === JSON.stringify(['Agent private sites']), JSON.stringify(enSubs));
   check('EN: 相对时间英文 (minutes ago / hours ago / just now)',
@@ -1290,15 +1380,17 @@ async function main() {
   check('EN: 粘贴框 placeholder/aria-label/按钮/报错/提示 全英文 (含站点链接 aria)',
     /IPNS address or name/.test(enIpns.aria) && /ipns:\/\//.test(enIpns.ph) && /new window/.test(enIpns.btnAria) &&
     enIpns.btnText === 'Open' && /Not a valid IPNS address/.test(enIpns.msg) &&
-    /no network request/.test(enIpns.hint) && /has not published/.test(enIpns.sitesEmpty) &&
+    /no network request/.test(enIpns.hint) && /none published/.test(enIpns.sitesEmpty) &&
+    !/\b0\b/.test(enIpns.sitesEmpty) &&                       // 空态不许显示假 0
     /in a new window/.test(enIpns.siteAria), JSON.stringify(enIpns));
   await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
   await sleep(250);
   const zhBack = await evalJs(pulseProbe('#pulse'));
   check('切回中文: 状态/事件/finality 词复原 (原始值只存一份, 渲染时才取语言)',
     zhBack.act.rows.some((r) => r.stateText === '活跃') && zhBack.act.rows.some((r) => r.kindText === '任务创建') &&
-    zhBack.act.rows.some((r) => r.finText === '已最终确定') && zhBack.act.source === '链上数据源：链上索引',
-    JSON.stringify([...new Set(zhBack.act.rows.map((r) => r.stateText))]));
+    zhBack.act.rows.some((r) => r.finText === '已最终确定') &&
+    zhBack.act.source === '链上索引 · 全量' && zhBack.caveat === '观察窗口 24h',
+    JSON.stringify({ src: zhBack.act.source, caveat: zhBack.caveat }));
 
   // 相对时间刷新: 只改文字节点, 表格行不重建 (行是「新数据来了才重画」)
   const tickBefore = await evalJs(`(() => {
@@ -1503,7 +1595,12 @@ async function main() {
   check('真快照真渲染: 表格行数 = min(快照行数, 60)',
     real.state === 'live' && expRows > 0 && real.act.rowCount === expRows,
     JSON.stringify({ s: real.state, rows: real.act.rowCount, exp: expRows }));
-  check('真快照: 数据源 = 链上索引', real.act.source === '链上数据源：链上索引', real.act.source);
+  check('真快照: 表区口径短标记 = 「链上索引 · 全量」(口径行在时数据源行不重复第二遍)',
+    SCOPE_WHOLE_MARK.test(real.act.totalsLine) && real.act.totalsLine.startsWith('链上索引 · 全量 ·') &&
+    real.act.source === '', JSON.stringify({ line: real.act.totalsLine, src: real.act.source }));
+  check('★ 真快照: 两套口径各自带就近短标记 (统计区「观察窗口 24h」+ 表区「链上索引 · 全量」)',
+    scopeMarkers(real).both && real.caveat === '观察窗口 24h',
+    JSON.stringify({ stats: real.caveat, table: real.act.totalsLine }));
   // 链归属措辞 (2026-09-22 修): 真链数据上线后 8453 用的是「Base 主网」措辞,
   // 旧正则只认「本机隔离开发链|公网」→ 把真数据判成假红。改为**按链的性质分开要求**(更严):
   //   公网链 (is_public_network=true) → 必须点明 公网/主网/测试网
@@ -1518,9 +1615,12 @@ async function main() {
     real.act.totalsLineShown === true && real.act.totalsLine.includes(expRows + ' 行') &&
     real.act.totalsLine.includes(cidStr) && chainWordingOk,
     JSON.stringify({ line: real.act.totalsLine, cid: cidStr, isPublic: chainIsPublic }));
-  check('★ 真数据反矛盾: 小结行是 0 而表里有行时, 口径行必须把两套口径讲明白 (线上真快照当场验)',
-    !(real.act.rowCount > 0 && real.tasks === '0' && !(real.act.totalsLineShown === true && /24h|24 小时/.test(real.act.totalsLine))),
-    JSON.stringify({ rows: real.act.rowCount, tasks: real.tasks, line: real.act.totalsLine }));
+  const realMarks = scopeMarkers(real);
+  check('★ 真数据反矛盾 (2026-09-23 加强): 「0 个任务」与「N 行」同屏时, 统计区「观察窗口」标记 + 表区「链上索引 · 全量」标记**两个都必须在场** —— 缺任何一个就是「并列而不解释」(线上真快照当场验)',
+    realMarks.statsOk && !(real.act.rowCount > 0 && real.tasks === '0' && !realMarks.tableOk),
+    JSON.stringify({ rows: real.act.rowCount, tasks: real.tasks, stats: realMarks.stats, table: realMarks.table }));
+  check('★ 真快照: 脉冲区文案不写整句、且都在长度上限内 (口径行/数据源行/caveat) —— 长解释删掉后页面不靠新长句补回来',
+    proseBudgetOk(real).length === 0, JSON.stringify(proseBudgetOk(real)));
 
   // ⑥‴★★ 浏览器链接 (2026-09-23): 「网页行可索引到链上合约 + 交易可跳区块浏览器」——**两页各验一遍**
   //   为什么必须分页: 网关页 = 完整表 (任务格里的交易标签 + 网络格尾的合约链接); 首页序栏 = 紧凑快照区
@@ -1708,18 +1808,20 @@ async function main() {
   check('confirmed_activity=[] → 0 行 + 明说「本节点暂未观察到链上任务」(不是空白表格)',
     noT.act.rowCount === 0 && noT.act.emptyShown === true && noT.act.emptyText === '本节点暂未观察到链上任务。',
     JSON.stringify({ rows: noT.act.rowCount, shown: noT.act.emptyShown, text: noT.act.emptyText }));
-  check('confirmed_activity_source=none → 表格下方如实标注「本节点未接入链上数据源」',
-    noT.act.source === '链上数据源：本节点未接入链上数据源', noT.act.source);
-  check('agent_sites=[] → 0 条链接 + 诚实空提示 (没发布 ≠ 没数据)',
-    noT.sites.length === 0 && noT.sitesEmptyShown === true && /暂未发布智能体私有站/.test(noT.sitesEmptyText),
+  check('confirmed_activity_source=none → 表格下方如实短标「本节点未接入链上数据源」(不带「链上数据源：」长前缀, 也不说与事实相反的“尚未接入”)',
+    noT.act.source === '本节点未接入链上数据源' && !/尚未接入/.test(noT.act.source), noT.act.source);
+  check('agent_sites=[] → 0 条链接 + 极短诚实空态 (没发布 ≠ 没数据; 不显示假 0)',
+    noT.sites.length === 0 && noT.sitesEmptyShown === true &&
+    /^(空 = 未发布（不是没数据）|快照读不到，说不清发布了什么)$/.test(noT.sitesEmptyText) &&
+    noT.sitesEmptyText.length <= 24 && !/\b0\b/.test(noT.sitesEmptyText) && !/尚未接入/.test(noT.sitesEmptyText),
     JSON.stringify({ n: noT.sites.length, shown: noT.sitesEmptyShown, text: noT.sitesEmptyText }));
   check('缺 signatures 字段 → 小结行里的签名项整行隐藏 (不拿 0 冒充, 也不显示假 0)',
     noT.tasksHidden.sig === true && noT.signatures === '—',
     JSON.stringify({ hidden: noT.tasksHidden.sig, v: noT.signatures }));
   check('缺字段这一轮无 console 错误 / 未捕获异常', consoleErrors.length === cErrStart, consoleErrors.slice(0, 3).join(' | '));
 
-  // ⑥‴ 「0 个任务」与「25 行任务」同屏 —— 页面必须有口径行解释 (2026-09-22 leo 拍板: 不许自相矛盾的展示)
-  console.log('\n[6d′] 0 个任务 与 25 行任务 同屏 → 必须有口径行解释 (不许自相矛盾)');
+  // ⑥‴ 「0 个任务」与「25 行任务」同屏 —— 两套口径必须**各自带就近短标记** (2026-09-22 立 · 2026-09-23 精简后更严)
+  console.log('\n[6d′] 0 个任务 与 25 行任务 同屏 → 两套口径各带就近短标记 (不许自相矛盾, 也不许删成一片空白)');
   const zErrStart = consoleErrors.length;
   cMode = 'pulse-zero';
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
@@ -1736,17 +1838,22 @@ async function main() {
   check('小结行如实显示 0 (24h 脉冲事件口径) —— 不为了"好看"改数字',
     pz.tasks === '0' && pz.tasksDone === '0' && pz.tasksVerified === '0' && pz.signatures === '0',
     JSON.stringify({ t: pz.tasks, d: pz.tasksDone, v: pz.tasksVerified, sig: pz.signatures }));
-  check('★ 口径行必在: 行数/不同任务 + 两套口径差异 (数字取自快照同源计数)',
+  check('★ 口径行必在: 口径短标记 (链上索引 · 全量) + 行数/不同任务 (数字取自快照同源计数)',
     pz.act.totalsLineShown === true && pz.act.totalsLine.includes('25 行') && pz.act.totalsLine.includes('12 个不同任务') &&
-    pz.act.totalsLine.includes('脉冲事件') && pz.act.totalsLine.includes('链上索引') && pz.act.totalsLine.includes('不是数据丢了'),
+    pz.act.totalsLine.includes('链上索引') && pz.act.totalsLine.includes('全量'),
     pz.act.totalsLine);
+  check('★ 口径行不再写整句: 原来那句「… 是另一套口径 —— 不是数据丢了」已删 (长句消失 ≠ 口径标记消失)',
+    !/不是数据丢了|另一套口径|脉冲事件/.test(pz.act.totalsLine) && !SENTENCE_PUNCT.test(pz.act.totalsLine) &&
+    proseBudgetOk(pz).length === 0,
+    JSON.stringify({ line: pz.act.totalsLine, bad: proseBudgetOk(pz) }));
   check('★ 口径行写明链归属 (本机隔离开发链 31337 · 不是公网活动) —— 不许读者误读成真网活动',
     pz.act.totalsLine.includes('31337') && pz.act.totalsLine.includes('本机隔离开发链') && pz.act.totalsLine.includes('不是公网活动'),
     pz.act.totalsLine);
-  check('★ 反矛盾总断言: 「0 个任务」与「N 行任务」并存时, 页面上必须有解释 (口径行提到 24h 口径)',
-    !(pz.act.rowCount > 0 && pz.tasks === '0' && !(pz.act.totalsLineShown === true && /24h|24 小时/.test(pz.act.totalsLine))),
-    JSON.stringify({ rows: pz.act.rowCount, tasks: pz.tasks, line: pz.act.totalsLine }));
-  check('数据源行仍如实标注 (链上索引)', pz.act.source === '链上数据源：链上索引', pz.act.source);
+  const pzMarks = scopeMarkers(pz);
+  check('★ 反矛盾总断言 (2026-09-23 加强): 「0 个任务」与「N 行任务」并存时, 统计区「观察窗口」标记 + 表区「链上索引 · 全量」标记**两个都必须在场** (缺一个 = 并列而不解释)',
+    pzMarks.statsOk && !(pz.act.rowCount > 0 && pz.tasks === '0' && !(pz.act.totalsLineShown === true && pzMarks.tableOk)),
+    JSON.stringify({ rows: pz.act.rowCount, tasks: pz.tasks, stats: pzMarks.stats, table: pzMarks.table }));
+  check('数据源行不重复第二遍 (口径行已带标记 → 表下那行为空)', pz.act.source === '', JSON.stringify({ src: pz.act.source }));
   check('口径行这一轮无 console 错误 / 未捕获异常', consoleErrors.length === zErrStart, consoleErrors.slice(0, 3).join(' | '));
 
   // 老快照 (有 25 行但缺 activity_totals/totals_scope/chain_id_scope) → 口径行整行隐藏, 不自己数行数、不编网络名
@@ -1759,6 +1866,9 @@ async function main() {
   check('老快照 (缺口径三块) → 口径行整行隐藏 (不自己数行数/不编网络名), 行照旧画 25 行',
     pzL.state === 'live' && pzL.act.rowCount === 25 && pzL.act.totalsLineShown === false && pzL.act.totalsLine === '',
     JSON.stringify({ rows: pzL.act.rowCount, shown: pzL.act.totalsLineShown, line: pzL.act.totalsLine }));
+  check('★ 老快照: 口径行没了 → 表区短标记退到表下数据源行 (「链上索引 · 全量」), 表里的行不会成为没口径的数字',
+    pzL.act.source === '链上索引 · 全量' && scopeMarkers(pzL).tableOk,
+    JSON.stringify({ src: pzL.act.source, caveat: pzL.caveat }));
   cMode = 'full';
 
   // ⑥″ IPNS 粘贴框: 真 input + 真按钮, 严格校验, 合法才开新窗口, 本页不发任何网络请求
@@ -1868,8 +1978,8 @@ async function main() {
   check('容错: 任务标识里的 <b> 只当文字 (单元格只 1 个文本节点 + 标签被转义, 没走 innerHTML)',
     nk.act.rows.some((r) => r.task === MARKUP_TASK && r.taskKids === 1 && /&lt;b&gt;/.test(r.taskHtml || '')),
     JSON.stringify(nk.act.rows.map((r) => [r.task, r.taskKids, r.taskHtml])));
-  check('容错: 数据源标注随快照变 (pulse-events → 「链上数据源：脉冲事件」)',
-    nk.act.source === '链上数据源：脉冲事件', nk.act.source);
+  check('容错: 表区口径短标记随快照变 (pulse-events → 「脉冲事件」, 不认领链上索引)',
+    nk.act.source === '脉冲事件' && !SCOPE_WHOLE_MARK.test(nk.act.source), nk.act.source);
   check('容错这一轮无 console 错误 / 未捕获异常 (未知枚举不报错)', consoleErrors.length === kErrStart, consoleErrors.slice(0, 3).join(' | '));
 
   await evalJs(`document.querySelector('.lang-toggle [data-lang="en"]').click()`);
@@ -1953,8 +2063,9 @@ async function main() {
   check('首页紧凑脉冲: 四态文案齐 + role=status + aria-live=polite',
     !!idxA11y && ['loading', 'live', 'stale', 'unavailable'].every((s) => idxA11y.states.includes(s)) && idxA11y.role === 'status' && idxA11y.live === 'polite',
     JSON.stringify(idxA11y));
-  check('首页紧凑脉冲: 同一句 caveat「不是全网精确总量」',
-    !!idxLoading && idxLoading.caveat.includes('不是全网精确总量'), idxLoading && idxLoading.caveat);
+  check('首页紧凑脉冲: 同一句极短作用域标记「观察窗口 24h」(长句「不是全网精确总量。」已删)',
+    !!idxLoading && idxLoading.caveat === '观察窗口 24h' && SCOPE_WINDOW_MARK.test(idxLoading.caveat) &&
+    !SENTENCE_PUNCT.test(idxLoading.caveat), idxLoading && idxLoading.caveat);
   // 首次 loading / 「拦到请求」这两条吃「请求被拦住挂着」的前置 → 先自证, 拿不到就明确报夹具未生效
   fxPre('live', !!idxReq, '首页取数请求 9s 内没被 CDP Fetch 拦住 (页面可能已拿到真快照)');
   check('首页紧凑脉冲: 首次 loading + 数值占位「—」',
@@ -1982,9 +2093,16 @@ async function main() {
   check('首页 live: scope=observed + 活动流按 feed-max 截断 (只 1 条, 不是 5 条)',
     idxLive.scope === '当前节点观察到' && !idxLive.scopeHidden && idxLive.feed.length === 1 && idxLive.feedText[0] === MARKUP_TEXT.zh,
     JSON.stringify({ s: idxLive.scope, f: idxLive.feed, ft: idxLive.feedText }));
-  check('首页 live: caveat 仍在 + 未接入提示隐藏',
-    idxLive.caveat.includes('不是全网精确总量') && idxLive.hintShown === false,
+  check('首页 live: 极短作用域标记仍在 + 未接入提示隐藏',
+    idxLive.caveat === '观察窗口 24h' && idxLive.hintShown === false,
     JSON.stringify({ c: idxLive.caveat, h: idxLive.hintShown }));
+  // 首页紧凑区没有 <table>, 所以 pulseProbe 的 act 为 null —— 口径行直接点钩子读 (钩子在, 只是没有表)
+  const idxTotalsLine = await evalJs(`(() => { const n = document.querySelector('${IDX_ROOT} [data-pulse-activity-totals]');
+    return n ? { text: n.textContent.trim(), shown: getComputedStyle(n).display !== 'none' } : null; })()`);
+  check('★ 首页 live: 统计区短标记「观察窗口 24h」必在; 口径行一旦真显示行数, 表区「链上索引 · 全量」标记也必须在场 (两套口径不许只标一边)',
+    SCOPE_WINDOW_MARK.test(idxLive.caveat) && !SENTENCE_PUNCT.test(idxLive.caveat) &&
+    !(idxTotalsLine && idxTotalsLine.shown && idxTotalsLine.text && !SCOPE_WHOLE_MARK.test(idxTotalsLine.text)),
+    JSON.stringify({ caveat: idxLive.caveat, totals: idxTotalsLine }));
   check('首页 live: 有指向网关页完整脉冲的链接',
     (await evalJs(`!!document.querySelector('${IDX_ROOT} .pulse-c-more a[href$="gateway.html#pulse"]')`)) === true);
   const idxDensity = await evalJs(`(() => ({ font: parseFloat(getComputedStyle(document.querySelector('${IDX_ROOT} .pulse-c-totals b')).fontSize), h: Math.round(document.querySelector('${IDX_ROOT}').getBoundingClientRect().height), rows: document.querySelectorAll('${IDX_ROOT} .pulse-c-totals li').length, feedStyle: getComputedStyle(document.querySelector('${IDX_ROOT} [data-pulse-feed] li')).display }))()`);
@@ -2010,7 +2128,9 @@ async function main() {
   check('首页 EN: 状态 Live + scope + 活动文案英文',
     idxEn.visible.includes('Live') && idxEn.scope === 'Observed by this node' && idxEn.feedText[0] === MARKUP_TEXT.en,
     JSON.stringify({ v: idxEn.visible, s: idxEn.scope, f: idxEn.feedText }));
-  check('首页 EN: caveat 变「not an exact global total」', idxEn.caveat.includes('not an exact global total'), idxEn.caveat);
+  check('首页 EN: 极短作用域标记变英文「24h observation window」+ 不出现「exact global total」类措辞',
+    SCOPE_WINDOW_MARK.test(idxEn.caveat) && !/global total/i.test(idxEn.caveat) && !SENTENCE_PUNCT.test(idxEn.caveat),
+    idxEn.caveat);
   check('首页 EN: 六个数值标签英文 (nodes/agents/active agents/seen in 24h/tasks/completed)',
     JSON.stringify(idxLabels) === JSON.stringify(['nodes', 'agents', 'active agents', 'seen in 24h', 'tasks', 'completed']), JSON.stringify(idxLabels));
   await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
@@ -2230,17 +2350,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=23 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=23 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=24 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=24 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=23');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=24');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=23/.test(html) || !/app\.js\?v=23/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=24/.test(html) || !/app\.js\?v=24/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=23 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=23 + app.js?v=23 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=24 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=24 + app.js?v=24 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):
@@ -2349,6 +2469,35 @@ async function main() {
       f.hintText.includes('快照这次没读到') && f.hintText.includes('network-pulse.json') && f.hintText.includes('?pulse='),
       f.hintText.slice(0, 120));
   }
+
+  // ⑪c 文案精简防复发 (2026-09-23 leo: 「这些内容不用显示, 简洁最好」): 7 页**可见文案**里都不许
+  //     再出现那几段长文案, 也不许反向改成「全网总量 / 精确总量」这类更大口径; 「智能体私有网站」
+  //     的整句说明元素 (.pulse-sites-note) 也不许回来。剥掉注释后再扫 —— 设计意图本来就留在注释里。
+  console.log('\n[11c] 文案精简防复发 (7 页可见文案无长句 / 无夸大措辞 / 无整句说明)');
+  const longPages = [], claimPages = [], notePages = [];
+  for (const pg of ALL_PAGES) {
+    await cdp('Page.navigate', { url: `${BASE}/${pg}` });
+    await sleep(700);
+    const r = await evalJs(`(() => {
+      const c = document.body.cloneNode(true);
+      const w = document.createTreeWalker(c, NodeFilter.SHOW_COMMENT, null);
+      const cs = []; while (w.nextNode()) cs.push(w.currentNode);
+      cs.forEach((n) => n.parentNode && n.parentNode.removeChild(n));
+      c.querySelectorAll('script, style, [data-pulse-notes], .pulse-notes').forEach((n) => n.remove());
+      return { text: c.textContent.replace(/\\s+/g, ' '), sitesNote: !!document.querySelector('.pulse-sites-note') };
+    })()`);
+    const hits = killedHits(r.text);
+    if (hits.length) longPages.push(`${pg}:${hits.join('|')}`);
+    const claims = ['全网总量', '精确总量', 'exact global total', 'global total'].filter((w) => r.text.includes(w));
+    if (claims.length) claimPages.push(`${pg}:${claims.join('|')}`);
+    if (r.sitesNote) notePages.push(pg);
+  }
+  check('★ 7 页渲染后可见文案都没有那几段被删的长句 (口径整句 / 隐私整句 / 「链上数据源：」前缀 / 私有站整句)',
+    longPages.length === 0, JSON.stringify(longPages));
+  check('★ 7 页渲染后可见文案都没有「全网总量 / 精确总量 / exact global total」类夸大措辞 (删长句 ≠ 把口径改大)',
+    claimPages.length === 0, JSON.stringify(claimPages));
+  check('★ 7 页都没有「智能体私有网站」的整句说明元素 (.pulse-sites-note) —— 只剩标题 + 极短空态标记',
+    notePages.length === 0, JSON.stringify(notePages));
 
   // ⑬ 网关页两栏版式 + 首页「加入网络」CTA (2026-09-22 leo 要求):
   //    ① gateway.html: 「加入方式」(#skills) 必须在「链上活动」(#pulse) **右侧**,

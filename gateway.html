@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=24">
 </head>
 <body data-page="gateway">
 
@@ -102,7 +102,14 @@
     <h2 class="section-title" data-zh="链上活动" data-en="On-chain activity">链上活动</h2>
   </div>
 
-  <p class="doc-body" data-zh="本节点观察到的链上任务与交易 —— 任务、状态、事件、网络、区块、确认数与最终性。数据来自公开只读接口 GET /api/public/network/progress 的 confirmed_activity：没有 DID、没有 peerId、没有 IP、没有钱包地址、没有任务正文；地址与哈希一律短写。" data-en="On-chain tasks and trades observed by this node — task, state, event, network, block, confirmations and finality. The data comes from the public read-only endpoint GET /api/public/network/progress (confirmed_activity): no DID, no peerId, no IP, no wallet address, no task content; addresses and hashes are always shortened.">本节点观察到的链上任务与交易 —— 任务、状态、事件、网络、区块、确认数与最终性。数据来自公开只读接口 GET /api/public/network/progress 的 confirmed_activity：没有 DID、没有 peerId、没有 IP、没有钱包地址、没有任务正文；地址与哈希一律短写。</p>
+  <!-- 作用域/隐私声明 (2026-09-23 精简): 这里原来是一整段可见长句 ——
+       「本节点观察到的链上任务与交易 —— 任务、状态、事件、网络、区块、确认数与最终性。数据来自公开只读接口
+        GET /api/public/network/progress 的 confirmed_activity：没有 DID、没有 peerId、没有 IP、没有钱包地址、
+        没有任务正文；地址与哈希一律短写。」
+       设计意图**不变** (仍只展示公开只读接口的 confirmed_activity; 仍无 DID/peerId/IP/钱包地址/任务正文;
+       地址与哈希仍一律短写), 只是不再用整句复述给读者: 作用域就近由两行极短标记承接 ——
+       小结行下「观察窗口 24h」(24h 脉冲事件口径) + 表下口径行「链上索引 · 全量」(链上索引口径)。
+       短写规则本身由 app.js 的 shortRef() 执行, 由 scripts/verify-site.mjs 的「无 40 位地址 / 64 位哈希」门守着。 -->
 
   <div class="pulse-head">
     <p class="pulse-state" role="status" aria-live="polite">
@@ -131,6 +138,11 @@
     <li><b data-pulse-total="tasks_verified">—</b><span data-zh="已验证" data-en="verified">已验证</span></li>
     <li><b data-pulse-total="signatures">—</b><span data-zh="钱包签名" data-en="wallet signatures">钱包签名</span></li>
   </ul>
+
+  <!-- 作用域短标记 (2026-09-23 精简): 直接贴在小结行下面 —— 上面这四个数 (任务/已完成/已验证/签名)
+       是 24h 脉冲事件口径。原来是一整句「观察窗口内计数 · 不是全网精确总量。」, 现压成极短标记:
+       不写整句、不用否定句兜底、也不改口径措辞。链上索引口径的标记在表格下方那行 (「链上索引 · 全量」)。 -->
+  <p class="pulse-caveat" data-zh="观察窗口 24h" data-en="24h observation window">观察窗口 24h</p>
 
   <!-- 链上活动表: 一行 = 快照 confirmed_activity 里的一条; 列 = 任务|状态|事件|网络|区块|确认数/最终性|时间。
        空表不留给空白 ——「没观察到」与「快照读不到」是两种真相, 各有各的话。
@@ -164,9 +176,12 @@
        本页不做任何网络请求: 只把输入归一化成网关 URL, 跳转交给浏览器。 -->
   <div class="pulse-sites">
     <h3 class="pulse-sub" data-zh="智能体私有网站" data-en="Agent private sites">智能体私有网站</h3>
-    <p class="pulse-sites-note" data-zh="本节点显式发布、公开可读的智能体私有站（IPNS）。列表为空 = 没有发布，不是没数据。" data-en="Agent private sites (IPNS) explicitly published by this node. An empty list means none were published — not missing data.">本节点显式发布、公开可读的智能体私有站（IPNS）。列表为空 = 没有发布，不是没数据。</p>
+    <!-- 列表说明 (2026-09-23 精简): 原来这里有一整句可见说明 ——
+         「本节点显式发布、公开可读的智能体私有站（IPNS）。列表为空 = 没有发布，不是没数据。」
+         设计意图不变 (列出来的都是本节点**显式发布**、公开可读的 IPNS 站), 但不再整句复述:
+         空态本身就带最短诚实标记「空 = 未发布（不是没数据）」—— 空 ≠ 没数据 这条没被删掉, 也没被改成假 0。 -->
     <ul class="pulse-sites-list" data-pulse-sites></ul>
-    <p class="pulse-empty" data-pulse-sites-empty data-zh="本节点暂未发布智能体私有站。" data-en="This node has not published any agent private site.">本节点暂未发布智能体私有站。</p>
+    <p class="pulse-empty" data-pulse-sites-empty data-zh="空 = 未发布（不是没数据）" data-en="Empty = none published (not missing data)">空 = 未发布（不是没数据）</p>
 
     <form class="pulse-ipns" data-pulse-ipns-form novalidate>
       <div class="pulse-ipns-row">
@@ -181,7 +196,8 @@
     <p class="pulse-ipns-hint" data-zh="只接受 ipns://&lt;cid&gt; 、 /ipns/&lt;cid&gt; 或裸 k51… / 12D3…；本页不做任何网络请求，跳转由浏览器自己完成。" data-en="Only ipns://&lt;cid&gt;, /ipns/&lt;cid&gt; or a bare k51… / 12D3… are accepted; this page makes no network request — the browser does the jump.">只接受 ipns://&lt;cid&gt; 、 /ipns/&lt;cid&gt; 或裸 k51… / 12D3…；本页不做任何网络请求，跳转由浏览器自己完成。</p>
   </div>
 
-  <p class="pulse-caveat" data-zh="观察窗口内计数 · 不是全网精确总量。" data-en="Counts within the observation window · not an exact global total.">观察窗口内计数 · 不是全网精确总量。</p>
+  <!-- 注 (2026-09-23 精简): 这一行的作用域标记 (「观察窗口内计数 · 不是全网精确总量。」) 已上移到小结行
+       正下方 (仍只有一个 .pulse-caveat, 断言取值处不变 —— 只是位置离它标注的那几个数更近)。 -->
   <ul class="pulse-notes" data-pulse-notes></ul>
 
   <p class="pulse-hint" data-pulse-hint>
@@ -258,7 +274,7 @@
   <ol class="cap-list">
     <li><span class="cap-no">01</span><div class="cap-body">
       <h3 data-zh="数据来源" data-en="Data source">数据来源</h3>
-      <p><span data-zh="公开只读接口 " data-en="Public read-only endpoint ">公开只读接口 </span><code>GET /api/public/network/progress</code><span data-zh="，无认证，Cache-Control: public, max-age=15，带 ETag（If-None-Match → 304）。链上活动表取自快照的 " data-en=", no auth, Cache-Control: public, max-age=15, with ETag (If-None-Match → 304). The table is built from the snapshot's ">，无认证，Cache-Control: public, max-age=15，带 ETag（If-None-Match → 304）。链上活动表取自快照的 </span><code>confirmed_activity</code><span data-zh="；它自己的数据源由 " data-en="; its own source is reported by ">；它自己的数据源由 </span><code>confirmed_activity_source</code><span data-zh="（chain-index / pulse-events / none）在表格下方如实标注，快照没给这个字段就写「快照未标注」。" data-en=" (chain-index / pulse-events / none) below the table — if the snapshot omits the field, the page says “not specified by the snapshot”.">（chain-index / pulse-events / none）在表格下方如实标注，快照没给这个字段就写「快照未标注」。</span></p>
+      <p><span data-zh="公开只读接口 " data-en="Public read-only endpoint ">公开只读接口 </span><code>GET /api/public/network/progress</code><span data-zh="，无认证，Cache-Control: public, max-age=15，带 ETag（If-None-Match → 304）。链上活动表取自快照的 " data-en=", no auth, Cache-Control: public, max-age=15, with ETag (If-None-Match → 304). The table is built from the snapshot's ">，无认证，Cache-Control: public, max-age=15，带 ETag（If-None-Match → 304）。链上活动表取自快照的 </span><code>confirmed_activity</code><span data-zh="；口径行与表格同源（" data-en="; the scope line above shares the snapshot's ">；口径行与表格同源（</span><code>activity_totals</code><span data-zh="）：短标记写明这批行来自哪套口径（chain-index → 「链上索引 · 全量」；pulse-events → 「脉冲事件」，原值照原样、不编）；而链上活动无源可报（" data-en="): a short marker names the scope those rows come from (chain-index → “chain index · whole index”; pulse-events → “pulse events”; unknown values are shown verbatim). Only when there is nothing to report — ">）：短标记写明这批行来自哪套口径（chain-index → 「链上索引 · 全量」；pulse-events → 「脉冲事件」，原值照原样、不编）；而链上活动无源可报（</span><code>confirmed_activity_source = none</code><span data-zh="）或快照根本没读到，才会在表格下方单独如实标注（「本节点未接入链上数据源」/「本次未读到快照」），不写整句解释。" data-en=" or no snapshot read this round — does the page annotate it beneath the table (“no on-chain data source on this node” / “snapshot not read this round”) instead of a full sentence.">）或快照根本没读到，才会在表格下方单独如实标注（「本节点未接入链上数据源」/「本次未读到快照」），不写整句解释。</span></p>
     </div></li>
     <li><span class="cap-no">02</span><div class="cap-body">
       <h3 data-zh="取数顺序" data-en="Fetch order">取数顺序</h3>
@@ -270,7 +286,7 @@
     </div></li>
     <li><span class="cap-no">04</span><div class="cap-body">
       <h3 data-zh="观察范围" data-en="Scope">观察范围</h3>
-      <p data-zh="scope=observed → 「当前节点观察到」；scope=verified → 「网络观察快照」。两者都是观察窗口内的计数，不是全网精确总量。" data-en="scope=observed → “Observed by this node”; scope=verified → “Verified network snapshot”. Both are counts within an observation window, not an exact global total.">scope=observed → 「当前节点观察到」；scope=verified → 「网络观察快照」。两者都是观察窗口内的计数，不是全网精确总量。</p>
+      <p data-zh="scope=observed → 「当前节点观察到」；scope=verified → 「网络观察快照」。两者都是观察窗口标记（就近短标记：观察窗口 24h / 链上索引 · 全量）。" data-en="scope=observed → “Observed by this node”; scope=verified → “Verified network snapshot”. Both are observation-window markers (short markers nearby: 24h observation window / chain index · whole index).">scope=observed → 「当前节点观察到」；scope=verified → 「网络观察快照」。两者都是观察窗口标记（就近短标记：观察窗口 24h / 链上索引 · 全量）。</p>
     </div></li>
     <li><span class="cap-no">05</span><div class="cap-body">
       <h3 data-zh="隐私边界" data-en="Privacy boundary">隐私边界</h3>
@@ -295,6 +311,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=23"></script>
+<script src="app.js?v=24"></script>
 </body>
 </html>

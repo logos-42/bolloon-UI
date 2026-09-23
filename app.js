@@ -366,7 +366,7 @@ var BOLLOON_IPNS = (function () {
      data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-hint
      data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
      data-pulse-activity-body · data-pulse-activity-empty · data-pulse-activity-source
-     data-pulse-activity-totals                        (口径行: 同源行数/不同任务 + 网络归属 + 两套口径差异)
+     data-pulse-activity-totals                        (口径行: 口径短标记 + 同源行数/不同任务 + 网络归属)
      data-pulse-feed · data-pulse-feed-empty · data-pulse-notes
      data-pulse-sites · data-pulse-sites-empty            (智能体私有站 IPNS 列表)
      data-pulse-ipns-form · data-pulse-ipns-input · data-pulse-ipns-open · data-pulse-ipns-msg
@@ -383,8 +383,12 @@ var BOLLOON_IPNS = (function () {
      一条里 task 与 tx 都空 → 不画这一行: 宁可不显示, 也不留空行。
      没有数据时不是空白表格, 而是明说「本节点暂未观察到链上任务」;
      快照本身读不到时说的是「快照不可用…」—— 两种真相不混。
-     数据源 confirmed_activity_source (chain-index / pulse-events / none)
-     在表格下方如实标注, 快照没给这个字段就写「快照未标注」。
+     数据源 confirmed_activity_source (chain-index / pulse-events / none) 与口径 (全量/观察窗口)
+     一律压成极短标记, 不写整句解释 (2026-09-23 精简):
+       · 口径行带 { chain-index → 链上索引 · 全量 / pulse-events → 脉冲事件 } (取自快照字段, 认不出的原样);
+       · 表下那行只在这个节点真报不出源时说话 (none → 「本节点未接入链上数据源」;
+         快照没读到 → 「本次未读到快照」); 认不出 / 缺字段才原样或「快照未标注」。
+     两套口径的分界靠「就近短标记」而不是靠长句: 统计区「观察窗口 24h」+ 本行「链上索引 · 全量」。
 
    活动流 (recent_activity, 首页序栏紧凑版仍在用) —— kind 无关: 前端只认 text {zh,en}。
    所以后端将来新增任何 kind 都不会报错 / 不会空白:
@@ -435,9 +439,12 @@ var BOLLOON_IPNS = (function () {
     confirmed: { zh: '已确认',     en: 'confirmed' },
     finalized: { zh: '已最终确定', en: 'finalized' }
   };
+  // 口径短标记 (2026-09-23 精简): 只留「这批数来自哪套口径」的最短标记 ——
+  // chain-index = 链上索引全量; pulse-events = 脉冲事件 (另一个窗口口径); none = 这个节点没有链上数据源。
+  // 原来「链上数据源：链上索引」这一整行的前缀已去掉, 不写整句解释, 也不把口径改大。
   var SOURCE_WORD = {
-    'chain-index':  { zh: '链上索引', en: 'chain index' },
-    'pulse-events': { zh: '脉冲事件', en: 'pulse events' },
+    'chain-index':  { zh: '链上索引 · 全量', en: 'chain index · whole index' },
+    'pulse-events': { zh: '脉冲事件',        en: 'pulse events' },
     none:           { zh: '本节点未接入链上数据源', en: 'no on-chain data source on this node' }
   };
 
@@ -756,15 +763,26 @@ var BOLLOON_IPNS = (function () {
         text(el.actEmpty, activityEmptyText());
         toggleEmpty(el.actEmpty, view.rows.length === 0);
       }
-      // 数据源如实标注 (快照没给这个字段就写「快照未标注」, 不替它认领一个来源)
+      // 数据源/口径短标记 (2026-09-23 精简): 能报口径的场合一律短写, 绝不写成整句 ——
+      //   · 口径行已经带着「链上索引 · 全量」这类标记时 → 这里留空, 不重复第二遍 (省掉冗余的一行字);
+      //   · 老快照没有 activity_totals (口径行整行隐藏) → 这里补上同一个短标记, 免得表里的行没了口径;
+      //   · 真正「报不出来」的两种真相才单独说, 且只说最短的一句:
+      //       快照压根没读到 (≠ 快照没标注) / confirmed_activity_source=none (这个节点没有链上数据源)。
+      //   · 认不出的来源原值照原样 (不替快照认领来源); 字段缺失才写「快照未标注」。
       if (el.actSource) {
+        var srcWord = SOURCE_WORD[view.actSource];
+        var srcShort = srcWord ? (en ? srcWord.en : srcWord.zh) : view.actSource;
+        var carried = view.actTotals && view.actTotals.source && view.actTotals.source !== 'none';
         if (!view.payload) {
-          // 快照本身都没读到 —— 这跟「快照没标注来源」是两回事, 分开说
-          text(el.actSource, en ? 'On-chain data source: no snapshot read this round' : '链上数据源：本次未读到快照');
+          text(el.actSource, en ? 'snapshot not read this round' : '本次未读到快照');
+        } else if (view.actSource === 'none') {
+          text(el.actSource, en ? SOURCE_WORD.none.en : SOURCE_WORD.none.zh);
+        } else if (carried) {
+          text(el.actSource, '');
+        } else if (srcShort) {
+          text(el.actSource, srcShort);
         } else {
-          var known = SOURCE_WORD[view.actSource];
-          text(el.actSource, (en ? 'On-chain data source: ' : '链上数据源：') +
-            (known ? (en ? known.en : known.zh) : (view.actSource || (en ? 'not specified by the snapshot' : '快照未标注'))));
+          text(el.actSource, en ? 'not specified by the snapshot' : '快照未标注');
         }
       }
     }
@@ -807,8 +825,14 @@ var BOLLOON_IPNS = (function () {
     /**
      * 口径行 (data-pulse-activity-totals) —— 公开页**不许**出现自相矛盾的展示:
      * 小结行的「任务/已完成/已验证/签名」是 **24h 脉冲事件口径** (本节点自己上报的),
-     * 而链上活动表的 N 行来自 **链上索引 (全量)** —— 两个数字同屏时, 必须有一行把它们的关系讲明白。
-     * 数据源 = 快照的 activity_totals (与表**同源**, rows 恒等于表里行数) + chain_id_scope + totals_scope。
+     * 而链上活动表的 N 行来自 **链上索引 (全量)** —— 两个数字同屏时, 两套口径**各自带一个极短标记**:
+     *   · 小结行那四个数附近 → HTML 里的 .pulse-caveat「观察窗口 24h」(静态短标记, 不靠这一行渲染);
+     *   · 链上活动表的行数这里 → 带「链上索引 · 全量」(chain-index) / 「脉冲事件」(pulse-events)。
+     * 2026-09-23 精简: 原来这里还有一整句「上方 任务/已完成/已验证/签名 只数 24h 窗口内的脉冲事件,
+     * 链上索引的 N 行（全量，不是 24h 窗口）是另一套口径 —— 不是数据丢了」—— 整句删掉, 口径信息由
+     * 上面两个短标记就近承接 (更短, 但两套口径的分界一眼可见; 这条由 verify-site.mjs 的门守着,
+     * 门同时要求「观察窗口」类标记出现在统计区 + 「全量」类标记出现在本行, 少一个都算红)。
+     * 数据源 = 快照的 activity_totals (与表**同源**, rows 恒等于表里行数) + chain_id_scope。
      * 纪律: 只读快照给的字段; 缺哪块就不说哪块 (老快照没有这一行 → 整行隐藏); 只写 textContent, 不用 innerHTML;
      *       数字一律取快照给的同源计数, 前端**不自己数行数**(否则又会变成两个来源打架)。
      */
@@ -823,14 +847,22 @@ var BOLLOON_IPNS = (function () {
       }
       var en = lang() === 'en';
       var parts = [];
-      // ① 同源计数 (行数 + 不同任务): 与表里行数同源, 不自己数
+      // ① 口径短标记 + 同源计数 (行数 + 不同任务): 与表里行数同源, 不自己数。
+      //    标记取自快照自己的 activity_totals.source —— 是链上索引就说链上索引(全量),
+      //    是脉冲事件就说脉冲事件; source=none (没有源) 时不认领任何来源, 只报数字。
       var rows = num(at.rows);
       var tasks = num(at.tasks);
+      var head = [];
+      if (at.source && at.source !== 'none') {
+        var sw = SOURCE_WORD[at.source];
+        head.push(sw ? (en ? sw.en : sw.zh) : String(at.source));
+      }
       if (rows != null) {
-        parts.push(en
+        head.push(en
           ? rows + (rows === 1 ? ' row' : ' rows') + (tasks != null ? ' / ' + tasks + ' distinct task' + (tasks === 1 ? '' : 's') : '')
           : rows + ' 行' + (tasks != null ? ' / ' + tasks + ' 个不同任务' : ''));
       }
+      if (head.length) parts.push(head.join(en ? ' · ' : ' · '));
       // ② 上表这批行属于哪条链 (本机 31337 = 本机隔离开发链; 认不出的 chain id 只给数字, 不编网络名)
       var cis = view.chainScope;
       if (cis) {
@@ -840,16 +872,6 @@ var BOLLOON_IPNS = (function () {
         var net = (en ? 'network: ' : '网络：') + (cid != null ? String(cid) : '—') + (clabel ? '（' + clabel + '）' : '');
         if (pubRows === 0) net += (en ? ' · no public-network activity' : ' · 不是公网活动');
         parts.push(net);
-      }
-      // ③ 两套口径的数字不同 → 必须解释 (不许「0 个任务」与「N 行任务」并存而不解释)
-      //    文案不依赖具体页面 (序栏没有表格 → 说「链上索引的 N 行」而不是「本表」)
-      var ts = view.totalsScope;
-      if (ts && ts.differs_from_activity && rows != null && at.source === 'chain-index') {
-        parts.push(en
-          ? 'the tasks / completed / verified / signatures above count pulse events in the 24h window only, while the ' +
-            rows + ' chain-index rows (whole index, not the 24h window) are a different scope — not lost data'
-          : '上方 任务/已完成/已验证/签名 只数 24h 窗口内的脉冲事件，链上索引的 ' +
-            rows + ' 行（全量，不是 24h 窗口）是另一套口径 —— 不是数据丢了');
       }
       text(el.actTotals, parts.join(en ? ' · ' : ' · '));
       // 有内容才显示 (一行都没有就不留空白行)
@@ -921,17 +943,17 @@ var BOLLOON_IPNS = (function () {
       toggleEmpty(el.sitesEmpty, view.sites.length === 0);
     }
 
-    // 空列表的两种真相要分清: 没数据 (快照不可用) ≠ 本节点没发布
+    // 空列表的两种真相要分清: 本节点没发布 ≠ 快照读不到 (2026-09-23 精简: 都压成极短标记, 不写整句)
     function emptySitesText() {
       var hasSnapshot = !!view.payload;
       if (lang() === 'en') {
         return hasSnapshot
-          ? 'This node has not published any agent private site.'
-          : 'Snapshot unavailable — published agent sites cannot be read right now.';
+          ? 'Empty = none published (not missing data)'
+          : 'snapshot unreadable — cannot tell what was published';
       }
       return hasSnapshot
-        ? '本节点暂未发布智能体私有站。'
-        : '快照不可用，此刻读不到已发布的智能体私有站。';
+        ? '空 = 未发布（不是没数据）'
+        : '快照读不到，说不清发布了什么';
     }
 
     function updateRelTimes() {
