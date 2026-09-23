@@ -2402,8 +2402,12 @@ async function main() {
   check('7 页原始 HTML 都没有 40 位地址 / 64 位哈希', hashHits.length === 0, JSON.stringify(hashHits));
   for (const pg of ['gateway.html', 'index.html']) {
     await cdp('Page.navigate', { url: `${BASE}/${pg}` });
+    // ★ 同 [11b]/[11c]: 真域名冷启动时固定 sleep 会量到「还没建好的文档」→ 整轮崩在 null。
+    //   等文档就绪再量 (量到的才是成品页); 拿不到就判红写原因, 不崩也不装作通过。
+    await waitUntil(`document.readyState !== 'loading' && !!document.body`);
     await sleep(900);
     const audit = await evalJs(`(() => {
+      if (!document.body) return null;
       const deads = ${JSON.stringify(DEAD_NAMES)};
       const joins = ${JSON.stringify(JOIN_NAMES)};
       const raw = document.body.innerText;
@@ -2424,6 +2428,7 @@ async function main() {
         longHash: /\\b[0-9a-fA-F]{64}\\b/.test(raw),
       };
     })()`);
+    if (!audit) { check(`${pg} 渲染后旧名/长地址审计可量 (等文档就绪后 body 仍在)`, false, 'null body — 页面没量到'); continue; }
     check(`${pg} 渲染后: 可见文本 + 导航(含下拉) 都没有旧名 (导航项: ${String(audit.nav).slice(0, 90)})`,
       audit.hits.length === 0 && audit.navHits.length === 0, JSON.stringify({ hits: audit.hits, navHits: audit.navHits, nav: audit.nav }));
     check(`${pg} 渲染后: 「加入网络」只作为首页 CTA 按钮出现 (摘掉按钮文案后零命中)`,
@@ -2457,8 +2462,13 @@ async function main() {
   check('7 页原始 HTML (含注释 / 导航 / 静态文案) 都没有"尚未接入"类虚假文案', falseRaw.length === 0, JSON.stringify(falseRaw));
   for (const pg of ['gateway.html', 'index.html']) {
     await cdp('Page.navigate', { url: `${BASE}/${pg}` });
+    // ★ 同 [11c]: 真域名冷启动会 >900ms (308 跳转 + CDN + app.js), 固定 sleep 后读 body.innerText
+    //   会撞上「还没建好的文档」→ 整轮崩在 Cannot read properties of null (真域名实测第二次)。
+    //   改成等文档就绪 (量到的才是成品页); 真拿不到就**判红并写原因**, 既不崩也不装作通过。
+    await waitUntil(`document.readyState !== 'loading' && !!document.body`);
     await sleep(900);
     const f = await evalJs(`(() => {
+      if (!document.body) return null;
       const labels = ${JSON.stringify(FALSE_LABELS)};
       const text = document.body.innerText;
       const nav = Array.from(document.querySelectorAll('.mast-links a')).map((a) => a.textContent.trim()).join(' | ');
@@ -2471,6 +2481,7 @@ async function main() {
         hintText: hint ? hint.textContent : '',
       };
     })()`);
+    if (!f) { check(`${pg} 渲染后可见文案可量 (等文档就绪后 body 仍在)`, false, 'null body — 页面没量到'); continue; }
     check(`${pg} 渲染后: 可见文本与导航都没有"尚未接入"类虚假文案`,
       f.hits.length === 0 && f.navHits.length === 0, JSON.stringify({ hits: f.hits, navHits: f.navHits }));
     check(`${pg} unavailable 态文案是真话 (快照暂时读不到), 不是"入口还没接"`,
