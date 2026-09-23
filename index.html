@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=23">
 </head>
 <body data-page="product">
 
@@ -128,6 +128,13 @@
         <span class="pulse-sep" aria-hidden="true">·</span>
         <time data-pulse-time datetime="">—</time>
         <span class="pulse-snapshot-ago" data-pulse-ago></span>
+        <!-- 最新一笔链上交易 (2026-09-23): 与网关页表格**同一份快照字段 + 同一套链接校验**。
+             快照给了 explorer_tx 才是可点链接 (新窗口 + noopener noreferrer); 本机隔离开发链
+             没有公网浏览器 → 保持纯文本, 绝不编 href="#" 的死链。标签随语言切换, 短写哈希不动。
+             合约地址/合约链接**不上页面**。 -->
+        <span class="pulse-sep" aria-hidden="true">·</span>
+        <span class="pulse-c-tx-hint" data-zh="最新链上交易" data-en="latest on-chain tx">最新链上交易</span>
+        <span class="pulse-c-tx" data-pulse-activity-tx></span>
       </p>
 
       <ul class="pulse-feed" data-pulse-feed></ul>
@@ -221,6 +228,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=22"></script>
+<script src="app.js?v=23"></script>
 </body>
 </html>

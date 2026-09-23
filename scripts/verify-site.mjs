@@ -32,7 +32,7 @@
  *      缺失 → 小结行整行隐藏, 不编造; 空表要说清 + agent_sites=[] 诚实提示
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=22 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=23 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -197,6 +197,21 @@ const pulseProbe = (rootSel) => `(() => {
         finClass: c(tr, '.pulse-fin') ? c(tr, '.pulse-fin').className : null,
         time: c(tr, '.pulse-td-time time') ? c(tr, '.pulse-td-time time').textContent.trim() : null,
         timeIso: c(tr, '.pulse-td-time time') ? c(tr, '.pulse-td-time time').getAttribute('datetime') : null,
+        // 交易标签 / 合约链接 (2026-09-23): tag='a' = 可点 (新窗口), tag='code' = 纯文本 (链没有公网浏览器)
+        txLink: (function () {
+          const a = c(tr, '.pulse-tx-link'); const p = c(tr, '.pulse-tx-ref');
+          return { tag: a ? 'a' : (p ? 'code' : null),
+            href: a ? a.getAttribute('href') : null, target: a ? a.getAttribute('target') : null,
+            rel: a ? a.getAttribute('rel') : null, text: a ? a.textContent.trim() : (p ? p.textContent.trim() : null) };
+        })(),
+        contractLink: (function () {
+          const a = c(tr, '.pulse-contract-link');
+          return { tag: a ? 'a' : null,
+            href: a ? a.getAttribute('href') : null, target: a ? a.getAttribute('target') : null,
+            rel: a ? a.getAttribute('rel') : null, text: a ? a.textContent.trim() : null,
+            zh: a ? a.getAttribute('data-zh') : null, en: a ? a.getAttribute('data-en') : null,
+            aria: a ? a.getAttribute('aria-label') : null };
+        })(),
       })),
       emptyShown: empty ? getComputedStyle(empty).display !== 'none' : null,
       emptyText: empty ? empty.textContent.trim() : null,
@@ -229,7 +244,20 @@ const pulseProbe = (rootSel) => `(() => {
       msgLive: form.querySelector('[data-pulse-ipns-msg]').getAttribute('aria-live'),
       msg: form.querySelector('[data-pulse-ipns-msg]').textContent,
       invalids: root.querySelectorAll('[data-pulse-ipns-input][aria-invalid="true"]').length } : null,
+    // 合约**不上页面** (2026-09-23 leo 拍板收窄): 活动区里任何 /address/0x40 的链接都算违规
+    addrLinks: Array.from(root.querySelectorAll('a')).map((a) => a.getAttribute('href') || '')
+      .filter((h) => /\\/address\\/0x[0-9a-f]{40}$/i.test(h)),
     scope: t('[data-pulse-scope]'),
+    // 首页快照区里的「最新一笔链上交易」(data-pulse-activity-tx; 只有首页序栏有这个钩子 → 网关页为 null)
+    txLine: (function () {
+      const n = q('[data-pulse-activity-tx]');
+      if (!n) return null;
+      const a = n.querySelector('a');
+      const c2 = n.querySelector('code');
+      return { text: n.textContent.trim(), tag: a ? 'a' : (c2 ? 'code' : null),
+        href: a ? a.getAttribute('href') : null, target: a ? a.getAttribute('target') : null,
+        rel: a ? a.getAttribute('rel') : null, kids: n.childNodes.length };
+    })(),
     scopeHidden: !!q('[data-pulse-scope]') && q('[data-pulse-scope]').hasAttribute('hidden'),
     snap: t('[data-pulse-time]'),
     ago: t('[data-pulse-ago]'),
@@ -525,6 +553,8 @@ async function main() {
   let cMode = 'full';
   // 新事件 kind / 30s 轮询自动更新 夹具 (第四档) 的开关: base → 新 kind 快照; grown → 新 agent 加入后的快照
   let growMode = 'base';
+  // 浏览器链接夹具 (第五档) 的开关: chain → 六行混装 (真链可点 / 本机链纯文本); local → 只有本机链一行
+  let eMode = 'chain';
 
   // ——— 夹具自证的取证通道 (只记账, 不改拦截行为) ———
   // 为什么需要: 靠拦截换夹具的断言, 一旦拦截没命中 (请求被放行去了 CDN / 命中缓存 / 超时),
@@ -585,6 +615,15 @@ async function main() {
           : cMode === 'no-tasks' ? FX_NO_TASKS
             : cMode === 'pulse-zero' ? FX_PULSE_ZERO
               : FX_PULSE_ZERO_LEGACY);
+      return;
+    }
+    // 第五档: 浏览器链接夹具 (2026-09-23) —— 每轮按 eMode 自动回夹具 (不走手工队列),
+    //   'chain' → 六行混装 (真链可点 / 本机链纯文本); 'local' → 只有本机链一行 (绝无 explorer 字段)
+    if (p.request.url.includes('network-pulse-verify-explorer')) {
+      const tag = eMode === 'local' ? 'explorer-local' : 'explorer';
+      fxHit(tag, p.request.url);
+      fxLog(`Explorer 档 (${eMode}) → 回夹具 ${tag}`);
+      fulfillJson(p.requestId, fxMark(eMode === 'local' ? FX_EXPLORER_LOCAL : FX_EXPLORER, tag));
       return;
     }
     // 第四档: 新事件 kind + 数值变化自动反映 —— 每轮请求都按 growMode 自动回夹具 (不走手工队列),
@@ -743,6 +782,63 @@ async function main() {
     recent_activity: [],
     notes: [],
   };
+  // —— 浏览器链接夹具 (2026-09-23): 「真链行可点 / 本机链行不可点」两页各验一遍 ——
+  // 六行覆盖六种情形: ①真链齐全(**还硬塞了 explorer_contract** —— 看页面会不会把它渲染出来) ②本机链(31337)有事实但没链接 ③有哈希没合约 ④域名不在白名单
+  //                   ⑤链接指向**别的**哈希 (必须不渲染成链接) ⑥本机链行被人硬塞了合法 basescan 链接
+  const FX_TX_A = '0x' + 'a1'.repeat(32);
+  const FX_TX_B = '0x' + 'b2'.repeat(32);
+  const FX_TX_C = '0x' + 'd4'.repeat(32);
+  const FX_TX_LOCAL = '0x' + 'c3'.repeat(32);
+  const FX_ESCROW = '0x' + '4e'.repeat(20);
+  const FX_URL_TX_A = `https://basescan.org/tx/${FX_TX_A}`;
+  const FX_URL_TX_B = `https://basescan.org/tx/${FX_TX_B}`;
+  const FX_URL_C_A = `https://basescan.org/address/${FX_ESCROW}`;
+  const FX_SHORT_A = '0xa1a1…a1a1';         // 页面上的短写标签 (头 4…尾 4)
+  const FX_SHORT_LOCAL = '0xc3c3…c3c3';
+  const FX_EXPLORER_ROWS = [
+    { task: 'sha256:0a0a0a0a', kind: 'trade_settled', state: 'released', chain_id: 8453, block: 51640672,
+      tx: 'sha256:7ab4155b', confirmations: 14, finality: 'finalized', at: iso(T0 - 60000),
+      tx_hash: FX_TX_A, contract: FX_ESCROW, explorer_tx: FX_URL_TX_A, explorer_contract: FX_URL_C_A },
+    { task: 'sha256:0b0b0b0b', kind: 'task_created', state: 'active', chain_id: 31337, block: 676,
+      tx: 'sha256:11112222', confirmations: 1, finality: 'observed', at: iso(T0 - 120000),
+      tx_hash: FX_TX_LOCAL, contract: FX_ESCROW },
+    { task: 'sha256:0c0c0c0c', kind: 'task_completed', state: 'active', chain_id: 8453, block: 51640600,
+      tx: 'sha256:33334444', confirmations: 5, finality: 'confirmed', at: iso(T0 - 180000),
+      tx_hash: FX_TX_B, explorer_tx: FX_URL_TX_B },
+    { task: 'sha256:0d0d0d0d', kind: 'task_created', state: 'active', chain_id: 8453, block: 51640500,
+      tx: 'sha256:55556666', confirmations: 2, finality: 'observed', at: iso(T0 - 240000),
+      tx_hash: FX_TX_C, explorer_tx: `https://evil.example/tx/${FX_TX_C}` },
+    { task: 'sha256:0e0e0e0e', kind: 'trade_verified', state: 'expired', chain_id: 8453, block: 51640400,
+      tx: 'sha256:77778888', confirmations: 3, finality: 'observed', at: iso(T0 - 300000),
+      tx_hash: FX_TX_C, explorer_tx: `https://basescan.org/tx/${FX_TX_B}` },        // 指向别的哈希 → 不给链接
+    { task: 'sha256:0f0f0f0f', kind: 'trade_settled', state: 'refunded', chain_id: 31337, block: 675,
+      tx: 'sha256:99990000', confirmations: 1, finality: 'observed', at: iso(T0 - 360000),
+      tx_hash: '0x' + 'e5'.repeat(32), contract: FX_ESCROW,
+      explorer_tx: `https://basescan.org/tx/${'0x' + 'e5'.repeat(32)}`,
+      explorer_contract: FX_URL_C_A },                                             // 本机链 + 硬塞合法链接: 一律不许渲染
+  ];
+  const FX_EXPLORER = {
+    status: 'live', generated_at: T0 - 60000, fresh_until: T0 + 3600000,
+    scope: 'verified', scope_label: { zh: '网络观察快照', en: 'Verified network snapshot' },
+    totals: { nodes: 4, agents: 5, active_agents: 1, seen_last_24h: 5, tasks: 2, tasks_completed: 1, tasks_verified: 1, signatures: 1 },
+    confirmed_activity_source: 'chain-index',
+    confirmed_activity: FX_EXPLORER_ROWS,
+    agent_sites: [], capabilities: [{ key: 'other', count: 2 }], recent_activity: [], notes: ['浏览器链接夹具'],
+  };
+  // 只有本机链一行 (31337, 有 tx_hash/contract 但绝无 explorer 字段) → 两页都必须保持纯文本
+  const FX_EXPLORER_LOCAL = {
+    status: 'live', generated_at: T0 - 60000, fresh_until: T0 + 3600000,
+    scope: 'observed', scope_label: { zh: '当前节点观察到', en: 'Observed by this node' },
+    totals: { nodes: 2, agents: 3, active_agents: 1, seen_last_24h: 3, tasks: 1, tasks_completed: 0, tasks_verified: 0, signatures: 0 },
+    confirmed_activity_source: 'chain-index',
+    confirmed_activity: [{
+      task: 'sha256:0b0b0b0b', kind: 'task_created', state: 'active', chain_id: 31337, block: 676,
+      tx: 'sha256:11112222', confirmations: 1, finality: 'observed', at: iso(T0 - 120000),
+      tx_hash: FX_TX_LOCAL, contract: FX_ESCROW,
+    }],
+    agent_sites: [], capabilities: [{ key: 'other', count: 2 }], recent_activity: [], notes: ['本机链夹具 (无公网浏览器)'],
+  };
+
   // 「公开页数字不许打架」夹具 (2026-09-22 leo 拍板): 复刻真快照那一幕 ——
   // 小结行是 totals.tasks=0 / tasks_completed=0 / signatures=0 (24h 脉冲事件口径),
   // 而 confirmed_activity 有 **25 行** (链上索引口径), 且快照自带 activity_totals (同源计数) +
@@ -1426,6 +1522,172 @@ async function main() {
     !(real.act.rowCount > 0 && real.tasks === '0' && !(real.act.totalsLineShown === true && /24h|24 小时/.test(real.act.totalsLine))),
     JSON.stringify({ rows: real.act.rowCount, tasks: real.tasks, line: real.act.totalsLine }));
 
+  // ⑥‴★★ 浏览器链接 (2026-09-23): 「网页行可索引到链上合约 + 交易可跳区块浏览器」——**两页各验一遍**
+  //   为什么必须分页: 网关页 = 完整表 (任务格里的交易标签 + 网络格尾的合约链接); 首页序栏 = 紧凑快照区
+  //   (只有「最新一笔链上交易」一行)。两处共用 app.js 同一份 view.rows / 同一套链接校验与短写 ⇒
+  //   断言也必须落在两页各一份; 而且**只在有 explorer 字段时才是 <a>**, 本机链绝不许编 href="#" 死链。
+  //   这一段用夹具把六种情形验死 (真数据那一段在 [6e] 已验过真链行可点)。
+  console.log('\n[6e★★] 浏览器链接 · 真快照 (网关页 + 首页, 分页验)');
+  const IDX_PULSE_ROOT = '#intro .pulse-compact';
+  const realPubRows = ((realObj && realObj.confirmed_activity) || []).filter((r) => r.chain_id === 8453);
+  const gwPubRows = real.act.rows.filter((r) => r.chain === '8453');
+  check('真快照 · 网关页: 公网链行 (8453) 的交易标签**确实**是 <a> (href = basescan/tx/0x64hex, target=_blank, rel 含 noopener)',
+    realPubRows.length > 0 && gwPubRows.length === realPubRows.length && gwPubRows.every((r) => r.txLink && r.txLink.tag === 'a' &&
+      /^https:\/\/[a-z.]*basescan\.org\/tx\/0x[0-9a-f]{64}$/.test(r.txLink.href || '') &&
+      r.txLink.target === '_blank' && /noopener/.test(r.txLink.rel || '')),
+    JSON.stringify({ live: realPubRows.length, rows: gwPubRows.map((r) => [r.chain, r.txLink && r.txLink.tag, r.txLink && r.txLink.href]) }));
+  check('真快照 · 网关页: **合约不上页面** —— 活动区里没有任何 /address/0x40 的链接, 每行也没有合约链接节点 (网络格仍是 chain_id 纯文本)',
+    gwPubRows.length > 0 && real.addrLinks.length === 0 &&
+    gwPubRows.every((r) => !r.contractLink || r.contractLink.tag === null) &&
+    gwPubRows.every((r) => r.cells.length === 7) &&
+    realPubRows.every((r) => !('explorer_contract' in r)),
+    JSON.stringify({ addrLinks: real.addrLinks, rows: gwPubRows.map((r) => [r.chain, r.contractLink && r.contractLink.tag]) }));
+  check('真快照 · 网关页: 链接文本一律短写 (可见文本里没有 40 位地址 / 64 位哈希; 全长只在 href 里)',
+    gwPubRows.length > 0 && gwPubRows.every((r) => /^0x[0-9a-f]{4}…[0-9a-f]{4} ↗$/.test(r.txLink.text || '')) &&
+    (await evalJs(`(() => { const t = document.querySelector('#pulse').innerText; return !/0x[0-9a-fA-F]{40}/.test(t) && !/[0-9a-fA-F]{64}/.test(t); })()`)) === true,
+    JSON.stringify(gwPubRows.map((r) => r.txLink && r.txLink.text)));
+  await cdp('Page.navigate', { url: `${BASE}/index.html` });
+  const realIdxPulse = await waitStable(pulseProbe(IDX_PULSE_ROOT), (v) => !!(v && v.txLine && v.txLine.tag === 'a'), { tries: 80, interval: 150 });
+  check('真快照 · 首页快照区: 「最新链上交易」**确实**是 <a> (basescan/tx/0x64hex, target=_blank, rel 含 noopener, 文本短写)',
+    !!realIdxPulse.txLine && realIdxPulse.txLine.tag === 'a' &&
+    /^https:\/\/[a-z.]*basescan\.org\/tx\/0x[0-9a-f]{64}$/.test(realIdxPulse.txLine.href || '') &&
+    realIdxPulse.txLine.target === '_blank' && /noopener/.test(realIdxPulse.txLine.rel || '') &&
+    /^0x[0-9a-f]{4}…[0-9a-f]{4} ↗$/.test(realIdxPulse.txLine.text || ''),
+    JSON.stringify(realIdxPulse.txLine));
+  check('真快照 · 首页: 链接指向的那笔交易 = 快照里最新的那条公网链行 (不是随便一笔)',
+    realPubRows.length > 0 && !!realIdxPulse.txLine &&
+    realPubRows.some((r) => `https://basescan.org/tx/${r.tx_hash}` === realIdxPulse.txLine.href),
+    JSON.stringify({ href: realIdxPulse.txLine && realIdxPulse.txLine.href, live: realPubRows.map((r) => r.tx_hash) }));
+  check('真快照 · 首页快照区: **合约不上页面** —— 序栏里也没有任何 /address/0x40 的链接',
+    realIdxPulse.addrLinks.length === 0 && realIdxPulse.txLine.tag === 'a',
+    JSON.stringify({ addrLinks: realIdxPulse.addrLinks }));
+  check('真快照 · 首页: 双语提示在 (最新链上交易 / latest on-chain tx), 且序栏里没有 href="#" 之类的死链',
+    (await evalJs(`(() => { const r = document.querySelector('${IDX_PULSE_ROOT}'); const h = r && r.querySelector('.pulse-c-tx-hint');
+      const dead = Array.from(r ? r.querySelectorAll('a') : []).filter((a) => { const h2 = a.getAttribute('href') || ''; return h2 === '#' || h2 === '' || /^javascript:/i.test(h2); });
+      return !!h && h.getAttribute('data-zh') === '最新链上交易' && h.getAttribute('data-en') === 'latest on-chain tx' && dead.length === 0; })()`)) === true);
+
+  // —— 夹具档: 六种情形 (真链可点 / 本机链绝不点) ——
+  console.log('\n[6f] 网关页表格 · 浏览器链接夹具 (真链行可点 / 本机链行纯文本)');
+  const exErrStart = consoleErrors.length;
+  eMode = 'chain';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await fxEnable(PULSE_PATTERN);
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-explorer.json`)}` });
+  await fxSelfProof('explorer', { what: 'FX_EXPLORER (六行混装)' });
+  const ex = await waitStable(pulseProbe('#pulse'), (v) => !!(v && v.act && v.act.rowCount === FX_EXPLORER_ROWS.length), { tries: 80, interval: 150 });
+  const exRow = (block) => ex.act.rows.find((r) => r.block === block) || null;
+  check(`网关页夹具: ${FX_EXPLORER_ROWS.length} 行都画出来 (含本机链那两行)`,
+    ex.act.rowCount === FX_EXPLORER_ROWS.length, JSON.stringify({ rows: ex.act.rowCount }));
+  check('网关页夹具 · 真链行 (8453): 交易标签是 <a> + basescan/tx/0x64hex + target=_blank + rel 含 noopener',
+    !!exRow('51640672') && exRow('51640672').txLink.tag === 'a' && exRow('51640672').txLink.href === FX_URL_TX_A &&
+    exRow('51640672').txLink.target === '_blank' && /noopener/.test(exRow('51640672').txLink.rel || '') &&
+    exRow('51640672').txLink.text === FX_SHORT_A + ' ↗',
+    JSON.stringify(exRow('51640672') && exRow('51640672').txLink));
+  check('网关页夹具 · **合约不上页面**: 夹具硬塞了 explorer_contract, 页面仍然不渲染合约链接 (表里 0 个 /address/ 链接, 行里没有合约链接节点)',
+    ex.addrLinks.length === 0 &&
+    ex.act.rows.every((r) => !r.contractLink || r.contractLink.tag === null) &&
+    (await evalJs(`document.querySelectorAll('#pulse [data-pulse-activity-body] a').length === Array.from(document.querySelectorAll('#pulse [data-pulse-activity-body] a')).filter((a) => /\\/tx\\//.test(a.getAttribute('href') || '')).length`)) === true &&
+    (await evalJs(`document.getElementById('pulse').innerText.indexOf('/address/') === -1`)) === true,
+    JSON.stringify({ addrLinks: ex.addrLinks, links: ex.act.rows.map((r) => [r.contractLink && r.contractLink.tag, r.txLink && r.txLink.tag]) }));
+  check('网关页夹具 · 本机链行 (31337, 没有 explorer_tx): 交易标签是纯文本, 也没有任何合约链接',
+    !!exRow('676') && exRow('676').txLink.tag === 'code' && exRow('676').txLink.href === null &&
+    exRow('676').txLink.text === FX_SHORT_LOCAL && (!exRow('676').contractLink || exRow('676').contractLink.tag === null),
+    JSON.stringify({ row: exRow('676') && exRow('676').txLink, c: exRow('676') && exRow('676').contractLink }));
+  check('网关页夹具 · 本机链行被人硬塞了合法 basescan 链接 → 仍不渲染成 <a> (认不出的链一律不给链接)',
+    !!exRow('675') && exRow('675').txLink.tag === 'code' && exRow('675').txLink.href === null &&
+    (!exRow('675').contractLink || exRow('675').contractLink.tag === null),
+    JSON.stringify({ row: exRow('675') && exRow('675').txLink, c: exRow('675') && exRow('675').contractLink }));
+  check('网关页夹具 · 只有 txHash 没有 escrow 的行: 交易可点, 网络格尾没有合约链接 (合约本来就不上页面)',
+    !!exRow('51640600') && exRow('51640600').txLink.tag === 'a' && exRow('51640600').txLink.href === FX_URL_TX_B &&
+    (!exRow('51640600').contractLink || exRow('51640600').contractLink.tag === null),
+    JSON.stringify({ row: exRow('51640600') && exRow('51640600').txLink, c: exRow('51640600') && exRow('51640600').contractLink }));
+  check('网关页夹具 · 域名不在白名单 / 链接指向别的哈希 → 都**不**渲染成链接 (宁可不点, 也不给错链接)',
+    !!exRow('51640500') && exRow('51640500').txLink.tag === 'code' &&
+    !!exRow('51640400') && exRow('51640400').txLink.tag === 'code' &&
+    exRow('51640500').txLink.href === null && exRow('51640400').txLink.href === null,
+    JSON.stringify([exRow('51640500') && exRow('51640500').txLink, exRow('51640400') && exRow('51640400').txLink]));
+  check('网关页夹具 · 表头与列数没变 (新增的是格内节点, 不是第 8 列): 每行仍 7 格 + 任务格仍只 1 个文本节点',
+    ex.act.headers.length === 7 && ex.act.rows.every((r) => r.cells.length === 7) &&
+    ex.act.rows.every((r) => r.taskKids === 1),
+    JSON.stringify({ h: ex.act.headers.length, cells: ex.act.rows.map((r) => r.cells.length), kids: ex.act.rows.map((r) => r.taskKids) }));
+  check('网关页夹具 · 可见文本里没有全长地址/哈希 (链接文本一律短写) + 活动区里没有 href="#" 死链',
+    (await evalJs(`(() => { const s = document.getElementById('pulse'); const t = s.innerText;
+      const dead = Array.from(s.querySelectorAll('a')).filter((a) => { const h = a.getAttribute('href') || ''; return h === '#' || h === '' || /^javascript:/i.test(h); });
+      return { addr: /0x[0-9a-fA-F]{40}/.test(t), hash: /[0-9a-fA-F]{64}/.test(t), dead: dead.length }; })()`)).addr === false &&
+    (await evalJs(`document.querySelectorAll('#pulse a[href="#"], #pulse a[href=""]').length`)) === 0,
+    JSON.stringify(await evalJs(`(() => { const t = document.getElementById('pulse').innerText; return { addr: /0x[0-9a-fA-F]{40}/.test(t), hash: /[0-9a-fA-F]{64}/.test(t) }; })()`)));
+  check('网关页夹具这一轮无 console 错误 / 未捕获异常', consoleErrors.length === exErrStart, consoleErrors.slice(0, 3).join(' | '));
+
+  console.log('\n[6g] 首页快照区 · 浏览器链接夹具 (与网关页同一套逻辑/同一份数据)');
+  const exiErrStart = consoleErrors.length;
+  eMode = 'chain';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await fxEnable(PULSE_PATTERN);
+  await cdp('Page.navigate', { url: `${BASE}/index.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-explorer.json`)}` });
+  await fxSelfProof('explorer', { rootSel: IDX_PULSE_ROOT, domSignal: (v) => !!(v && v.txLine && v.txLine.href === FX_URL_TX_A), what: '首页 FX_EXPLORER' });
+  const exIdx = await waitStable(pulseProbe(IDX_PULSE_ROOT), (v) => !!(v && v.txLine && v.txLine.tag === 'a'), { tries: 80, interval: 150 });
+  check('首页夹具 · 「最新链上交易」是 <a> + basescan/tx/0x64hex + target=_blank + rel 含 noopener',
+    !!exIdx.txLine && exIdx.txLine.tag === 'a' && exIdx.txLine.href === FX_URL_TX_A &&
+    exIdx.txLine.target === '_blank' && /noopener/.test(exIdx.txLine.rel || ''),
+    JSON.stringify(exIdx.txLine));
+  check('首页夹具 · **合约不上页面** (首页侧): 序栏里 0 个 /address/ 链接; 指南/网关入口那类既有的真链接不算合约链接',
+    exIdx.addrLinks.length === 0 && exIdx.txLine.tag === 'a' &&
+    (await evalJs(`Array.from(document.querySelectorAll('${IDX_PULSE_ROOT} a')).every((a) => !/\\/address\\/0x[0-9a-f]{40}/i.test(a.getAttribute('href') || ''))`)) === true,
+    JSON.stringify({ addrLinks: exIdx.addrLinks }));
+  check('首页夹具 · 与网关页同一套短写 (同一个哈希在两页显示成同一串, 且都是「短写 + ↗」)',
+    !!exIdx.txLine && exIdx.txLine.text === FX_SHORT_A + ' ↗' &&
+    exIdx.txLine.text === (exRow('51640672') ? exRow('51640672').txLink.text : null),
+    JSON.stringify({ idx: exIdx.txLine && exIdx.txLine.text, gw: exRow('51640672') && exRow('51640672').txLink.text }));
+  check('首页夹具 · 序栏可见文本里没有全长哈希 (全长只在 href 里) + 没有 href="#" 死链',
+    (await evalJs(`(() => { const r = document.querySelector('${IDX_PULSE_ROOT}'); const t = r.innerText;
+      return { addr: /0x[0-9a-fA-F]{40}/.test(t), hash: /[0-9a-fA-F]{64}/.test(t),
+        dead: Array.from(r.querySelectorAll('a')).filter((a) => { const h = a.getAttribute('href') || ''; return h === '#' || h === '' || /^javascript:/i.test(h); }).length }; })()`)).hash === false &&
+    (await evalJs(`Array.from(document.querySelector('#intro .pulse-compact').querySelectorAll('a')).filter((a) => { const h = a.getAttribute('href') || ''; return h === '#' || h === ''; }).length`)) === 0);
+  check('首页夹具 · 加了这一行后序栏整块仍 < 320px (紧凑契约没被破坏)',
+    (await evalJs(`Math.round(document.querySelector('${IDX_PULSE_ROOT}').getBoundingClientRect().height)`)) < 320,
+    String(await evalJs(`Math.round(document.querySelector('${IDX_PULSE_ROOT}').getBoundingClientRect().height)`)));
+  check('首页夹具这一轮无 console 错误 / 未捕获异常', consoleErrors.length === exiErrStart, consoleErrors.slice(0, 3).join(' | '));
+
+  console.log('\n[6h] 本机链夹具 (31337, 无 explorer 字段): 网关页保持纯文本 + 无死链');
+  const loErrStart = consoleErrors.length;
+  eMode = 'local';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await fxEnable(PULSE_PATTERN);
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-explorer.json`)}` });
+  await fxSelfProof('explorer-local', { what: 'FX_EXPLORER_LOCAL (只有本机链一行)' });
+  const lo = await waitStable(pulseProbe('#pulse'), (v) => !!(v && v.act && v.act.rowCount === 1), { tries: 80, interval: 150 });
+  check('本机链夹具: 那一行的交易标签是纯文本 (不是 <a>), 也没有任何合约链接, 文本仍是短写哈希',
+    lo.act.rowCount === 1 && lo.act.rows[0].txLink.tag === 'code' &&
+    lo.act.rows[0].txLink.text === FX_SHORT_LOCAL && lo.act.rows[0].txLink.href === null &&
+    (!lo.act.rows[0].contractLink || lo.act.rows[0].contractLink.tag === null),
+    JSON.stringify({ rows: lo.act.rowCount, tx: lo.act.rows[0] && lo.act.rows[0].txLink, c: lo.act.rows[0] && lo.act.rows[0].contractLink }));
+  check('本机链夹具 · 网关页活动区里一个 <a> 都没有 (没有链接就不该有链接), 也没有 href="#" 死链',
+    (await evalJs(`document.querySelectorAll('#pulse [data-pulse-activity-body] a').length`)) === 0 &&
+    (await evalJs(`document.querySelectorAll('#pulse a[href="#"], #pulse a[href=""]').length`)) === 0,
+    String(await evalJs(`document.querySelectorAll('#pulse [data-pulse-activity-body] a').length`)));
+  check('本机链夹具这一轮无 console 错误 / 未捕获异常', consoleErrors.length === loErrStart, consoleErrors.slice(0, 3).join(' | '));
+
+  console.log('\n[6i] 本机链夹具 (31337): 首页快照区同样保持纯文本 + 无死链');
+  const liErrStart = consoleErrors.length;
+  eMode = 'local';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await fxEnable(PULSE_PATTERN);
+  await cdp('Page.navigate', { url: `${BASE}/index.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-explorer.json`)}` });
+  await fxSelfProof('explorer-local', { rootSel: IDX_PULSE_ROOT, domSignal: (v) => !!(v && v.txLine && v.txLine.text === FX_SHORT_LOCAL), what: '首页 FX_EXPLORER_LOCAL' });
+  const loIdx = await waitStable(pulseProbe(IDX_PULSE_ROOT), (v) => !!(v && v.txLine && v.txLine.text === FX_SHORT_LOCAL), { tries: 80, interval: 150 });
+  check('本机链夹具 · 首页「最新链上交易」是纯文本 <code> (没有公网浏览器就不点), 没有 href',
+    !!loIdx.txLine && loIdx.txLine.tag === 'code' && loIdx.txLine.href === null && loIdx.txLine.text === FX_SHORT_LOCAL,
+    JSON.stringify(loIdx.txLine));
+  check('本机链夹具 · 首页序栏里没有任何区块浏览器链接 (本机链不点), 且文档里没有 href="#" 死链',
+    (await evalJs(`Array.from(document.querySelectorAll('${IDX_PULSE_ROOT} a')).every((a) => !/basescan\\.org|etherscan\\.io/.test(a.getAttribute('href') || ''))`)) === true &&
+    (await evalJs(`Array.from(document.querySelectorAll('${IDX_PULSE_ROOT} a')).every((a) => { const h = a.getAttribute('href') || ''; return h !== '' && h !== '#' && !/^javascript:/i.test(h); })`)) === true &&
+    (await evalJs(`document.querySelectorAll('a[href="#"], a[href=""]').length`)) === 0,
+    JSON.stringify({ idxAnchors: await evalJs(`Array.from(document.querySelectorAll('${IDX_PULSE_ROOT} a')).map((a) => a.getAttribute('href'))`),
+      dead: await evalJs(`document.querySelectorAll('a[href="#"], a[href=""]').length`) }));
+  check('本机链夹具这一轮无 console 错误 / 未捕获异常', consoleErrors.length === liErrStart, consoleErrors.slice(0, 3).join(' | '));
+  await fxDisable();
+  fxOff();
+
   // ⑥′ 聚合计数缺失 + 空表 + agent_sites 为空: 「拿不到就不显示」「空表要说清」「空 ≠ 没数据」
   console.log('\n[6b] 任务计数缺失 + 空表 + 智能体私有站为空 (拿不到就不显示)');
   const cErrStart = consoleErrors.length;
@@ -1968,17 +2230,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=22 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=22 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=23 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=23 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=22');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=23');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=22/.test(html) || !/app\.js\?v=22/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=23/.test(html) || !/app\.js\?v=23/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=22 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=22 + app.js?v=22 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=23 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=23 + app.js?v=23 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):

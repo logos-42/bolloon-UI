@@ -561,6 +561,15 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-table tbody tr:first-child td { border-top: 1px solid var(--hairline); }
 .pulse-table tbody tr:hover td { background: color-mix(in srgb, var(--lime) 4%, transparent); }
 .pulse-td-task code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+/* 交易标签 (2026-09-23): 有公网浏览器 → <a> (新窗口, 回链里哈希与这一行逐字相同); 没有 → 纯文本 <code>。
+   两态同一套短写与字号 —— 「点不了」不能被误读成「数据缺了」。 */
+.pulse-td-task .pulse-tx-ref,
+.pulse-td-task .pulse-tx-link { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); margin-left: 6px; white-space: nowrap; }
+.pulse-td-task .pulse-tx-link { color: var(--lime); text-decoration: none; border-bottom: 1px dotted currentColor; }
+/* 合约地址/合约链接**不上页面** (2026-09-23 leo 拍板收窄): 网络格只有 chain_id 纯文本, 没有 .pulse-contract-link 这种东西 */
+.pulse-c-tx-hint { color: var(--ink-3); }
+.pulse-c-tx { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); }
+.pulse-c-tx .pulse-c-tx-link { color: var(--lime); text-decoration: none; border-bottom: 1px dotted currentColor; }
 .pulse-state-word, .pulse-kind-word { font-size: 0.95rem; color: var(--ink-2); }
 .pulse-td-net, .pulse-td-block, .pulse-td-time { font-family: var(--mono); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
 .pulse-td-time time { font-family: var(--mono); }

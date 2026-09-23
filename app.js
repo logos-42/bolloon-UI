@@ -507,6 +507,38 @@ var BOLLOON_IPNS = (function () {
     return (isFinite(n) && n > 0 && n <= def) ? n : def;
   }
 
+  // —— 区块浏览器**交易**链接 (2026-09-23; 同日收窄为「合约不上页面」) ——
+  //   · 行内唯一可点的东西是**交易标签** → `explorer_tx`。
+  //   · 快照给的链接是**数据**, 页面不能盲信: 域名必须是**这条 chain_id 对应的那个**浏览器、
+  //     路径必须是 `/tx/`、内嵌的 0x 必须与这一行的 `tx_hash` **逐字相同**
+  //     (否则就是「指到别处/指到别的链」的链接 —— 宁可不渲染, 也不给错链接)。
+  //   · 合约地址 (`contract`) **只在数据里, 页面既不渲染地址、也不生成合约链接**
+  //     —— 所以这里**没有** address 链接判定, 也没有 `explorer_contract` 这条路径。
+  //   · 本机隔离开发链 (31337) 等**没有公网浏览器**的链 → 无论快照写什么, 一律保持纯文本
+  //     (不编 href="#", 也不接受别人塞进来的链接)。
+  var EXPLORER_BY_CHAIN = { 8453: 'basescan.org', 84532: 'sepolia.basescan.org', 1: 'etherscan.io', 11155111: 'sepolia.etherscan.io' };
+  var TXHASH_RE = /^0x[0-9a-f]{64}$/;
+  function pickTxLink(url, txHash, chainId) {
+    if (typeof url !== 'string' || !txHash) return '';
+    var host = EXPLORER_BY_CHAIN[chainId];                              // 认不出的链 (含本机 31337) → 没有链接
+    if (!host) return '';
+    var m = /^https:\/\/([a-z0-9.-]+)\/tx\/(0x[0-9a-f]{64})$/.exec(url.trim());
+    if (!m) return '';
+    if (m[1] !== host) return '';                                       // 必须是这条链自己的浏览器域名
+    if (m[2] !== txHash) return '';                                     // 必须指向**这一行**的交易
+    return url.trim();
+  }
+  // 外部链接的统一写法 (与站内既有的 IPNS / 私有站链接同一套 target/rel)
+  function makeExtLink(cls, href, label) {
+    var a = document.createElement('a');
+    a.className = cls;
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = label;                                              // 一律 textContent, 不拼 HTML
+    return a;
+  }
+
   // —— 短写: 地址 / 哈希一律截断, 长串永不进页面可见文本 ——
   //   0x1234…abcd      → 0x1234…abcd   (40 位地址: 头 4 尾 4)
   //   sha256:1a2b3c4d… → sha256:1a2b…  (算法前缀 + 头 4)
@@ -566,6 +598,7 @@ var BOLLOON_IPNS = (function () {
       actEmpty: root.querySelector('[data-pulse-activity-empty]'),
       actSource: root.querySelector('[data-pulse-activity-source]'),
       actTotals: root.querySelector('[data-pulse-activity-totals]'),
+      txLine: root.querySelector('[data-pulse-activity-tx]'),
       sites: root.querySelector('[data-pulse-sites]'),
       sitesEmpty: root.querySelector('[data-pulse-sites-empty]'),
       feed: root.querySelector('[data-pulse-feed]'),
@@ -643,6 +676,10 @@ var BOLLOON_IPNS = (function () {
     // —— 链上活动表: 一行 = 一条已确认的链上任务/交易 ——
     // 列 = 任务 | 状态 | 事件 | 网络 | 区块 | 确认数/最终性 | 时间
     // 全部用 textContent 造节点; 任务/交易标识短写; 没有可标识的条目根本不进表。
+    // 2026-09-23: ① 任务格里追加「交易标签」—— 有 explorer_tx 才是 <a> (新窗口 + noopener noreferrer),
+    //            没有 (本机 31337 之类) 就是纯文本 <code>, **不编 href="#"**;
+    //            ② **合约不上页面**: 合约地址/合约链接一律不渲染 (网络格只有 chain_id 纯文本),
+    //              链接里的 0x 与这一行的 tx_hash 逐字相同 (见 pickTxLink), 可见文本一律短写。
     function renderActivity() {
       if (!el.actBody) return;
       var en = lang() === 'en';
@@ -653,10 +690,18 @@ var BOLLOON_IPNS = (function () {
         tr.className = 'pulse-row';
         tr.setAttribute('data-ref', r.refKind);
 
-        // ① 任务 (一律短写: 快照给全长也只显示头尾)
+        // ① 任务 (一律短写: 快照给全长也只显示头尾) + 交易标签 (可点则点, 不可点则纯文本)
         var tdTask = document.createElement('td');
         tdTask.className = 'pulse-td-task';
         tdTask.appendChild(textNode('code', '', shortRef(r.ref)));
+        if (r.txHash) {
+          var txLabel = shortRef(r.txHash);
+          if (r.explorerTx) {
+            tdTask.appendChild(makeExtLink('pulse-tx-link', r.explorerTx, txLabel + ' ↗'));
+          } else {
+            tdTask.appendChild(textNode('code', 'pulse-tx-ref', txLabel));   // 没有浏览器 → 纯文本, 不编死链
+          }
+        }
 
         // ② 状态 (中/英单词)
         var tdState = document.createElement('td');
@@ -670,7 +715,7 @@ var BOLLOON_IPNS = (function () {
         kd.setAttribute('data-kind', r.kind || 'unknown');
         tdKind.appendChild(kd);
 
-        // ④ 网络 = 快照给的 chain_id (只显示这个数字, 不替它编网络名)
+        // ④ 网络 = 快照给的 chain_id (只显示这个数字, 不替它编网络名, 也不放合约地址/链接)
         var tdNet = document.createElement('td');
         tdNet.className = 'pulse-td-net';
         tdNet.setAttribute('data-chain', r.chainId == null ? '' : String(r.chainId));
@@ -721,6 +766,28 @@ var BOLLOON_IPNS = (function () {
           text(el.actSource, (en ? 'On-chain data source: ' : '链上数据源：') +
             (known ? (en ? known.en : known.zh) : (view.actSource || (en ? 'not specified by the snapshot' : '快照未标注'))));
         }
+      }
+    }
+
+    /**
+     * 首页快照区里的「最新一笔链上交易」(data-pulse-activity-tx; 只有首页序栏有这个钩子):
+     *   · 与上表**同一份 view.rows / 同一套链接校验 (pickTxLink) / 同一套短写** —— 两页不各写一套;
+     *   · 有 explorer_tx → <a> (新窗口 + noopener noreferrer); 没有 (本机隔离开发链) → 纯文本 <code>;
+     *   · 没有行 / 行里没有 tx_hash → 清空, 不留占位、不编链接。
+     */
+    function renderActivityTx() {
+      if (!el.txLine) return;
+      clear(el.txLine);
+      var row = null;
+      for (var i = 0; i < view.rows.length; i++) {           // rows 已按快照时间新→旧
+        if (view.rows[i].txHash) { row = view.rows[i]; break; }
+      }
+      if (!row) return;                                      // 没有链上事实 → 什么都不显示
+      var label = shortRef(row.txHash);
+      if (row.explorerTx) {
+        el.txLine.appendChild(makeExtLink('pulse-c-tx-link', row.explorerTx, label + ' ↗'));
+      } else {
+        el.txLine.appendChild(textNode('code', 'pulse-c-tx-ref', label));
       }
     }
 
@@ -876,7 +943,7 @@ var BOLLOON_IPNS = (function () {
 
     function redraw() {
       if (!view.payload) return;
-      renderScope(); renderActivity(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
+      renderScope(); renderActivity(); renderActivityTx(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
     }
 
     function clearData() {
@@ -886,7 +953,7 @@ var BOLLOON_IPNS = (function () {
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.signatures, null);
       text(el.snapTime, '—'); text(el.snapAgo, '');
-      renderActivity(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderScope();
+      renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderScope();
     }
 
     function applyPayload(payload, state, kind) {
@@ -897,12 +964,17 @@ var BOLLOON_IPNS = (function () {
       view.scopeLabels = payload.scope_label || null;
       // 链上活动: 一行 = 一条已确认的链上任务/交易。task 与 tx 都空 → 这条不画
       // (宁可不显示一行, 也不留空行)。全长地址/哈希在渲染时才短写, DOM 里不留全文。
+      // 2026-09-23 追加: tx_hash / explorer_tx (链上索引行才有;
+      //   本机 31337 没有公网浏览器 → 快照里就没有 explorer_tx → 交易标签保持纯文本, 不编死链)。
+      //   `contract` (escrow 合约地址) 只存在于快照数据里, **页面不读它、不渲染它** —— 合约不上页面。
       view.rows = (Array.isArray(payload.confirmed_activity) ? payload.confirmed_activity : [])
         .map(function (r) {
           if (!r || typeof r !== 'object') return null;
           var task = typeof r.task === 'string' ? r.task.trim() : '';
           var tx = typeof r.tx === 'string' ? r.tx.trim() : '';
           if (!task && !tx) return null;                     // task 与 tx 都空 → 不画
+          // 公开链上事实: 形状不对就当作没有 (页面不替数据"修"形状)
+          var txHash = (typeof r.tx_hash === 'string' && TXHASH_RE.test(r.tx_hash.trim())) ? r.tx_hash.trim() : '';
           return {
             ref: task || tx,                                 // task 缺失时才退到 tx
             refKind: task ? 'task' : 'tx',
@@ -912,7 +984,10 @@ var BOLLOON_IPNS = (function () {
             block: num(r.block),
             confirmations: num(r.confirmations),
             finality: typeof r.finality === 'string' ? r.finality.trim() : '',
-            at: parseAt(r.at)
+            at: parseAt(r.at),
+            txHash: txHash,
+            // 交易链接只在「这条链有浏览器 + 形状对 + 指的就是这一行的那笔交易」时才成立 (否则空串 → 纯文本)
+            explorerTx: pickTxLink(r.explorer_tx, txHash, num(r.chain_id))
           };
         })
         .filter(function (x) { return !!x; })
@@ -966,7 +1041,7 @@ var BOLLOON_IPNS = (function () {
       setOptCount(el.signatures, t.signatures);
       text(el.snapTime, absTime(view.snapAt));
       setState(state);
-      renderScope(); renderActivity(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
+      renderScope(); renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
       if (!relTimer) relTimer = setInterval(function () { try { updateRelTimes(); } catch (e) {} }, REL_TICK_MS);
     }
 
