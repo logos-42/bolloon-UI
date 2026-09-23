@@ -2484,11 +2484,17 @@ async function main() {
   //     再出现那几段长文案, 也不许反向改成「全网总量 / 精确总量」这类更大口径; 「智能体私有网站」
   //     的整句说明元素 (.pulse-sites-note) 也不许回来。剥掉注释后再扫 —— 设计意图本来就留在注释里。
   console.log('\n[11c] 文案精简防复发 (7 页可见文案无长句 / 无夸大措辞 / 无整句说明)');
-  const longPages = [], claimPages = [], notePages = [];
+  const longPages = [], claimPages = [], notePages = [], unreadyPages = [];
   for (const pg of ALL_PAGES) {
     await cdp('Page.navigate', { url: `${BASE}/${pg}` });
+    // ★ 真域名冷启动常 >700ms (308 跳转 + CDN + app.js); 原来固定 sleep(700) 后在 body 还没建好时
+    //   就 cloneNode → 整轮崩在「Cannot read properties of null (reading 'cloneNode')」(真域名实测一次)。
+    //   改成「等文档就绪再量」= **加强**门 (不再量中间态), 不是放宽; 万一真量不到 (r=null) 也不许
+    //   当成通过 (缺失类断言在空文档上恒真) —— 单列一页 unready 并断言为空。
+    await waitUntil(`document.readyState !== 'loading' && !!document.body`);
     await sleep(700);
     const r = await evalJs(`(() => {
+      if (!document.body) return null;
       const c = document.body.cloneNode(true);
       const w = document.createTreeWalker(c, NodeFilter.SHOW_COMMENT, null);
       const cs = []; while (w.nextNode()) cs.push(w.currentNode);
@@ -2496,12 +2502,15 @@ async function main() {
       c.querySelectorAll('script, style, [data-pulse-notes], .pulse-notes').forEach((n) => n.remove());
       return { text: c.textContent.replace(/\\s+/g, ' '), sitesNote: !!document.querySelector('.pulse-sites-note') };
     })()`);
+    if (!r) { unreadyPages.push(pg); continue; }
     const hits = killedHits(r.text);
     if (hits.length) longPages.push(`${pg}:${hits.join('|')}`);
     const claims = ['全网总量', '精确总量', 'exact global total', 'global total'].filter((w) => r.text.includes(w));
     if (claims.length) claimPages.push(`${pg}:${claims.join('|')}`);
     if (r.sitesNote) notePages.push(pg);
   }
+  check('★ 7 页都真的量到了「渲染后可见文案」(等文档就绪后才 cloneNode, 没有一页量到空文档)',
+    unreadyPages.length === 0, JSON.stringify(unreadyPages));
   check('★ 7 页渲染后可见文案都没有那几段被删的长句 (口径整句 / 隐私整句 / 「链上数据源：」前缀 / 私有站整句)',
     longPages.length === 0, JSON.stringify(longPages));
   check('★ 7 页渲染后可见文案都没有「全网总量 / 精确总量 / exact global total」类夸大措辞 (删长句 ≠ 把口径改大)',
