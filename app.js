@@ -369,6 +369,7 @@ var BOLLOON_IPNS = (function () {
      data-pulse-activity-totals                        (口径行: 口径短标记 + 同源行数/不同任务 + 网络归属)
      data-pulse-feed · data-pulse-feed-empty · data-pulse-notes
      data-pulse-sites · data-pulse-sites-empty            (智能体私有站 IPNS 列表)
+     data-pulse-tasks · data-pulse-tasks-empty            (待接单任务: 快照 open_tasks[])
      data-pulse-ipns-form · data-pulse-ipns-input · data-pulse-ipns-open · data-pulse-ipns-msg
        (粘贴打开器由上面的 IPNS 模块单独绑定, 与本模块无关)
    聚合计数缺失 (tasks / tasks_completed / tasks_verified / signatures) → 整行隐藏:
@@ -413,6 +414,7 @@ var BOLLOON_IPNS = (function () {
   var FEED_MAX = 5;                         // 活动流条数上限 (可被 data-pulse-feed-max 覆盖)
   var ACTIVITY_MAX = 60;                    // 链上活动表行数上限
   var SITES_MAX = 20;                       // 智能体私有站条数上限
+  var TASKS_MAX = 20;                       // 待接单任务条数上限
 
   var instances = [];
 
@@ -571,6 +573,8 @@ var BOLLOON_IPNS = (function () {
     return 0;
   }
   function isoOf(ms) { try { return new Date(ms).toISOString(); } catch (e) { return ''; } }
+  // 短日期 (只给待接单任务的截止时间用: MM-DD) —— 完整 ISO 放 <time datetime>, 页面上不铺长串
+  function shortDate(ms) { var d = new Date(ms); return pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
   // 枚举词: 认得出就用中/英对照; 认不出但有原值就显示原值 (诚实优先于好看)
   function word(table, key, fbZh, fbEn) {
     var k = typeof key === 'string' ? key.trim() : '';
@@ -589,6 +593,9 @@ var BOLLOON_IPNS = (function () {
   // —— 一个实例: 绑定一个 [data-pulse] 根, 全部状态自持 (互不共享) ——
   function createInstance(root) {
     var FEED_LIMIT = readLimit(root.getAttribute('data-pulse-feed-max'), FEED_MAX);
+    // 待接单任务条数上限: 首页紧凑版传 data-pulse-tasks-max="1" 只列最近到期的一条 (紧凑契约),
+    // 被截掉的那几条用「+N」标出来 (不静默吞掉 —— 读者知道还有几条, 也知道去哪看全)。
+    var TASKS_LIMIT = readLimit(root.getAttribute('data-pulse-tasks-max'), TASKS_MAX);
     var el = {
       scope: root.querySelector('[data-pulse-scope]'),
       snapTime: root.querySelector('[data-pulse-time]'),
@@ -608,6 +615,8 @@ var BOLLOON_IPNS = (function () {
       txLine: root.querySelector('[data-pulse-activity-tx]'),
       sites: root.querySelector('[data-pulse-sites]'),
       sitesEmpty: root.querySelector('[data-pulse-sites-empty]'),
+      tasksList: root.querySelector('[data-pulse-tasks]'),
+      tasksEmpty: root.querySelector('[data-pulse-tasks-empty]'),
       feed: root.querySelector('[data-pulse-feed]'),
       feedEmpty: root.querySelector('[data-pulse-feed-empty]'),
       notes: root.querySelector('[data-pulse-notes]')
@@ -615,7 +624,8 @@ var BOLLOON_IPNS = (function () {
 
     var view = {
       state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '',
-      actTotals: null, chainScope: null, totalsScope: null, rawFeed: [], notes: [], sites: [], scopeKey: 'observed', scopeLabels: null, sourceKind: null,
+      actTotals: null, chainScope: null, totalsScope: null, rawFeed: [], notes: [], sites: [], tasks: [],
+      scopeKey: 'observed', scopeLabels: null, sourceKind: null,
     };
     var timer = null, relTimer = null, failCount = 0, started = false, api = null;
 
@@ -956,6 +966,57 @@ var BOLLOON_IPNS = (function () {
         : '快照读不到，说不清发布了什么';
     }
 
+    // —— 待接单任务 (快照 open_tasks[]): 一行一个 chip ——
+    // chip 只拼**白名单字段**: capability · 预算(原子) + currency · network · 截止 MM-DD · announcementId(前 8 位)。
+    // 纪律 (与主仓 OpenTaskRow 的白名单一一对应):
+    //   · 任务正文 / 正文摘要与预览 / 买方 DID 与公钥 / 认领者 / 签名 —— **根本不读** (不读就没有
+    //     "某天顺手渲染出来"的可能; 快照里本来也不该有, 由主仓门 + 站点隐私守卫双重拒)。
+    //   · 预算按**原子单位原样**显示 (USDC 是 6 位小数, 但页面没有汇率表也不该替数据换算 —— 换算
+    //     等于替快照编一个它没说的数; 单位含义由标题旁的极短标记「预算 · 原子」承接)。
+    //   · `claimed === true` 的行不画:「待接单」区块里出现已认领的单是事实错误 (主仓门也会拒这种快照)。
+    function renderTasks() {
+      if (!el.tasksList) return;
+      clear(el.tasksList);
+      var en = lang() === 'en';
+      var shown = view.tasks.slice(0, TASKS_LIMIT);
+      for (var i = 0; i < shown.length; i++) {
+        var t = shown[i];
+        var chip = document.createElement('span');
+        chip.className = 'pulse-task-chip';
+        chip.setAttribute('data-task-id', t.announcementId || '');
+        chip.appendChild(textNode('span', 'pulse-task-cap', t.capability));
+        if (t.budget) chip.appendChild(textNode('span', 'pulse-task-budget', t.budget + (t.currency ? ' ' + t.currency : '')));
+        if (t.network) chip.appendChild(textNode('span', 'pulse-task-net', t.network));
+        if (t.deadline) {
+          var tm = document.createElement('time');
+          tm.className = 'pulse-task-deadline';
+          tm.setAttribute('datetime', isoOf(t.deadline));
+          tm.textContent = (en ? 'closes ' : '截止 ') + shortDate(t.deadline);
+          chip.appendChild(tm);
+        }
+        if (t.announcementId) chip.appendChild(textNode('code', 'pulse-task-id', t.announcementId));
+        el.tasksList.appendChild(chip);
+      }
+      // 被上限截掉的条目**如实计数**(+N), 不静默吞掉 —— 空态/截断都不许写成「没有」
+      var rest = view.tasks.length - shown.length;
+      if (rest > 0) {
+        var more = textNode('span', 'pulse-task-more', (en ? '+' : '+') + rest);
+        more.setAttribute('data-pulse-tasks-more', String(rest));
+        el.tasksList.appendChild(more);
+      }
+      if (el.tasksEmpty) text(el.tasksEmpty, tasksEmptyText());
+      toggleEmpty(el.tasksEmpty, view.tasks.length === 0);
+    }
+
+    // 空态只能说「暂未观察到」—— 不显示假 0, 也不写与事实相反的「尚未接入」(入口是接了的)。
+    // 快照这次没读到 → 也仍是「暂未观察到」, 只是把「读不到」如实挂在前面 (两种真相不混)。
+    function tasksEmptyText() {
+      if (lang() === 'en') {
+        return view.payload ? 'Empty = none observed' : 'snapshot unreadable — none observed';
+      }
+      return view.payload ? '暂未观察到' : '快照读不到，暂未观察到';
+    }
+
     function updateRelTimes() {
       if (el.snapAgo) text(el.snapAgo, view.snapAt ? '(' + relTime(view.snapAt) + ')' : '');
       if (!el.feed) return;
@@ -965,17 +1026,17 @@ var BOLLOON_IPNS = (function () {
 
     function redraw() {
       if (!view.payload) return;
-      renderScope(); renderActivity(); renderActivityTx(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
+      renderScope(); renderActivity(); renderActivityTx(); renderFeed(); renderNotes(); renderSites(); renderTasks(); updateRelTimes();
     }
 
     function clearData() {
-      view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.sourceKind = null;
+      view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.tasks = []; view.sourceKind = null;
       view.actTotals = null; view.chainScope = null; view.totalsScope = null;
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.signatures, null);
       text(el.snapTime, '—'); text(el.snapAgo, '');
-      renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderScope();
+      renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderScope();
     }
 
     function applyPayload(payload, state, kind) {
@@ -1052,6 +1113,30 @@ var BOLLOON_IPNS = (function () {
         })
         .filter(function (x) { return !!x; })
         .slice(0, SITES_MAX);
+      // open_tasks[] = 本节点公告板上**未认领且未过期**的公告 (主仓已筛过一遍, 页面不重复猜)。
+      // 每个 chip 只取白名单字段 —— instruction / instructionPreview / buyerDid / claims / signature
+      // 这些**连读都不读** (不让它们有一条进 DOM 的路)。capability 为空的行不画 (说不出是什么的单)。
+      // claimed === true 的行不画:「待接单任务」里出现已认领的单是事实错误 (主仓门也会拒这种快照)。
+      // deadline 缺失 → 只是不显示截止, 不编一个时间。
+      view.tasks = (Array.isArray(payload.open_tasks) ? payload.open_tasks : [])
+        .map(function (t) {
+          if (!t || typeof t !== 'object') return null;
+          if (t.claimed === true) return null;
+          var cap = typeof t.capability === 'string' ? t.capability.trim() : '';
+          if (!cap) return null;
+          var budget = typeof t.budget === 'string' ? t.budget.trim() : '';
+          return {
+            capability: cap,
+            budget: budget,
+            currency: typeof t.currency === 'string' ? t.currency.trim() : '',
+            network: typeof t.network === 'string' ? t.network.trim() : '',
+            announcementId: typeof t.announcementId === 'string' ? t.announcementId.trim() : '',
+            deadline: num(t.deadline) || 0
+          };
+        })
+        .filter(function (x) { return !!x; })
+        .sort(function (a, b) { return (a.deadline || 0) - (b.deadline || 0); })   // 快到期在前
+        .slice(0, TASKS_MAX);
       var t = payload.totals || {};
       text(el.nodes, fmtCount(t.nodes));
       text(el.agents, fmtCount(t.agents));
@@ -1063,7 +1148,7 @@ var BOLLOON_IPNS = (function () {
       setOptCount(el.signatures, t.signatures);
       text(el.snapTime, absTime(view.snapAt));
       setState(state);
-      renderScope(); renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); updateRelTimes();
+      renderScope(); renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderTasks(); updateRelTimes();
       if (!relTimer) relTimer = setInterval(function () { try { updateRelTimes(); } catch (e) {} }, REL_TICK_MS);
     }
 
@@ -1101,13 +1186,14 @@ var BOLLOON_IPNS = (function () {
       root: root,
       key: root.id || root.getAttribute('data-pulse-name') || '',
       state: 'loading',
-      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, activityMax: ACTIVITY_MAX },
+      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, activityMax: ACTIVITY_MAX, tasksMax: TASKS_LIMIT },
       refresh: function () { try { return refresh(); } catch (e) { return null; } },
       tick: function () { try { updateRelTimes(); } catch (e) {} },
       redraw: function () { try { redraw(); } catch (e) {} },
       reducedMotion: isReducedMotion,
       source: function () { var s = resolveSource(); return s ? s.kind : null; },
       sites: function () { return view.sites.slice(); },
+      tasks: function () { return view.tasks.slice(); },
       rows: function () { return view.rows.slice(); },
       activitySource: function () { return view.actSource; },
       activityTotals: function () { return view.actTotals; },

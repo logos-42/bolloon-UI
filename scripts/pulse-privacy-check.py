@@ -23,6 +23,20 @@
   · `contract` 若给了, 还要与链索引 (`~/.bolloon/chain/index.json`) 里的合约地址对得上
     (第二份来源的交叉核对; 索引不可读时显式打印「跳过」, 不静默放过)
 
+## 2026-09-23 第二批精确化: `open_tasks[]` (公开「待接单任务」)
+
+快照新增 `open_tasks[]` —— 每行只该有 7 个键 (capability/budget/currency/network/deadline/
+claimed/announcementId)。这一块的尺子**只加不减**:
+  · 行的**键集必须 ⊆ 那 7 个** —— 多一个键就拒 (真泄漏路径: 有人把 `instruction` / `buyerDid` /
+    `claims` 之类展平进行里, 键名黑名单只覆盖了其中一部分)
+  · `announcementId` 必须是**前 8 位** (`ann-` + 4 位字母数字); 完整 id (`ann-` + 16 位 hex)
+    出现即拒 (`ann-…{16}` 已进 SHAPES —— 它不该出现在公开快照的任何位置)
+  · `claimed` 必须是 `false` (本字段只列**未认领**的公告; 出现 true 就是筛选坏了, 页面会把已接
+    的单当待接单) · `deadline` 必须是正数 · `capability` 必须非空串 ·
+    `budget`/`currency`/`network` 只许字符串或 null
+  · 老快照没有 `open_tasks` → **不拒**, 只打一行 note (尺子收紧的是「有新字段时它长什么样」,
+    不是「必须有新字段」)
+
 用法:
     python3 scripts/pulse-privacy-check.py [快照路径] [--quiet]
 退出码: 0 = 通过; 2 = 拒绝 (发现私有字段/形态); 1 = 用法或读取错误
@@ -46,6 +60,11 @@ OK_URL_KEYS = {"explorer_tx"}
 # —— 公网浏览器白名单: chainId → 域名 (与 src/agents/chain/explorer.ts 同一份映射) ——
 BROWSER_BY_CHAIN = {8453: "basescan.org", 84532: "sepolia.basescan.org", 1: "etherscan.io", 11155111: "sepolia.etherscan.io"}
 
+# —— 待接单任务行的字段白名单 (与主仓 `OpenTaskRow` 逐字一致) ——
+OPEN_TASK_KEYS = {"capability", "budget", "currency", "network", "deadline", "claimed", "announcementId"}
+# 公开页只出 announcementId 的**前 8 位** (`ann-` + 4 位字母数字, 因为 id 形如 ann-<16 位 hex>)
+OPEN_TASK_ID_SHORT = re.compile(r"^ann-[A-Za-z0-9]{4}$")
+
 HEX40 = re.compile(r"^0x[0-9a-f]{40}$")
 HEX64 = re.compile(r"^0x[0-9a-f]{64}$")
 URL_TX = re.compile(r"^https://([a-z0-9.-]+)/tx/(0x[0-9a-f]{64})$")
@@ -60,6 +79,8 @@ SHAPES = [
     (re.compile(r"12D3Koo[0-9A-Za-z]{20,}"), "libp2p peerID 形态"),
     (re.compile(r"k51[0-9a-z]{20,}"), "IPNS key 形态"),
     (re.compile(r"^[0-9a-fA-F]{64}$"), "裸 64 位十六进制(疑似私钥)"),
+    # 完整公告 id 不该出现在公开快照的任何位置 (公开投影只给前 8 位) —— 2026-09-23 补
+    (re.compile(r"ann-[0-9a-f]{16}"), "原始 announcementId 全文(公开投影只出前 8 位)"),
 ]
 
 CHAIN_INDEX = pathlib.Path.home() / ".bolloon" / "chain" / "index.json"
@@ -154,6 +175,39 @@ def check(snap: dict, index_addresses: set[str] | None) -> tuple[list[str], list
             notes.append("contract 交叉核对跳过: 链索引不可读")
         if len(seen_contracts) > 1:
             hits.append(f"contract 出现多个不同取值 (这份快照只该有一个 escrow 合约): {sorted(seen_contracts)}")
+
+    # —— open_tasks[] (公开「待接单任务」): 行的白名单 + 短 id + 事实不变式 (2026-09-23 第二批精确化) ——
+    # 这一块**只收紧不放松**: 上面 walk() 的形态尺子照旧扫行里每个字符串 (行不是白名单键),
+    # 这里再加「键集/形状/事实」三档 —— 少一档就等于给「展平正文」「原始 id」「已认领当待接单」留门。
+    open_tasks = snap.get("open_tasks", None)
+    if open_tasks is None:
+        notes.append("快照没有 open_tasks 字段 (老快照或未重新导出) —— 不拒, 仅提示")
+    elif not isinstance(open_tasks, list):
+        hits.append("open_tasks 必须是数组 (没有就给空数组, 不写 null/对象)")
+    else:
+        for i, row in enumerate(open_tasks):
+            rid = f"open_tasks[{i}]"
+            if not isinstance(row, dict):
+                hits.append(f"{rid} 不是对象")
+                continue
+            extra = sorted(set(row.keys()) - OPEN_TASK_KEYS)
+            if extra:
+                hits.append(f"{rid} 出现白名单外的键: {extra} (公开投影只许 {sorted(OPEN_TASK_KEYS)})")
+            cap = row.get("capability")
+            if not isinstance(cap, str) or not cap.strip():
+                hits.append(f"{rid}.capability 缺失/为空")
+            aid = row.get("announcementId")
+            if not isinstance(aid, str) or not OPEN_TASK_ID_SHORT.match(aid):
+                hits.append(f"{rid}.announcementId 必须是 announcementId 的**前 8 位** (ann- + 4 位字母数字), 实得 {aid!r}")
+            if row.get("claimed") is not False:
+                hits.append(f"{rid}.claimed={row.get('claimed')!r} —— 公开快照只许列**未认领**的公告 (出现 true = 筛选坏了)")
+            dl = row.get("deadline")
+            if not isinstance(dl, (int, float)) or isinstance(dl, bool) or dl <= 0:
+                hits.append(f"{rid}.deadline 必须是正的 ms 时间戳, 实得 {dl!r}")
+            for k in ("budget", "currency", "network"):
+                if k in row and row[k] is not None and not isinstance(row[k], str):
+                    hits.append(f"{rid}.{k} 只许字符串或 null, 实得 {row[k]!r}")
+        notes.append(f"open_tasks 行结构核对通过 ({len(open_tasks)} 行, 键白名单 {len(OPEN_TASK_KEYS)} 个)")
     return hits, notes
 
 
@@ -177,8 +231,10 @@ def main() -> int:
         print(f"[pulse-privacy] 拒绝: 快照含私有字段/形态 {sorted(set(hits))[:8]}", file=sys.stderr)
         return 2
     if not args.quiet:
+        open_tasks = snap.get("open_tasks", None)
+        ot = "字段缺失(老快照)" if open_tasks is None else (f"{len(open_tasks)} 行" if isinstance(open_tasks, list) else "非数组!")
         print(f"[pulse-privacy] 通过: status={snap.get('status')} scope={snap.get('scope')} "
-              f"signed={bool(snap.get('signature'))} rows={len(rows)} "
+              f"signed={bool(snap.get('signature'))} rows={len(rows)} open_tasks={ot} "
               f"chain_ids={[r.get('chain_id') for r in rows if isinstance(r, dict)][:4]}")
         for n in notes:
             print(f"[pulse-privacy]   {n}")

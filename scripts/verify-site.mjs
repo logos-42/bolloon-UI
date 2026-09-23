@@ -32,7 +32,7 @@
  *      缺失 → 小结行整行隐藏, 不编造; 空表要说清 + agent_sites=[] 诚实提示
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=24 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=25 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -68,9 +68,19 @@
  *      首页「加入网络」= 真 <a href="gateway.html"> 纯文本节点, 位于「开始安装」右侧同一行
  *      (CTA 顺序 开始安装 → 加入网络 → 阅读文档), 双语文案齐, 切 EN 变 "Join the network";
  *      真 Tab 键能走到它 (在 Tab 序里) 且焦点环是可见的 lime 2px outline; 390px 换行不溢出。
- *   ⑳′ 过期假标签防复发: 7 页原始 HTML + 渲染后可见文本 + 导航里都不许再出现
+ *   ⑳′ 过期假标签防复发: 7 页原始 HTML + 渲染后可见文本与导航里都不许再出现
  *      「尚未接入 / Public observation endpoint not connected」类**现在为假**的文案
  *      (入口早已接入并在供给 25 行数据); unavailable 态必须说真话 (「快照暂时读不到」+ 真原因)。
+ *   ㉒ 待接单任务 (快照 `open_tasks[]`, 2026-09-23): 网关页 + 首页序栏都展示本节点公告板上
+ *      **未认领且未过期**的公告 —— 每个 chip 只拼白名单字段 (capability · 预算原子值 + currency ·
+ *      network · 截止 · announcementId 前 8 位), 任务正文 / 正文摘要与预览 / 买方 DID·公钥 /
+ *      认领者 / 签名**既不在快照里也不在页面上**。断言: 快照行只有那 7 个键 + claimed 全 false +
+ *      id 是前 8 位短写; 静态 HTML 就有钩子与空态文案; chip 逐字段 == **从快照推导**的期望值
+ *      (不写死 capability/预算); 条数 == 快照未认领数; 被本页上限截掉时挂「+N」如实计数;
+ *      空态只能说「暂未观察到 / Empty = none observed」(不许假 0、不许「尚未接入」);
+ *      区块与整页可见文本无 0x40 / DID / multiaddr / peerId / 64 位私钥形态; 页面不含本机公告
+ *      文件的正文/买方身份/签名任何样本串 (全文 + 20 字窗口, 本机没有公告板时**显式跳过**);
+ *      390px 下这一块在视口内、不自溢出、不贡献整页横向溢出。
  *
  * 活动区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
  * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago
@@ -2350,17 +2360,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=24 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=24 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=25 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=25 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=24');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=25');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=24/.test(html) || !/app\.js\?v=24/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=25/.test(html) || !/app\.js\?v=25/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=24 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=24 + app.js?v=24 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=25 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=25 + app.js?v=25 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):
@@ -2656,6 +2666,188 @@ async function main() {
     ctaMob.wrap === 'wrap' && ctaMob.rowInViewport === true, JSON.stringify(ctaMob));
   check(`390px: CTA 行本身不贡献横向溢出 (整页溢出 隐藏 CTA 行前 ${ctaMob.overAll}px / 后 ${ctaMob.overNoRow}px)`,
     ctaMob.overAll === ctaMob.overNoRow, JSON.stringify({ a: ctaMob.overAll, b: ctaMob.overNoRow }));
+  await cdp('Emulation.clearDeviceMetricsOverride');
+  await sleep(200);
+
+  // ——————————————————————————————————————————————————————————————
+  console.log('\n[13] 待接单任务 (快照 open_tasks[]) —— 脱敏投影的展示与「真值从快照推导」');
+  // 这一节验的是「公开页把公告板露出来了, 而且只露了允许露的那几个字段」。
+  // 期望值**全部从快照推导** (capability/预算/条数都不写死): 写死会在公告换一批时变成假绿。
+  // 快照不许出现的形态同时在两处验: ①快照自己的行键白名单 ②页面渲染出来的文本/HTML。
+  await fxDisable();                       // 本节读**真**快照 (不吃夹具)
+  shouldIntercept = () => false;
+  const OT_KEYS = ['announcementId', 'budget', 'capability', 'claimed', 'currency', 'deadline', 'network'];
+  const otRaw = await fetchText(`${BASE}/network-pulse.json`);
+  let otSnap = null;
+  try { otSnap = JSON.parse(otRaw); } catch { /* 分支断言 */ }
+  const otAll = (otSnap && Array.isArray(otSnap.open_tasks)) ? otSnap.open_tasks : null;
+  const otRows = (otAll || []).filter((t) => t && typeof t === 'object' &&
+    typeof t.capability === 'string' && t.capability.trim() && t.claimed !== true);
+  const otSorted = otRows.slice().sort((a, b) => (Number(a.deadline) || 0) - (Number(b.deadline) || 0));
+  const otWant = otSorted.map((t) => ({
+    cap: t.capability.trim(),
+    budget: String(t.budget == null ? '' : t.budget).trim() + (t.currency ? ' ' + String(t.currency).trim() : ''),
+    net: String(t.network || '').trim(),
+    id: String(t.announcementId || '').trim(),
+    dl: Number(t.deadline) || 0,
+  }));
+  // 快照这一层的硬约束: 数组在 + 每行**只有**白名单 7 键 (正文/地址/DID 想搭车就没门)
+  check('快照 open_tasks[] 是数组, 且每行只有白名单 7 键 (capability/budget/currency/network/deadline/claimed/announcementId)',
+    Array.isArray(otAll) && otAll.every((t) => t && typeof t === 'object' && JSON.stringify(Object.keys(t).sort()) === JSON.stringify(OT_KEYS)),
+    Array.isArray(otAll) ? JSON.stringify(otAll.map((t) => Object.keys(t).sort())) : typeof otSnap + '/open_tasks=' + (otSnap && typeof otSnap.open_tasks));
+  check('快照 open_tasks[] 只含未认领的行 (claimed 全为 false), announcementId 是**前 8 位**短写',
+    Array.isArray(otAll) && otAll.every((t) => t.claimed === false && typeof t.announcementId === 'string' && t.announcementId.length <= 8),
+    Array.isArray(otAll) ? JSON.stringify(otAll.map((t) => ({ c: t.claimed, id: t.announcementId }))) : 'n/a');
+
+  // 钩子必须写死在静态 HTML 里 (JS 挂了也要说「暂未观察到」, 不是留白也不是假 0)。
+  // 「尚未接入」这一条**只扫本区块自己的 markup** —— 网关页的接口说明段里合法地写着
+  // 「本节点未接入链上数据源」(那是在文档某一档回退行为), 扫全页会把它误判成假标签。
+  for (const pg of ['gateway.html', 'index.html']) {
+    const raw = await fetchText(`${BASE}/${pg}`);
+    const blockRaw = ((pg === 'index.html')
+      ? raw.match(/<p class="pulse-c-tasks">[\s\S]*?<\/p>/)
+      : raw.match(/<div class="pulse-tasks">[\s\S]*?<\/div>/)) || [''];
+    const blk = blockRaw[0] || '';
+    check(`${pg} 静态 HTML 有待接单任务钩子 (data-pulse-tasks + data-pulse-tasks-empty + 空态文案)`,
+      blk !== '' && /data-pulse-tasks(?![-\w])/.test(blk) && /data-pulse-tasks-empty/.test(blk) && /暂未观察到/.test(blk),
+      JSON.stringify({ block: blk.length, list: /data-pulse-tasks(?![-\w])/.test(blk), empty: /data-pulse-tasks-empty/.test(blk), text: /暂未观察到/.test(blk) }));
+    check(`${pg} 待接单任务区块静态文案无「尚未接入 / not connected」这类与事实相反的标签`,
+      blk !== '' && !/尚未接入|not connected/i.test(blk), blk === '' ? '区块没抓出来' : '');
+  }
+
+  // 一页一探: 列表容器 · chip 逐字段 · 空态 · 可见文本
+  const probeTasks = (rootSel) => `(() => {
+    const root = document.querySelector(${JSON.stringify(rootSel)});
+    if (!root) return { missing: true };
+    const list = root.querySelector('[data-pulse-tasks]');
+    const empty = root.querySelector('[data-pulse-tasks-empty]');
+    const chipNodes = list ? Array.from(list.querySelectorAll('.pulse-task-chip')) : [];
+    const q = (c, s) => { const e = c.querySelector(s); return e ? e.textContent.trim() : ''; };
+    const chips = chipNodes.map((c) => ({
+      cap: q(c, '.pulse-task-cap'), budget: q(c, '.pulse-task-budget'), net: q(c, '.pulse-task-net'),
+      id: c.getAttribute('data-task-id') || '',
+      dlIso: (c.querySelector('.pulse-task-deadline') || {}).dateTime || '',
+      r: Math.round(c.getBoundingClientRect().right), w: Math.round(c.getBoundingClientRect().width),
+    }));
+    const more = list ? list.querySelector('.pulse-task-more') : null;
+    const box = root.getBoundingClientRect();
+    return {
+      state: root.getAttribute('data-pulse-state'),
+      hasList: !!list, hasEmpty: !!empty,
+      chips, moreText: more ? more.textContent.trim() : null,
+      moreN: more && more.hasAttribute('data-pulse-tasks-more') ? Number(more.getAttribute('data-pulse-tasks-more')) : null,
+      emptyVisible: !!(empty && empty.offsetParent !== null && empty.getBoundingClientRect().height > 0),
+      emptyText: empty ? empty.textContent.trim() : '',
+      regionText: (list ? list.innerText : '') + ' ' + (empty ? empty.innerText : ''),
+      regionHtml: list ? list.innerHTML : '',
+      vw: window.innerWidth,
+      pageText: document.body.innerText || '',
+      pageHtml: document.documentElement.outerHTML || '',
+      overFlow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      rootH: Math.round(box.height),
+    };
+  })()`;
+
+  const OT_EMPTY_OK = ['暂未观察到', '快照读不到，暂未观察到', 'Empty = none observed', 'snapshot unreadable — none observed'];
+  const LEAK_SHAPES = [
+    [/0x[0-9a-fA-F]{40}/, '40 位地址形态'],
+    [/did:[a-z]/i, 'DID 形态'],
+    [/\/(ip4|ip6|dns[46]?|p2p|tcp|udp|ws|wss)\//, 'multiaddr 形态'],
+    [/12D3Koo[1-9A-HJ-NP-Za-km-z]{10,}|Qm[1-9A-HJ-NP-Za-km-z]{30,}/, 'peerId 形态'],
+    [/0x[0-9a-fA-F]{64}/, '64 位 hex (私钥/公钥形态)'],
+    [/\b[a-f0-9]{64}\b/, '裸 64 位 hex (sha256/私钥形态)'],
+  ];
+  const leakHit = (s) => { for (const [re, name] of LEAK_SHAPES) { const m = String(s || '').match(re); if (m) return name + ' → ' + m[0].slice(0, 24); } return null; };
+
+  // 真公告板文件 (本机才有): 拿它当「正文样本」—— 验页面确实**没有**把正文/买方身份带出去
+  const boardDir = path.join(os.homedir(), '.bolloon', 'tasks', 'board');
+  const boardSamples = [];   // { label, needle }
+  try {
+    for (const f of fs.readdirSync(boardDir)) {
+      if (!f.endsWith('.json')) continue;
+      let b = null;
+      try { b = JSON.parse(fs.readFileSync(path.join(boardDir, f), 'utf8')); } catch { continue; }
+      const short = String(b.announcementId || '').slice(0, 8);
+      const pub = otAll ? otAll.some((t) => t && t.announcementId === short) : false;
+      if (!pub) continue;                                      // 只在快照里真的露了这一条时才算样本
+      for (const k of ['instruction', 'instructionPreview', 'buyerDid', 'buyerPublicKeyHex', 'signature', 'instructionDigest']) {
+        const v = b[k];
+        if (typeof v !== 'string' || v.length < 8) continue;
+        boardSamples.push({ label: `${f}:${k}`, needle: v });
+        if (v.length >= 40) {                                  // 长正文再切成 20 字窗口 —— 截一半露出来也算泄漏
+          for (let i = 0; i + 20 <= v.length; i += 10) boardSamples.push({ label: `${f}:${k}[${i}+20]`, needle: v.slice(i, i + 20) });
+        }
+      }
+    }
+  } catch { /* 没有本机公告板目录 → 下面显式跳过这一段 */ }
+
+  for (const [label, page, rootSel, cap] of [['网关页', 'gateway.html', '#pulse', Infinity], ['首页序栏', 'index.html', '#intro .pulse-compact', 1]]) {
+    await cdp('Page.navigate', { url: `${BASE}/${page}` });
+    await waitUntil(`document.readyState === 'complete' && window.__bolloonPulses && window.__bolloonPulses.length > 0`);
+    const p = await waitStable(probeTasks(rootSel), (v) => v && !v.missing && v.state && v.state !== 'loading');
+    if (!p || p.missing) { check(`${label}: 找到待接单任务钩子`, false, '未找到 ' + rootSel); continue; }
+    const want = otWant.slice(0, Math.min(cap, 20));
+    // ① 钩子在场
+    check(`${label}: 待接单任务列表容器 + 空态节点都在 DOM 里`, p.hasList && p.hasEmpty, JSON.stringify({ list: p.hasList, empty: p.hasEmpty }));
+    // ② 条数与逐字段 = 快照 (期望值从快照推导)
+    const nOk = p.chips.length === Math.min(otWant.length, cap);
+    const fOk = p.chips.every((c, i) => want[i] && c.cap === want[i].cap && c.budget === want[i].budget &&
+      c.id === want[i].id && c.net === want[i].net &&
+      (want[i].dl ? Date.parse(c.dlIso) === want[i].dl : true));
+    check(`${label}: chip 条数 = 快照里未认领且未过期的公告数 (本页上限 ${cap === Infinity ? '20' : cap}) 实际 ${p.chips.length} / 快照 ${otWant.length}`,
+      nOk, JSON.stringify({ got: p.chips.length, want: Math.min(otWant.length, cap) }));
+    check(`${label}: 每条 chip 的 capability / 预算(原子)+币种 / network / 短 id / 截止 = 快照逐字相同`,
+      fOk, JSON.stringify({ page: p.chips, snap: want }));
+    // 截断要如实计数: 页面列不完就挂 +N, 不静默吞掉
+    const rest = otWant.length - want.length;
+    check(`${label}: 被本页上限截掉的行用「+N」如实计数 (应 ${rest}, 页面上是 ${p.moreN})`,
+      rest <= 0 ? p.moreN === null : p.moreN === rest, JSON.stringify({ moreText: p.moreText, moreN: p.moreN, rest }));
+    // ③ 空态: 文案在场(说「暂未观察到」) 且不是假 0; 显隐与快照一致
+    check(`${label}: 空态文案 = 「暂未观察到」类诚实话, 不是假 0 (实际 ${JSON.stringify(p.emptyText)})`,
+      OT_EMPTY_OK.includes(p.emptyText) && !/\b0\b/.test(p.emptyText) && p.emptyText.length <= 24, p.emptyText);
+    check(`${label}: 空态显隐与快照一致 (快照 ${otWant.length} 条 → 空态${otWant.length === 0 ? '必须显示' : '不得显示'})`,
+      p.emptyVisible === (otWant.length === 0), JSON.stringify({ visible: p.emptyVisible, n: otWant.length }));
+    // ④ 页面不许出现泄漏形态 (区块 + 整页可见文本)
+    const regionLeak = leakHit(p.regionText) || leakHit(p.regionHtml);
+    const pageLeak = leakHit(p.pageText);
+    check(`${label}: 待接单任务区块无 0x40 / DID / multiaddr / peerId / 64 位私钥形态`,
+      !regionLeak, regionLeak || '');
+    check(`${label}: 整页可见文本无 DID / multiaddr / peerId / 64 位私钥形态 (0x40 与 64 位哈希已有既有断言)`,
+      !pageLeak, pageLeak || '');
+    // ⑤ 任务正文样本串一定不在页面上 (在快照里露过的那条公告才算样本)
+    if (boardSamples.length) {
+      const hit = boardSamples.find((s) => p.pageText.includes(s.needle) || p.pageHtml.includes(s.needle));
+      check(`${label}: 页面不含公告正文 / 买方 DID·公钥 / 签名的任何样本串 (${boardSamples.length} 个样本: 全文 + 20 字窗口)`,
+        !hit, hit ? `${hit.label} → ${hit.needle.slice(0, 30)}` : '');
+    } else {
+      skip(`${label}: 任务正文样本串不在页面`, '本机没有 ~/.bolloon/tasks/board/ 里与快照对得上的公告文件, 拿不到样本串');
+    }
+    // ⑥ 读数不该被这一块撑破 (真几何: 区块自己不横向溢出)
+    check(`${label}: 待接单任务区块不撑破容器 (窗口 ${p.vw}px, 每行右边界 ≤ 视口)`,
+      p.chips.every((c) => c.r <= p.vw + 1), JSON.stringify(p.chips.map((c) => c.r)));
+  }
+
+  // 390px: 窄屏不因新区块多出横向溢出 (两栏/顶栏的老溢出不受影响 —— 只比"隐藏本区块前后")
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
+  await waitUntil(`document.readyState === 'complete' && window.__bolloonPulses && window.__bolloonPulses.length > 0`);
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  const otMob = await waitStable(`(() => {
+    const blk = document.querySelector('#pulse .pulse-tasks');
+    if (!blk) return null;
+    const de = document.documentElement;
+    const overAll = de.scrollWidth - de.clientWidth;
+    const prev = blk.style.display; blk.style.display = 'none';
+    const overNoBlock = de.scrollWidth - de.clientWidth;
+    blk.style.display = prev;
+    const r = blk.getBoundingClientRect();
+    return { vw: window.innerWidth, overAll, overNoBlock, bl: Math.round(r.left), br: Math.round(r.right),
+      inViewport: r.left >= -1 && r.right <= window.innerWidth + 1,
+      selfOverflow: blk.scrollWidth - blk.clientWidth };
+  })()`, (v) => v && typeof v.overAll === 'number');
+  check(`390px: 待接单任务区块本身在视口内且不自溢出 (left ${otMob && otMob.bl} · right ${otMob && otMob.br} · 自溢出 ${otMob && otMob.selfOverflow}px)`,
+    !!otMob && otMob.inViewport === true && otMob.selfOverflow <= 1, JSON.stringify(otMob));
+  check(`390px: 这一块不贡献横向溢出 (隐藏前 ${otMob && otMob.overAll}px / 隐藏后 ${otMob && otMob.overNoBlock}px)`,
+    !!otMob && otMob.overAll === otMob.overNoBlock, JSON.stringify(otMob));
   await cdp('Emulation.clearDeviceMetricsOverride');
   await sleep(200);
 

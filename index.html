@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=25">
 </head>
 <body data-page="product">
 
@@ -99,7 +99,7 @@
     <!-- ◆ 链上活动（首页序栏紧凑版）—— 同一公开只读接口, 同样诚实四态 (live/stale/unavailable + observed/verified)。
          用 data-pulse / data-pulse-* 钩子, 与网关页那份是各自独立的实例 (见 app.js 多实例模块)。
          拿不到数据就如实显示「快照暂时读不到」, 绝不编造数字。 -->
-    <div class="pulse-compact" data-pulse data-pulse-name="hero" data-pulse-state="loading" data-pulse-feed-max="1">
+    <div class="pulse-compact" data-pulse data-pulse-name="hero" data-pulse-state="loading" data-pulse-feed-max="1" data-pulse-tasks-max="1">
       <p class="pulse-state" role="status" aria-live="polite">
         <span class="pulse-dot" aria-hidden="true"></span>
         <span class="pulse-state-text" data-state="loading" data-zh="读取中…" data-en="Reading…">读取中…</span>
@@ -147,6 +147,16 @@
            给, 快照没给就整行隐藏。两套口径各带各自短标记 (这里「观察窗口 24h」+ 口径行「链上索引 ·
            全量」), 读者一眼知道两边的数不是一回事 —— 这条由 scripts/verify-site.mjs 的门守着。 -->
       <p class="pulse-c-totals-line pulse-activity-totals" data-pulse-activity-totals></p>
+
+      <!-- 待接单任务 (2026-09-23): 与网关页同一份快照字段 open_tasks[], 同一套白名单字段渲染。
+           首页只列**最近到期的 1 条** (紧凑契约), 被截掉的用「+N」如实计数; 完整列表在网关页。
+           任务正文/正文摘要与预览/买方 DID 与公钥/认领者/签名: 快照里没有, 页面也不读。
+           空态只说「暂未观察到」—— 空 ≠ 没接入, 也不显示假 0。 -->
+      <p class="pulse-c-tasks">
+        <span class="pulse-c-tasks-label" data-zh="待接单任务" data-en="Open tasks">待接单任务</span>
+        <span class="pulse-tasks-list" data-pulse-tasks></span>
+        <span class="pulse-empty" data-pulse-tasks-empty data-zh="暂未观察到" data-en="Empty = none observed">暂未观察到</span>
+      </p>
 
       <p class="pulse-hint" data-pulse-hint>
         <span data-zh="快照这次没读到 — 本站的数据源是签名快照 network-pulse.json" data-en="Snapshot not read this round — this site's source is the signed snapshot network-pulse.json">快照这次没读到 — 本站的数据源是签名快照 network-pulse.json</span>
@@ -231,6 +241,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=24"></script>
+<script src="app.js?v=25"></script>
 </body>
 </html>

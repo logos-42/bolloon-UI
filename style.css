@@ -543,6 +543,30 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 
 .pulse-sub { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--lime); margin-bottom: 16px; }
 
+/* —— 待接单任务 (2026-09-23): 快照 open_tasks[] = 未认领且未过期的公告, 一行一个 chip ——
+   排版沿用同一套 (等宽 / 发丝线 / ≤2px 圆角), 但**小标题用独立类名 .pulse-task-sub**:
+   .pulse-sub 在 verify-site.mjs 里被当作「智能体私有站」小标题的唯一实例逐字比对 (EN 断言),
+   换类名而不是改那条断言 —— 门只加不减。 */
+.pulse-tasks { min-width: 0; margin-bottom: clamp(24px, 3.4vh, 36px); }
+.pulse-task-sub { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--lime); margin-bottom: 6px; }
+/* 「预算 · 原子」: 极短标记 (不是整句) —— 页面对预算只做展示, 不替快照换算小数位 */
+.pulse-task-note { font-family: var(--mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; }
+.pulse-tasks-list { margin: 0; }
+.pulse-task-chip {
+  display: block; padding: 9px 0; border-bottom: 1px solid var(--hairline);
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.8; color: var(--ink-2);
+  min-width: 0; overflow-wrap: anywhere;
+}
+.pulse-task-chip:first-child { border-top: 1px solid var(--hairline); }
+/* 分隔符挂在**后一个**字段的 ::before 上 —— 换行时分隔符跟着它的字段, 不孤零零留在行尾 */
+.pulse-task-chip > * + *::before { content: ' · '; color: var(--ink-3); }
+.pulse-task-cap { color: var(--ink); }
+.pulse-task-budget { color: var(--lime); }
+.pulse-task-deadline { color: var(--ink-2); }
+.pulse-task-id { font-family: var(--mono); color: var(--ink-3); }
+/* 被条数上限截掉时如实计数 (+N), 不静默吞掉 */
+.pulse-task-more { display: inline-block; padding: 9px 0; font-family: var(--mono); font-size: 11.5px; letter-spacing: 1.2px; color: var(--ink-3); }
+
 /* —— 链上活动表: 一行 = 一条已确认的链上任务/交易 (2026-09-22) ——
    编辑式排版: 发丝线分隔 / 等宽字体装标识 / 圆角 ≤ 2px / 窄屏整表横向滚动。
    最终性三档各一色徽标: 已观察 (中性) · 已确认 (深 lime 描边) · 已最终确定 (lime 实底)。
@@ -665,6 +689,13 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-compact .pulse-feed-time { flex: 0 0 7em; font-size: 10.5px; }
 .pulse-compact .pulse-feed-text { font-size: 0.85rem; }
 .pulse-compact .pulse-empty { font-size: 0.8rem; margin-top: 4px; }
+/* 首页紧凑版的待接单任务: 一行标记 + 最近的条目 (chip 压成单行, 无分隔线) */
+.pulse-c-tasks { margin-top: 10px; font-size: 0.8rem; min-width: 0; overflow-wrap: anywhere; }
+.pulse-c-tasks-label { font-family: var(--mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-3); }
+.pulse-compact .pulse-tasks-list { display: block; margin-top: 2px; }
+.pulse-compact .pulse-task-chip,
+.pulse-compact .pulse-task-chip:first-child { padding: 2px 0; border: 0; font-size: 0.8rem; line-height: 1.6; }
+.pulse-compact .pulse-task-more { padding: 2px 0; font-size: 0.8rem; }
 .pulse-compact .pulse-caveat { margin-top: 12px; border-left-width: 1px; padding-left: 10px; font-size: 0.82rem; max-width: 42em; }
 .pulse-compact .pulse-hint { margin-top: 12px; padding: 10px 12px; max-width: 42em; font-size: 0.82rem; }
 .pulse-compact .pulse-hint .cmd-line { margin: 8px 0 0; }
@@ -694,6 +725,9 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   .pulse-ipns-row { flex-direction: column; align-items: stretch; gap: 10px; }
   .pulse-ipns-field { flex: 1 1 auto; }
   .pulse-ipns-open { width: 100%; }
+  /* 待接单任务: 窄屏一行一个 chip (capability 常有连字符长串, 靠 overflow-wrap 兜住, 不撑破容器) */
+  .pulse-tasks-list { display: block; }
+  .pulse-task-chip { overflow-wrap: anywhere; word-break: break-word; }
   /* 首页紧凑版: 数值纵向堆叠 (值左 · 标签右), 不挤成一行 */
   .pulse-compact .pulse-state + .pulse-c-scope { display: block; margin-left: 0; }
   .pulse-c-totals { flex-direction: column; align-items: stretch; gap: 10px; margin: 14px 0 12px; }

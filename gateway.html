@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=25">
 </head>
 <body data-page="gateway">
 
@@ -171,6 +171,19 @@
     <p class="pulse-activity-source pulse-activity-totals" data-pulse-activity-totals></p>
   </div>
 
+  <!-- 待接单任务 (2026-09-23): 快照 open_tasks[] = 本节点公告板上**未认领且未过期**的公告。
+       每个 chip 只拼**白名单字段** (capability · 预算原子值 + currency · network · 截止 · announcementId 前 8 位);
+       任务正文、正文摘要与预览、买方 DID/公钥、认领者、公告签名**不在快照里、页面也不读**(连读都不读)。
+       预算按**原子单位原样**显示 —— 页面没有汇率表, 不替数据换算成"0.001 USDC"这种它没说的数;
+       单位含义由标题旁那行极短标记「预算 · 原子」承接。
+       空态只说「暂未观察到」(空 ≠ 没接入, 也不显示假 0)。 -->
+  <div class="pulse-tasks">
+    <h3 class="pulse-task-sub" data-zh="待接单任务" data-en="Open tasks">待接单任务</h3>
+    <p class="pulse-task-note" data-zh="预算 · 原子" data-en="budget · atomic">预算 · 原子</p>
+    <p class="pulse-tasks-list" data-pulse-tasks></p>
+    <p class="pulse-empty" data-pulse-tasks-empty data-zh="暂未观察到" data-en="Empty = none observed">暂未观察到</p>
+  </div>
+
   <!-- 智能体私有站 (IPNS): 后端 agent_sites[] 是**本节点显式发布**的私有站, 可能是空数组。
        列表为空 → 空提示 (没发布 ≠ 没数据); 粘贴框独立于取数 —— 快照挂了它照样能用。
        本页不做任何网络请求: 只把输入归一化成网关 URL, 跳转交给浏览器。 -->
@@ -311,6 +324,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=24"></script>
+<script src="app.js?v=25"></script>
 </body>
 </html>
