@@ -7,9 +7,11 @@
  * 覆盖:
  *   ① 5 页版本徽章 = live npm 版本 (取自 registry, 不再硬编码)
  *   ② 徽章在 JS 失败时显示「—」而不是过期版本 (静态 HTML 内已是占位符)
- *   ③ skill.html 已同步文档 v1.3.0 + 站内 skills 索引区 (bolloon-gateway-join / bolloon-network)
+ *   ③ skill.html 已同步文档 v1.4.0 + 站内 skills 索引区 (bolloon-gateway-join / bolloon-network);
+ *      渲染版与 raw .md 的 <h2> 逐条对表 (同一份 skill 两个副本, 会各改各的)
  *   ④ gateway.html 的粘贴命令 = 本页实际源 + bolloon-gateway-join.md
- *   ⑤ /bolloon-gateway-join.md 线上正文 = v1.3.0 且含 join_global_gateway / publicKey
+ *   ⑤ /bolloon-gateway-join.md 线上正文 = v1.4.0 且含 join_global_gateway / publicKey;
+ *      §11.2/§11.3/§11.4 = 公告板 (publish/board/claim) + 群聊留痕 (announce/trail/post/group) + 原子单位纪律 + 0.4.33 边界
  *   ⑤′ /bolloon-network.md 线上正文 = 主仓 skills/bolloon-network/SKILL.md 的原样镜像
  *      (frontmatter 原样: name/version/protocol/paymentModes/hardRules + 正文首尾锚点都在)
  *   ⑥ gateway.html 链上活动 (公开只读接口 /api/public/network/progress 的 confirmed_activity):
@@ -38,7 +40,7 @@
  *      并带阴性对照 (把这一格塞回页面 → 必红, 见 docs/wiki/log.md)。
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=32 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=33 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -48,7 +50,7 @@
  *      只允许作为首页那一个 <a class="join-network-cta" href="gateway.html"> 出现,
  *      摘掉该按钮文案后其余位置零命中 (防旧网关序厅 / 旧导航项复发);
  *      页面可见文本无 40 位地址 / 64 位哈希
- *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.2.0), 且与线上 .md frontmatter 一致
+ *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.3.0), 且与线上 .md frontmatter 一致
  *      —— 不再只匹配「1.x.y 形状」(那会漏掉「本机改了、线上没部署」)
  *   ⑳ 公开页数字不许自相矛盾 (2026-09-22 立 · 2026-09-23 文案精简后更严 · **2026-09-24 加强成"同一概念不变量门"**):
  *      (a) **两套口径各自带就近短标记**: 统计区「观察窗口」类标记 (.pulse-caveat) + 表区
@@ -730,12 +732,12 @@ async function main() {
   }
 
   // ③ skill.html 文档同步
-  console.log('\n[3] skill.html 已同步文档 v1.3.0');
+  console.log('\n[3] skill.html 已同步文档 v1.4.0');
   const skillHtml = await fetchText(`${BASE}/skill.html`);
-  check('版本 1.3.0 (逐字)', skillHtml.includes('>1.3.0<'));
+  check('版本 1.4.0 (逐字)', skillHtml.includes('>1.4.0<'));
   // 版本号必须逐字断言 + 与线上 .md 的 frontmatter 对得上 —— 只匹配「1.x.y 形状」会把
   // 「本机改了、线上没部署」漏过去 (2026-09-22 实测: 线上 skill.html 长期停在 1.0.1)。
-  const SKILL_EXPECT = { 'bolloon-gateway-join': '1.3.0', 'bolloon-network': '1.2.0' };
+  const SKILL_EXPECT = { 'bolloon-gateway-join': '1.4.0', 'bolloon-network': '1.3.0' };
   const mdVersionOf = (md) => {
     const fm = /^---\n([\s\S]*?)\n---/.exec(md);
     if (!fm) return '(无 frontmatter)';
@@ -751,15 +753,23 @@ async function main() {
   check('含 join_global_gateway 工具路径', skillHtml.includes('join_global_gateway'));
   check('含 §7 首次接触 TOFU', skillHtml.includes('首次接触 TOFU'));
   check('排错含 publicKey 拒收行', skillHtml.includes('无 publicKey'));
-  check('含 §11 M1 任务闭环', skillHtml.includes('11. 用买到的能力完成任务') && skillHtml.includes('bolloon task'));
+  check('含 §11 三支 (向内买 / 向外发布 / 过程留痕)', skillHtml.includes('11. 任务: 向内买能力') && skillHtml.includes('bolloon task'));
+  // §11 新增的两族外部可见命令必须也渲染在页面上 (只改 raw .md、忘了渲染版 = 页面骗人)
+  const SKILL_HTML_NEW_CMDS = ['bolloon task publish', 'bolloon task board', 'bolloon task claim',
+    'bolloon task announce', 'bolloon task trail', 'bolloon task post',
+    'bolloon task group create', 'bolloon task group join'];
+  const htmlMissing = SKILL_HTML_NEW_CMDS.filter((c) => !skillHtml.includes(c));
+  check('skill.html 渲染版含公告板 + 群聊两族命令 (缺 = raw 改了渲染版没跟)', htmlMissing.length === 0, JSON.stringify(htmlMissing));
+  check('skill.html 渲染版含原子单位纪律 + 0.4.33 发行版边界',
+    skillHtml.includes('不是 1000 USDC') && skillHtml.includes('0.4.33'), '渲染版缺纪律/边界');
 
   // ③′ 站内 skills 索引区 —— bolloon-UI 就是 skills 的完整索引
   console.log('\n[3b] skill.html 站内 skills 索引区 (完整索引)');
   check('有索引区 (id=skills-index + [data-skills-index])',
     skillHtml.includes('id="skills-index"') && skillHtml.includes('data-skills-index'));
-  check('索引区两份 skill 名称 + 具体 version 都在原始 HTML 里 (bolloon-network = 1.2.0, 不再是「1.x.y 形状」)',
-    skillHtml.includes('>bolloon-gateway-join<') && skillHtml.includes('>1.3.0<') &&
-    skillHtml.includes('>bolloon-network<') && skillHtml.includes('>1.2.0<'));
+  check('索引区两份 skill 名称 + 具体 version 都在原始 HTML 里 (bolloon-network = 1.3.0, 不再是「1.x.y 形状」)',
+    skillHtml.includes('>bolloon-gateway-join<') && skillHtml.includes('>1.4.0<') &&
+    skillHtml.includes('>bolloon-network<') && skillHtml.includes('>1.3.0<'));
   check('每行都有 read 钩子 + 复制按钮 + 直达 .md 链接',
     (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
     (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
@@ -777,11 +787,11 @@ async function main() {
   check('索引区 read 命令按实际访问源生成 (read <BASE>/<name>.md), 文本节点只 1 个',
     Array.isArray(idxRows) && idxRows.length === 2 && idxRows.every((r) => r.read === `read ${BASE}/${r.slug}.md` && r.kids === 1),
     JSON.stringify(idxRows && idxRows.map((r) => r.read)));
-  check('索引区名称/version/直达链接/复制按钮逐行都对 (bolloon-network 逐字 = 1.2.0)',
+  check('索引区名称/version/直达链接/复制按钮逐行都对 (bolloon-network 逐字 = 1.3.0)',
     idxRows.length === 2 &&
-    idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.3.0' &&
+    idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.4.0' &&
     idxRows[0].direct === 'bolloon-gateway-join.md' && idxRows[0].copy === true &&
-    idxRows[1].name === 'bolloon-network' && idxRows[1].version === '1.2.0' &&
+    idxRows[1].name === 'bolloon-network' && idxRows[1].version === '1.3.0' &&
     idxRows[1].direct === 'bolloon-network.md' && idxRows[1].copy === true,
     JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])));
   check('索引区 version 与线上 .md frontmatter 逐字一致 (只改一边必失败)',
@@ -808,19 +818,35 @@ async function main() {
   console.log('\n[5] /bolloon-gateway-join.md 线上正文');
   const doc = await fetchText(`${BASE}/bolloon-gateway-join.md`);
   check('HTTP 正文含手机端路径 A′', doc.includes('路径 A′'));
-  check('HTTP 正文含 version: 1.3.0', doc.includes('version: 1.3.0'));
+  check('HTTP 正文含 version: 1.4.0', doc.includes('version: 1.4.0'));
   check('含 name: bolloon-gateway-join', doc.includes('name: bolloon-gateway-join'));
   check('含 join_global_gateway', doc.includes('join_global_gateway'));
   check('含 publicKey (TOFU 契约)', doc.includes('publicKey'));
   check('含 §7 首次接触 TOFU', doc.includes('首次接触 TOFU'));
-  check('含 §11 M1 任务闭环', doc.includes('## 11. 用买到的能力完成任务') && doc.includes('bolloon task'));
+  check('含 §11 三支 (向内买 / 向外发布 / 过程留痕)', doc.includes('## 11. 任务: 向内买能力') && doc.includes('bolloon task'));
+  const JOIN_NEW = ['### 11.2 向外', '### 11.3 过程留痕', '### 11.4 两条硬规矩',
+    'bolloon task publish', 'bolloon task board', 'bolloon task claim',
+    'bolloon task announce', 'bolloon task trail', 'bolloon task post',
+    'bolloon task group create', 'bolloon task group join'];
+  const joinMissing = JOIN_NEW.filter((c) => !doc.includes(c));
+  check('原始文档含 §11.2/§11.3/§11.4 + 两族真命令', joinMissing.length === 0, JSON.stringify(joinMissing));
+  check('原始文档含「预算 = 原子单位」纪律 (不是 1000 USDC) + 0.4.33 发行版边界',
+    doc.includes('不是 1000 USDC') && doc.includes('0.4.33'), '缺纪律/边界');
+  // 渲染版 ↔ raw 结构对表: raw 里每个 `## N.` 标题都必须能在 skill.html 里找到同名 <h2>
+  // (2026-09-24 新增: 同一份 skill 在站上有两个副本 —— raw .md 与渲染版 skill.html, 会各改各的)
+  const html5 = await fetchText(`${BASE}/skill.html`);
+  const headings = (doc.match(/^## (.+)$/gm) || []).map((h) => h.slice(3).trim());
+  const h2s = (html5.match(/<h2[^>]*>([^<]+)<\/h2>/g) || []).map((h) => h.replace(/<[^>]+>/g, '').trim());
+  const hMissing = headings.filter((h) => !h2s.includes(h));
+  check(`渲染版 skill.html 的 <h2> 与 raw 文档逐条对齐 (${headings.length} 条标题)`,
+    headings.length >= 10 && hMissing.length === 0, JSON.stringify({ raw: headings.length, html: h2s.length, 缺: hMissing }));
 
   // ⑤′ /bolloon-network.md 线上正文 (bolloon 主仓 skills/bolloon-network/SKILL.md 的原样镜像)
   console.log('\n[5b] /bolloon-network.md 线上正文 (主仓 SKILL.md 镜像)');
   const netDoc = await fetchText(`${BASE}/bolloon-network.md`);
   check('首行就是 frontmatter 起始 (---)，没有前缀空行', netDoc.startsWith('---\n'), JSON.stringify(netDoc.slice(0, 16)));
-  check('frontmatter 头三行原样 + version 逐字 = 1.2.0 (不是「1.x.y 形状」匹配)',
-    /^---\nname: bolloon-network\nversion: 1\.2\.0\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
+  check('frontmatter 头三行原样 + version 逐字 = 1.3.0 (不是「1.x.y 形状」匹配)',
+    /^---\nname: bolloon-network\nversion: 1\.3\.0\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));
   check('frontmatter 关键块原样 (status/tier/protocol/capabilities/plannedCapabilities/paymentModes/hardRules)',
     netDoc.includes('\nstatus: active\n') && netDoc.includes('\ntier: capability\n') &&
     netDoc.includes('\nprotocol: bolloon-task/1\n') && netDoc.includes('capabilities:\n  - network.join') &&
@@ -830,6 +856,18 @@ async function main() {
     netDoc.includes('## 附: 本 Skill 的 `(planned)` 清单'));
   check('正文含真命令 (bolloon task / bolloon setup / 54188), 不是占位摘要',
     netDoc.includes('bolloon task') && netDoc.includes('bolloon setup') && netDoc.includes('54188'));
+  // 公告板 (C1/C2) + 群聊通道 (C7) 两族命令必须在对外契约里 (它们就是这次升级的主人公)
+  const NET_NEW = ['## ⑤′ 任务对外发布与接单', '## ⑤″ 群聊过程留痕',
+    'bolloon task publish', 'bolloon task board', 'bolloon task claim',
+    'bolloon task announce', 'bolloon task trail', 'bolloon task post',
+    'bolloon task group create', 'bolloon task group join'];
+  const netMissing = NET_NEW.filter((c) => !netDoc.includes(c));
+  check('正文含 §⑤′/§⑤″ + 两族真命令 (外部 Agent 读得到这条路)', netMissing.length === 0, JSON.stringify(netMissing));
+  check('正文含「预算 = 正整数原子单位」纪律 + 0.4.33 发行版边界表',
+    netDoc.includes('正整数原子单位') && netDoc.includes('0.4.33') && netDoc.includes('被 M1 自由文本路径吞掉'),
+    '对外契约缺纪律/边界');
+  check('正文写明本仓同源门 (task-subcommands / skill-cli-parity)',
+    netDoc.includes('task-subcommands.test.ts') && netDoc.includes('skill-cli-parity.test.ts'), '缺门自述');
 
   // ——— CDP Fetch 拦截: 用夹具数据确定性地驱动脉冲区的四种状态 ———
   // 注意: 文档 URL 里带着 ?pulse=<夹具地址>, 所以 urlPattern 也会命中文档本身 ——
@@ -3005,17 +3043,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=32 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=32 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=33 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=33 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=32');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=33');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=32/.test(html) || !/app\.js\?v=32/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=33/.test(html) || !/app\.js\?v=33/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=32 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=32 + app.js?v=32 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=33 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=33 + app.js?v=33 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):
