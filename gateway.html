@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=28">
+<link rel="stylesheet" href="style.css?v=29">
 </head>
 <body data-page="gateway">
 
@@ -96,7 +96,7 @@
      本页 = 链上活动的仪表盘入口: 一句短说明 + 一行小结 + 一张表, 不用大字标题占屏。
      静态站, 访客浏览器到不了站点作者的节点 —— 无数据时如实显示 unavailable, 绝不编造数字。
      多实例模块见 app.js 末尾: 本区用 data-pulse / data-pulse-* 钩子 (不再用 id), 与首页序栏那份互不干扰。 -->
-<section class="doc gateway-pulse" id="pulse" data-pulse data-pulse-name="gateway" data-pulse-state="loading">
+<section class="doc gateway-pulse" id="pulse" data-pulse data-pulse-name="gateway" data-pulse-state="loading" data-pulse-tasks-page="4">
   <div class="section-head">
     <p class="kicker">— 01 · Agent Gateway</p>
     <h2 class="section-title" data-zh="链上活动" data-en="On-chain activity">链上活动</h2>
@@ -200,6 +200,17 @@
     <p class="pulse-task-note" data-zh="预算 · 原子" data-en="budget · atomic">预算 · 原子</p>
     <p class="pulse-tasks-list" data-pulse-tasks></p>
     <p class="pulse-empty" data-pulse-tasks-empty data-zh="暂未观察到" data-en="Empty = none observed">暂未观察到</p>
+    <!-- 分页 / 分栏 (2026-09-24 leo:「固定高度…下滑滚动查看, 分页分栏切换」):
+         ① 列表框自身固定高度 + 框内滚动 (纯 CSS, 见 style.css 的 --pulse-task-row-h) ——
+            条目再多也不撑高这一块; ② 控件**只在快照条数 > 一页 (data-pulse-tasks-page, 默认 4)** 时出现,
+            一页装得下就整行 hidden (不添噪音); ③ 页数从快照条数算, 不写死; ④ 「分栏」按钮按一下切双栏,
+            aria-pressed 记状态, 文案随状态走 (故此按钮**没有 data-zh/data-en** —— 动态文字归 app.js 管)。 -->
+    <p class="pulse-tasks-ctl" data-pulse-tasks-ctl hidden>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-prev data-zh="上一页" data-en="Prev">上一页</button>
+      <span class="pulse-tasks-pageinfo" data-pulse-tasks-pageinfo></span>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-next data-zh="下一页" data-en="Next">下一页</button>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-cols aria-pressed="false">分栏</button>
+    </p>
   </div>
 
   <!-- 智能体私有站 (IPNS): 后端 agent_sites[] 是**本节点显式发布**的私有站, 可能是空数组。
@@ -342,6 +353,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=28"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>

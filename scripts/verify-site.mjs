@@ -38,7 +38,7 @@
  *      并带阴性对照 (把这一格塞回页面 → 必红, 见 docs/wiki/log.md)。
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=28 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=29 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -119,9 +119,18 @@
  *         而徽章 / 元信息行 / 表格行的**节点身份与 childNodes 结构一个都没动** (重建 DOM 就红)。
  *      ⑤ **stale 也显示时间**: `fresh_until` 已过只是「不伪装实时」, 该快照多旧照样写出来
  *         (绝对 + 相对 + 徽章年龄同一份); `stale` 语义本身**没被改动** (既有断言原样保留)。
- *      ⑥ **aria-live 用法不变**: 徽章年龄那段在 `role=status`/`aria-live=polite` 的活区里, 每 20s 会重写 ——
+ *      ⑥ aria-live 用法不变: 徽章年龄那段在 `role=status`/`aria-live=polite` 的活区里, 每 20s 会重写 ——
  *         故标 `aria-hidden="true"` (屏幕阅读器不被每 20s 打断), 同样的相对时间在活区外的 meta 行随时可读;
  *         活区属性本身 (role/aria-live) 与改动前逐字相同, 由既有断言守着。
+ *   ㉔ 待接单任务的**固定高度 + 下滑滚动 + 分页 + 分栏切换** (2026-09-24 leo:「这个任务条目你设置一下固定高度,
+ *      就这个目前的高度就可以, 以后可以下滑滚动查看, 分页分栏切换」): 列表容器 `[data-pulse-tasks]` 由 CSS
+ *      固定成**一行 chip 的高度** (`--pulse-task-row-h`, 1440px 实测 40.69px / 390px 61.38px) 且 `overflow-y:auto`
+ *      —— 条目再多也不撑高这一块; 一页 = `data-pulse-tasks-page` (网关页 4) 条, 页数由**快照条数**算出;
+ *      控件 (`[data-pulse-tasks-ctl]`) 只在条数 > 一页时出现; 「分栏」按钮切 `is-cols2` 双栏并记 `aria-pressed`;
+ *      「+N」仍只数**上限之外**被截掉的条目 (与分页口径不混)。断言 [14] 分两段: 先用**真数据**量出这一块的
+ *      高度当基准 (并验「一页装得下 ⇒ 控件整行隐藏」), 再注入夹具 FX_TASKS_MANY (7 条) 验分页/分栏/边界,
+ *      并在每步都要求 **高度逐像素等于基准** (即「加了 6 条, 这一块一像素没长」), 390px 下双栏不许撑破视口。
+ *      期望值全部从夹具/快照推导 (页数 `Math.ceil(7/每页)`, 第 2 页的 capability = 排序后的后段), 不写死。
  *
  * 活动区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
  * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago / data-pulse-age
@@ -842,14 +851,15 @@ async function main() {
     //        'pulse-zero-legacy' → 同形但没有口径三块 (口径行必须整行隐藏)
     if (p.request.url.includes('network-pulse-verify-c')) {
       const tag = cMode === 'full' ? 'live' : cMode === 'no-tasks' ? 'no-tasks'
-        : cMode === 'pulse-zero' ? 'pulse-zero' : 'pulse-zero-legacy';
+        : cMode === 'pulse-zero' ? 'pulse-zero' : cMode === 'tasks-many' ? 'tasks-many' : 'pulse-zero-legacy';
       fxHit(tag, p.request.url);
       fxLog(`C 档 (${cMode}) → 回夹具 ${tag}`);
       fulfillJson(p.requestId,
         cMode === 'full' ? FX_LIVE
           : cMode === 'no-tasks' ? FX_NO_TASKS
             : cMode === 'pulse-zero' ? FX_PULSE_ZERO
-              : FX_PULSE_ZERO_LEGACY);
+              : cMode === 'tasks-many' ? FX_TASKS_MANY
+                : FX_PULSE_ZERO_LEGACY);
       return;
     }
     // 第五档: 浏览器链接夹具 (2026-09-23) —— 每轮按 eMode 自动回夹具 (不走手工队列),
@@ -1221,6 +1231,21 @@ async function main() {
   fxMark(FX_EN_ONLY, 'en-only');
   fxMark(FX_PULSE_ZERO, 'pulse-zero');
   fxMark(FX_PULSE_ZERO_LEGACY, 'pulse-zero-legacy');   // 覆盖继承来的 __vfy:pulse-zero
+
+  // ★ 待接单任务**多于一页** 的夹具 (2026-09-24 leo 要的「固定高度 + 下滑滚动 + 分页 + 分栏」):
+  //   FX_LIVE 只有 1 条待接单 → 分页控件按纪律**不出现**, 拿它验分页等于验了个寂寞。
+  //   这里 7 条 (全部 claimed:false + 只有那 7 个白名单键, 与真快照同形): 一页 4 条 → 2 页 (第 2 页 3 条),
+  //   且按 deadline 升序排 → 页 1 = 最近到期的 4 条, 页 2 = 剩下 3 条 (期望值从这份夹具推导, 不写死条数)。
+  const FX_TASKS_MANY = (() => {
+    const caps = ['fusion-conversion-consistency', 'code-review', 'translation', 'data-labeling', 'prompt-audit', 'schema-check', 'arxiv-digest'];
+    const nets = ['base', 'base-sepolia', 'base', 'base-sepolia', 'base', 'base-sepolia', 'base'];
+    const fx = JSON.parse(JSON.stringify(FX_LIVE));
+    fx.open_tasks = caps.map((c, i) => ({
+      capability: c, budget: String(1000 + i), currency: 'USDC', network: nets[i],
+      deadline: T0 + (i + 1) * 3600000, claimed: false, announcementId: 'ann-9m' + String(i).padStart(2, '0'),
+    }));
+    return fxMark(fx, 'tasks-many');
+  })();
 
   // ★★★ 变异快照夹具 (2026-09-24 新不变量门用): 全部从**真快照** (network-pulse.json) 改一个字段得到。
   //   为什么必须变异: 一条永远返回 [] 的门等于没有门 —— 只有「故意做成自相矛盾的快照必须判红」
@@ -2873,17 +2898,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=28 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=28 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=29 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=29 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=28');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=29');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=28/.test(html) || !/app\.js\?v=28/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=29/.test(html) || !/app\.js\?v=29/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=28 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=28 + app.js?v=28 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=29 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=29 + app.js?v=29 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):
@@ -3282,6 +3307,9 @@ async function main() {
   })()`;
 
   const OT_EMPTY_OK = ['暂未观察到', '快照读不到，暂未观察到', 'Empty = none observed', 'snapshot unreadable — none observed'];
+  // 2026-09-24 leo:「固定高度…下滑滚动查看, 分页分栏切换」→ 网关页声明 data-pulse-tasks-page="4"。
+  // 期望值从这里来 (不写死 4 在断言里): 页面一页画几条 = 这个数, 与 markup 声明绑在一起。
+  const TASKS_PAGE_EXP = 4;
   const LEAK_SHAPES = [
     [/0x[0-9a-fA-F]{40}/, '40 位地址形态'],
     [/did:[a-z]/i, 'DID 形态'],
@@ -3320,15 +3348,18 @@ async function main() {
     const p = await waitStable(probeTasks(rootSel), (v) => v && !v.missing && v.state && v.state !== 'loading');
     if (!p || p.missing) { check(`${label}: 找到待接单任务钩子`, false, '未找到 ' + rootSel); continue; }
     const want = otWant.slice(0, Math.min(cap, 20));
+    // 2026-09-24: 列表改成分页渲染 (每页 data-pulse-tasks-page 条) → 首屏条数还要过一道分页上限;
+    // 不加这一道, 这条断言会变成「页面必须一次把 20 条画完」—— 与实现正好相反。
+    const perPage = Math.min(cap, TASKS_PAGE_EXP);
     // ① 钩子在场
     check(`${label}: 待接单任务列表容器 + 空态节点都在 DOM 里`, p.hasList && p.hasEmpty, JSON.stringify({ list: p.hasList, empty: p.hasEmpty }));
     // ② 条数与逐字段 = 快照 (期望值从快照推导)
-    const nOk = p.chips.length === Math.min(otWant.length, cap);
+    const nOk = p.chips.length === Math.min(otWant.length, perPage);
     const fOk = p.chips.every((c, i) => want[i] && c.cap === want[i].cap && c.budget === want[i].budget &&
       c.id === want[i].id && c.net === want[i].net &&
       (want[i].dl ? Date.parse(c.dlIso) === want[i].dl : true));
-    check(`${label}: chip 条数 = 快照里未认领且未过期的公告数 (本页上限 ${cap === Infinity ? '20' : cap}) 实际 ${p.chips.length} / 快照 ${otWant.length}`,
-      nOk, JSON.stringify({ got: p.chips.length, want: Math.min(otWant.length, cap) }));
+    check(`${label}: chip 条数 = 快照里未认领且未过期的公告数 (本页上限 ${cap === Infinity ? '20' : cap} · 每页 ${TASKS_PAGE_EXP}) 实际 ${p.chips.length} / 快照 ${otWant.length}`,
+      nOk, JSON.stringify({ got: p.chips.length, want: Math.min(otWant.length, perPage) }));
     check(`${label}: 每条 chip 的 capability / 预算(原子)+币种 / network / 短 id / 截止 = 快照逐字相同`,
       fOk, JSON.stringify({ page: p.chips, snap: want }));
     // 截断要如实计数: 页面列不完就挂 +N, 不静默吞掉
@@ -3383,6 +3414,181 @@ async function main() {
     !!otMob && otMob.overAll === otMob.overNoBlock, JSON.stringify(otMob));
   await cdp('Emulation.clearDeviceMetricsOverride');
   await sleep(200);
+
+  // ═══ [14] 待接单任务: 固定高度 + 框内滚动 + 分页 + 分栏切换 (2026-09-24 leo 要求) ═══
+  // 为什么单开一节、且必须吃夹具: 真快照此刻只有 1 条待接单 → 分页控件按纪律不出现,
+  // 拿真数据**验不出分页**(也验不出「加了条目高度不变」)。所以这里注入 FX_TASKS_MANY (7 条),
+  // 并**先量真数据下的高度当基准** —— 用户要的是「就这个目前的高度」, 那就要证明加条目后**一像素没变**。
+  // 夹具未自证生效时, 本节失败会被 check() 报成「夹具错 · 未生效」, 不会被读成页面缺陷。
+  console.log('\n[14] 待接单任务: 固定高度 + 下滑滚动 + 分页 + 分栏 (真数据量基数 → 夹具 7 条验行为)');
+
+  const tasksBoxProbe = `(() => {
+    const root = document.querySelector('#pulse');
+    if (!root) return { missing: true };
+    const blk = root.querySelector('.pulse-tasks');
+    const list = root.querySelector('[data-pulse-tasks]');
+    const ctl = root.querySelector('[data-pulse-tasks-ctl]');
+    const chips = list ? Array.from(list.querySelectorAll('.pulse-task-chip')) : [];
+    const q = (s) => root.querySelector(s);
+    const cs = list ? getComputedStyle(list) : null;
+    const r = list ? list.getBoundingClientRect() : null;
+    const rb = blk ? blk.getBoundingClientRect() : null;
+    return {
+      missing: false,
+      state: root.getAttribute('data-pulse-state'),
+      chipCount: chips.length,
+      caps: chips.map((c) => (c.querySelector('.pulse-task-cap') || {}).textContent || ''),
+      ids: chips.map((c) => c.getAttribute('data-task-id') || ''),
+      listH: r ? +r.height.toFixed(2) : null,
+      listLeft: r ? Math.round(r.left) : null,
+      listRight: r ? Math.round(r.right) : null,
+      blkH: rb ? +rb.height.toFixed(2) : null,
+      ctlH: ctl ? +ctl.getBoundingClientRect().height.toFixed(2) : 0,
+      regionText: blk ? blk.innerText : '',
+      regionHtml: blk ? blk.innerHTML : '',
+      overflowY: cs ? cs.overflowY : null,
+      scrollH: list ? list.scrollHeight : null,
+      clientH: list ? list.clientHeight : null,
+      isCols2: list ? list.classList.contains('is-cols2') : null,
+      lefts: chips.map((c) => Math.round(c.getBoundingClientRect().left)),
+      rights: chips.map((c) => Math.round(c.getBoundingClientRect().right)),
+      ctlShown: ctl ? !(ctl.hasAttribute('hidden') || getComputedStyle(ctl).display === 'none') : null,
+      pageInfo: (q('[data-pulse-tasks-pageinfo]') || {}).textContent || '',
+      prevDisabled: q('[data-pulse-tasks-prev]') ? q('[data-pulse-tasks-prev]').disabled : null,
+      nextDisabled: q('[data-pulse-tasks-next]') ? q('[data-pulse-tasks-next]').disabled : null,
+      colsPressed: q('[data-pulse-tasks-cols]') ? q('[data-pulse-tasks-cols]').getAttribute('aria-pressed') : null,
+      colsLabel: (q('[data-pulse-tasks-cols]') || {}).textContent || '',
+      declaredPage: root.getAttribute('data-pulse-tasks-page'),
+      cfgPageSize: (window.__bolloonPulses && window.__bolloonPulses[0] && window.__bolloonPulses[0].config)
+        ? window.__bolloonPulses[0].config.tasksPageSize : null,
+      vw: window.innerWidth,
+      pageText: document.body.innerText || '',
+      pageHtml: document.documentElement.outerHTML || '',
+      overFlow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  })()`;
+
+  // ① 基准 = **真数据**下这一块的高度 (用户说「就这个目前的高度」→ 后面所有形态都得等于它)
+  shouldIntercept = () => false;
+  await fxDisable().catch(() => {});
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
+  await waitUntil(`document.readyState === 'complete' && window.__bolloonPulses && window.__bolloonPulses.length > 0`);
+  const tasksRef = await waitStable(tasksBoxProbe, (v) => v && !v.missing && v.state === 'live');
+  fxOff();
+  const refOk = !!tasksRef && tasksRef.state === 'live' && typeof tasksRef.listH === 'number';
+  check(`[14] 基准: 真数据下待接单列表容器有高度 (${refOk ? tasksRef.listH + 'px' : '读不到'}) 且 overflow-y = auto (框内滚动)`,
+    refOk && tasksRef.overflowY === 'auto', JSON.stringify({ listH: tasksRef && tasksRef.listH, overflowY: tasksRef && tasksRef.overflowY }));
+  check(`[14] 基准: 真数据只有 ${tasksRef ? tasksRef.chipCount : '?'} 条 → 一页装得下 ⇒ 分页控件整行隐藏 (不添噪音)`,
+    !!tasksRef && tasksRef.ctlShown === false, JSON.stringify({ chips: tasksRef && tasksRef.chipCount, ctlShown: tasksRef && tasksRef.ctlShown }));
+  check(`[14] 基准: 网关页 markup 声明每页 ${TASKS_PAGE_EXP} 条 (data-pulse-tasks-page) 且 app 实例按它取值`,
+    !!tasksRef && tasksRef.declaredPage === String(TASKS_PAGE_EXP) && tasksRef.cfgPageSize === TASKS_PAGE_EXP,
+    JSON.stringify({ declared: tasksRef && tasksRef.declaredPage, cfg: tasksRef && tasksRef.cfgPageSize }));
+
+  // ② 夹具 7 条 → 一页 4 条 / 2 页; 先自证夹具真生效, 再断言
+  cMode = 'tasks-many';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await fxEnable(PULSE_PATTERN);
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-c.json`)}` });
+  const manyProof = await fxSelfProof('tasks-many', {
+    what: 'FX_TASKS_MANY (7 条待接单)', probeExpr: tasksBoxProbe,
+    domSignal: (v) => !!(v && !v.missing && v.chipCount === TASKS_PAGE_EXP),
+  });
+  const many = await evalJs(tasksBoxProbe);
+  const expPages = Math.ceil(7 / TASKS_PAGE_EXP);
+  check(`[14] 夹具 7 条 → 首屏只画一页 (${many.chipCount} 条 = 每页 ${TASKS_PAGE_EXP}), 不是把 7 条一次铺开`,
+    many.chipCount === TASKS_PAGE_EXP, JSON.stringify({ chips: many.chipCount, want: TASKS_PAGE_EXP }));
+  check(`[14] 页信息 = 「第 1/${expPages} 页 · 共 7 条」(页数与总数从快照条数算出来)`,
+    many.pageInfo === `第 1/${expPages} 页 · 共 7 条`, JSON.stringify(many.pageInfo));
+  check(`[14] 首页时「上一页」禁用 / 「下一页」可用`,
+    many.prevDisabled === true && many.nextDisabled === false, JSON.stringify({ prev: many.prevDisabled, next: many.nextDisabled }));
+  check(`[14] 分页控件出现在一页装不下时 (7 > ${TASKS_PAGE_EXP})`, many.ctlShown === true, JSON.stringify({ ctlShown: many.ctlShown }));
+  // ★ 固定高度: 7 条时这一块高度 == 真数据那个基准 (一像素不变), 且内容真的溢出 (框内可滚)
+  check(`[14] ★ 固定高度: 7 条时列表高 ${many.listH}px == 真数据基准 ${tasksRef && tasksRef.listH}px (条目再多也不撑高这一块)`,
+    refOk && many.listH === tasksRef.listH, JSON.stringify({ many: many.listH, ref: tasksRef && tasksRef.listH }));
+  check(`[14] ★ 固定高度: 整块(标题+标记+列表+控件)高度的增长 ${tasksRef ? +(many.blkH - tasksRef.blkH).toFixed(2) : '?'}px = 分页控件那一行 ${many.ctlH}px (+它的外边距), 不是被条目堆高的`,
+    refOk && many.blkH > tasksRef.blkH && many.blkH - tasksRef.blkH <= many.ctlH + 12,
+    JSON.stringify({ many: many.blkH, ref: tasksRef && tasksRef.blkH, ctlH: many.ctlH, delta: tasksRef ? +(many.blkH - tasksRef.blkH).toFixed(2) : null }));
+  check(`[14] ★ 框内可滚: scrollHeight ${many.scrollH} > clientHeight ${many.clientH} (多出来的在框里滚, 不往外长)`,
+    many.scrollH > many.clientH && many.overflowY === 'auto', JSON.stringify({ scrollH: many.scrollH, clientH: many.clientH, overflowY: many.overflowY }));
+  // 泄漏: 只看**待接单这一块** —— 夹具的 agent_sites 里本来就带一个 IPNS peerId 站链接 (那一块有它自己的门),
+  // 拿整页文本来判这一块会把「夹具自带的合法内容」当成这一块的泄漏。
+  check(`[14] 待接单任务区块 (夹具 7 条) 可见文本与 HTML 无 DID / 0x40 / multiaddr / 64 位私钥形态`,
+    !leakHit(many.regionText) && !leakHit(many.regionHtml), leakHit(many.regionText) || leakHit(many.regionHtml) || '');
+
+  // ③ 下一页: 第 2 页 = 剩下 3 条 (按 deadline 升序的**后 3 条**, 期望值从夹具推导)
+  const fxCaps = JSON.parse(JSON.stringify(FX_TASKS_MANY.open_tasks)).sort((a, b) => a.deadline - b.deadline).map((t) => t.capability);
+  const p2want = fxCaps.slice(TASKS_PAGE_EXP);
+  await evalJs(`(() => { const b = document.querySelector('#pulse [data-pulse-tasks-next]'); if (b) b.click(); return !!b; })()`);
+  await sleep(200);
+  const pg2 = await evalJs(tasksBoxProbe);
+  check(`[14] 点「下一页」→ 第 2 页画剩下 ${7 - TASKS_PAGE_EXP} 条, 且 capability 逐条 = 夹具排序后的后段`,
+    pg2.chipCount === 7 - TASKS_PAGE_EXP && JSON.stringify(pg2.caps) === JSON.stringify(p2want),
+    JSON.stringify({ caps: pg2.caps, want: p2want }));
+  check(`[14] 第 2/2 页时「下一页」禁用 / 「上一页」可用 (页码边界不靠用户猜)`,
+    pg2.nextDisabled === true && pg2.prevDisabled === false && pg2.pageInfo === `第 ${expPages}/${expPages} 页 · 共 7 条`,
+    JSON.stringify({ next: pg2.nextDisabled, prev: pg2.prevDisabled, info: pg2.pageInfo }));
+  check(`[14] 翻页不改高度: 第 2 页列表高 ${pg2.listH}px == 基准 ${tasksRef && tasksRef.listH}px`,
+    refOk && pg2.listH === tasksRef.listH, JSON.stringify({ p2: pg2.listH, ref: tasksRef && tasksRef.listH }));
+
+  // ④ 分栏切换: 真两列 (chip 左边界出现两种取值) + 高度不变 + aria-pressed/文案跟着状态走
+  await evalJs(`(() => { const b = document.querySelector('#pulse [data-pulse-tasks-cols]'); if (b) b.click(); return !!b; })()`);
+  await sleep(200);
+  const cols2 = await evalJs(tasksBoxProbe);
+  const uniq = (a) => Array.from(new Set(a)).length;
+  check(`[14] 点「分栏」→ 列表进入双栏 (is-cols2 + chip 左边界两种取值 ${JSON.stringify(Array.from(new Set(cols2.lefts)))})`,
+    cols2.isCols2 === true && uniq(cols2.lefts) === 2, JSON.stringify({ isCols2: cols2.isCols2, lefts: cols2.lefts }));
+  check(`[14] ★ 分栏不改高度: 双栏列表高 ${cols2.listH}px == 基准 ${tasksRef && tasksRef.listH}px`,
+    refOk && cols2.listH === tasksRef.listH, JSON.stringify({ cols2: cols2.listH, ref: tasksRef && tasksRef.listH }));
+  check(`[14] 分栏按钮状态与文案跟着走 (aria-pressed=true · 文案「单栏」= 再点一下回到单栏), 且这一页条数不变 (${cols2.chipCount})`,
+    cols2.colsPressed === 'true' && cols2.colsLabel === '单栏' && cols2.chipCount === pg2.chipCount,
+    JSON.stringify({ pressed: cols2.colsPressed, label: cols2.colsLabel, chips: cols2.chipCount }));
+  await evalJs(`(() => { const b = document.querySelector('#pulse [data-pulse-tasks-cols]'); if (b) b.click(); return !!b; })()`);
+  await sleep(200);
+  const cols1 = await evalJs(tasksBoxProbe);
+  check(`[14] 再点一次回到单栏 (is-cols2 移除 · 左边界只剩一种取值 · aria-pressed=false · 文案「分栏」)`,
+    cols1.isCols2 === false && uniq(cols1.lefts) === 1 && cols1.colsPressed === 'false' && cols1.colsLabel === '分栏',
+    JSON.stringify({ isCols2: cols1.isCols2, lefts: cols1.lefts, pressed: cols1.colsPressed, label: cols1.colsLabel }));
+
+  // ⑤ 390px: 双栏也不许撑破视口 (窄屏是这套版式最容易翻车的地方)
+  //    这里不拿 window.innerWidth 当尺子 (真机上那是布局视口, 会被页面/设备缩放改), 而是拿
+  //    ① 两列都在**列表框**里 (右边界 ≤ 框右边界) ② 这一块**隐藏前后**整页横向溢出不变 两条硬事实。
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await evalJs(`(() => { const b = document.querySelector('#pulse [data-pulse-tasks-cols]'); if (b) b.click(); return !!b; })()`);
+  await sleep(300);
+  const mob2 = await evalJs(`(() => {
+    const root = document.querySelector('#pulse');
+    const blk = root.querySelector('.pulse-tasks');
+    const list = root.querySelector('[data-pulse-tasks]');
+    const chips = Array.from(list.querySelectorAll('.pulse-task-chip'));
+    const de = document.documentElement;
+    const overWith = de.scrollWidth - de.clientWidth;
+    const prev = blk.style.display; blk.style.display = 'none';
+    const overWithout = de.scrollWidth - de.clientWidth;
+    blk.style.display = prev;
+    const lr = Math.round(list.getBoundingClientRect().right);
+    const ll = Math.round(list.getBoundingClientRect().left);
+    return {
+      isCols2: list.classList.contains('is-cols2'),
+      cols: Array.from(new Set(chips.map((c) => Math.round(c.getBoundingClientRect().left)))).length,
+      outside: chips.filter((c) => c.getBoundingClientRect().right > lr + 1).length,
+      leftGap: chips.filter((c) => c.getBoundingClientRect().left < ll - 1).length,
+      overWith, overWithout,
+      listW: Math.round(list.getBoundingClientRect().width),
+      colW: chips.length ? Math.round(chips[0].getBoundingClientRect().width) : 0,
+      clientW: de.clientWidth,
+    };
+  })()`);
+  check(`[14] 390px 双栏: 真两列 (${mob2.cols} 种左边界) 且每条都在列表框内 (越界 ${mob2.outside} 条 / 漏出左边界 ${mob2.leftGap} 条 · 框宽 ${mob2.listW}px · 单列宽 ${mob2.colW}px)`,
+    mob2.isCols2 === true && mob2.cols === 2 && mob2.outside === 0 && mob2.leftGap === 0 && mob2.colW * 2 <= mob2.listW + 2,
+    JSON.stringify(mob2));
+  check(`[14] 390px: 这一块不贡献横向溢出 (显示时 ${mob2.overWith}px / 隐藏后 ${mob2.overWithout}px)`,
+    mob2.overWith === mob2.overWithout, JSON.stringify({ with: mob2.overWith, without: mob2.overWithout }));
+  await cdp('Emulation.clearDeviceMetricsOverride');
+  await sleep(200);
+  await fxDisable().catch(() => {});
+  shouldIntercept = () => false;
+  cMode = 'full';
+  fxOff();
 
   // console 错误
   check('整轮访问无 console 错误 / 未捕获异常', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

@@ -562,7 +562,29 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-task-sub { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--lime); margin-bottom: 6px; }
 /* 「预算 · 原子」: 极短标记 (不是整句) —— 页面对预算只做展示, 不替快照换算小数位 */
 .pulse-task-note { font-family: var(--mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; }
-.pulse-tasks-list { margin: 0; }
+/* 列表容器 = **固定高度 + 下滑滚动** (2026-09-24 leo:「这个任务条目你设置一下固定高度, 就这个目前的高度
+   就可以, 以后可以下滑滚动查看, 分页分栏切换」)。
+   高度取「一行 chip 的实测值」(1440px 真浏览器量得 40.69px = 上 9 + 下 9 + 两条发丝线 2 + 行高 20.69),
+   所以加进来的条目**不会把这一块撑高**, 也不会把下面的区块推下去 —— 多出来的在框内滚动。
+   窄屏 chip 会换行, 实测 61.38px (390px), 故媒体查询里换一个基准值。 */
+.pulse-tasks { --pulse-task-row-h: 40.69px; }
+.pulse-tasks-list { margin: 0; height: var(--pulse-task-row-h); overflow-y: auto; overscroll-behavior: contain; }
+/* 分栏 (双栏): 同一固定高度下并排两条 —— 条目更多时先横着看, 再竖着滚 */
+.pulse-tasks-list.is-cols2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; align-content: start; }
+/* 分页 / 分栏控件 (只在网关页有钩子; 一页装得下 → 整行隐藏, 不添噪音) */
+.pulse-tasks-ctl {
+  display: flex; align-items: center; gap: 10px; margin: 8px 0 0;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-3);
+}
+.pulse-tasks-ctl[hidden] { display: none; }
+.pulse-tasks-pageinfo { color: var(--ink-3); }
+.pulse-ctl-btn {
+  font: inherit; letter-spacing: inherit; color: var(--ink-2); background: none; cursor: pointer;
+  border: 1px solid var(--hairline); border-radius: 2px; padding: 4px 8px;
+}
+.pulse-ctl-btn:hover:not(:disabled) { color: var(--lime); border-color: var(--lime); }
+.pulse-ctl-btn:disabled { opacity: 0.4; cursor: default; }
+.pulse-ctl-btn[aria-pressed="true"] { color: var(--lime); border-color: var(--lime); }
 .pulse-task-chip {
   display: block; padding: 9px 0; border-bottom: 1px solid var(--hairline);
   font-family: var(--mono); font-size: 11.5px; line-height: 1.8; color: var(--ink-2);
@@ -701,7 +723,7 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-compact .pulse-feed-text { font-size: 0.85rem; }
 .pulse-compact .pulse-empty { font-size: 0.8rem; margin-top: 4px; }
 /* 首页紧凑版的待接单任务: 一行标记 + 最近的条目 (chip 压成单行, 无分隔线) */
-.pulse-c-tasks { margin-top: 10px; font-size: 0.8rem; min-width: 0; overflow-wrap: anywhere; }
+.pulse-c-tasks { margin-top: 10px; font-size: 0.8rem; min-width: 0; overflow-wrap: anywhere; --pulse-task-row-h: 24.47px; }   /* 紧凑版一行 chip 的实测高度 (1440px) */
 .pulse-c-tasks-label { font-family: var(--mono); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-3); }
 .pulse-compact .pulse-tasks-list { display: block; margin-top: 2px; }
 .pulse-compact .pulse-task-chip,
@@ -737,6 +759,7 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   .pulse-ipns-field { flex: 1 1 auto; }
   .pulse-ipns-open { width: 100%; }
   /* 待接单任务: 窄屏一行一个 chip (capability 常有连字符长串, 靠 overflow-wrap 兜住, 不撑破容器) */
+  .pulse-tasks { --pulse-task-row-h: 61.38px; }   /* 窄屏 chip 换行后的实测行高 (390px), 仍是固定高度 + 框内滚动 */
   .pulse-tasks-list { display: block; }
   .pulse-task-chip { overflow-wrap: anywhere; word-break: break-word; }
   /* 首页紧凑版: 数值纵向堆叠 (值左 · 标签右), 不挤成一行 */

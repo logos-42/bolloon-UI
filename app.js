@@ -427,6 +427,7 @@ var BOLLOON_IPNS = (function () {
   var ACTIVITY_MAX = 60;                    // 链上活动表行数上限
   var SITES_MAX = 20;                       // 智能体私有站条数上限
   var TASKS_MAX = 20;                       // 待接单任务条数上限
+  var TASKS_PAGE = 4;                       // 待接单任务一页几条 (分页; 网关页用 data-pulse-tasks-page 可改)
 
   var instances = [];
 
@@ -649,6 +650,8 @@ var BOLLOON_IPNS = (function () {
     // 待接单任务条数上限: 首页紧凑版传 data-pulse-tasks-max="1" 只列最近到期的一条 (紧凑契约),
     // 被截掉的那几条用「+N」标出来 (不静默吞掉 —— 读者知道还有几条, 也知道去哪看全)。
     var TASKS_LIMIT = readLimit(root.getAttribute('data-pulse-tasks-max'), TASKS_MAX);
+    // 一页几条 (2026-09-24 leo: 固定高度 + 下滑滚动 + 分页 + 分栏切换)。分页控件只在一页装不下时出现。
+    var TASKS_PAGE_SIZE = readLimit(root.getAttribute('data-pulse-tasks-page'), TASKS_PAGE);
     var el = {
       scope: root.querySelector('[data-pulse-scope]'),
       snapTime: root.querySelector('[data-pulse-time]'),
@@ -678,6 +681,12 @@ var BOLLOON_IPNS = (function () {
       sitesEmpty: root.querySelector('[data-pulse-sites-empty]'),
       tasksList: root.querySelector('[data-pulse-tasks]'),
       tasksEmpty: root.querySelector('[data-pulse-tasks-empty]'),
+      // 分页 / 分栏控件 (2026-09-24): 只在网关页有这套钩子; 首页序栏没有 → 一直是 null, 也就不渲染
+      tasksCtl: root.querySelector('[data-pulse-tasks-ctl]'),
+      tasksPageInfo: root.querySelector('[data-pulse-tasks-pageinfo]'),
+      tasksPrev: root.querySelector('[data-pulse-tasks-prev]'),
+      tasksNext: root.querySelector('[data-pulse-tasks-next]'),
+      tasksCols: root.querySelector('[data-pulse-tasks-cols]'),
       feed: root.querySelector('[data-pulse-feed]'),
       feedEmpty: root.querySelector('[data-pulse-feed-empty]'),
       notes: root.querySelector('[data-pulse-notes]')
@@ -686,6 +695,7 @@ var BOLLOON_IPNS = (function () {
     var view = {
       state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '',
       actTotals: null, chainScope: null, totalsScope: null, totalsFields: null, rawFeed: [], notes: [], sites: [], tasks: [],
+      tasksPage: 0, tasksCols: false,
       scopeKey: 'observed', scopeLabels: null, sourceKind: null,
     };
     var timer = null, relTimer = null, failCount = 0, started = false, api = null;
@@ -1035,11 +1045,23 @@ var BOLLOON_IPNS = (function () {
     //   · 预算按**原子单位原样**显示 (USDC 是 6 位小数, 但页面没有汇率表也不该替数据换算 —— 换算
     //     等于替快照编一个它没说的数; 单位含义由标题旁的极短标记「预算 · 原子」承接)。
     //   · `claimed === true` 的行不画:「待接单」区块里出现已认领的单是事实错误 (主仓门也会拒这种快照)。
+    //   · 2026-09-24 leo:「这个任务条目你设置一下固定高度…以后可以下滑滚动查看, 分页分栏切换」:
+    //     ① 固定高度 + 框内滚动 = **纯 CSS** (style.css 里 .pulse-tasks-list 的 height: var(--pulse-task-row-h)) ——
+    //        条目再多也不会把这一块撑高, 页面逻辑不掺和; ② 分页 = 这里**只渲染当前页** (每页
+    //        TASKS_PAGE_SIZE 条, 页数由快照条数算出来, 不写死); ③ 分栏 = 一个 class 交给 CSS
+    //        (is-cols2), 切换不改数据也不改高度; ④ 「+N」仍是**本页上限 TASKS_LIMIT 截掉**的那几条 ——
+    //        上限口径与分页口径**不混**, 两个数各说各的。
     function renderTasks() {
       if (!el.tasksList) return;
       clear(el.tasksList);
       var en = lang() === 'en';
-      var shown = view.tasks.slice(0, TASKS_LIMIT);
+      var total = Math.min(view.tasks.length, TASKS_LIMIT);              // 上限之内的总条数 (= 分页的总量)
+      var pages = total > 0 ? Math.ceil(total / TASKS_PAGE_SIZE) : 1;    // 空 → 1 页 (不写「0 页」)
+      if (view.tasksPage > pages - 1) view.tasksPage = pages - 1;        // 条数变少 → 页码收拢到最后一页 (不空转)
+      if (view.tasksPage < 0) view.tasksPage = 0;
+      var start = view.tasksPage * TASKS_PAGE_SIZE;
+      var shown = view.tasks.slice(start, Math.min(start + TASKS_PAGE_SIZE, total));
+      if (el.tasksList.classList) el.tasksList.classList.toggle('is-cols2', view.tasksCols === true);
       for (var i = 0; i < shown.length; i++) {
         var t = shown[i];
         var chip = document.createElement('span');
@@ -1059,14 +1081,47 @@ var BOLLOON_IPNS = (function () {
         el.tasksList.appendChild(chip);
       }
       // 被上限截掉的条目**如实计数**(+N), 不静默吞掉 —— 空态/截断都不许写成「没有」
-      var rest = view.tasks.length - shown.length;
+      // (上限 TASKS_LIMIT 之外的才计 +N; 分页只是换个窗口看同一批, **不算被截掉**)
+      var rest = view.tasks.length - total;
       if (rest > 0) {
         var more = textNode('span', 'pulse-task-more', (en ? '+' : '+') + rest);
         more.setAttribute('data-pulse-tasks-more', String(rest));
         el.tasksList.appendChild(more);
       }
+      renderTasksCtl(total, pages);
       if (el.tasksEmpty) text(el.tasksEmpty, tasksEmptyText());
       toggleEmpty(el.tasksEmpty, view.tasks.length === 0);
+    }
+
+    // —— 分页 / 分栏控件 (只有网关页有钩子; 首页序栏没有 → 整个函数直接返回) ——
+    // 一页装得下就整行隐藏 (不添噪音); 页数 = 从快照条数算出来的, 不写死。
+    function renderTasksCtl(total, pages) {
+      if (!el.tasksCtl) return;
+      var show = total > TASKS_PAGE_SIZE;
+      if (show) el.tasksCtl.removeAttribute('hidden');
+      else el.tasksCtl.setAttribute('hidden', '');
+      if (!show) return;
+      if (el.tasksPageInfo) text(el.tasksPageInfo, pageInfoText(view.tasksPage + 1, pages, total));
+      if (el.tasksPrev) el.tasksPrev.disabled = view.tasksPage <= 0;
+      if (el.tasksNext) el.tasksNext.disabled = view.tasksPage >= pages - 1;
+      if (el.tasksCols) {
+        el.tasksCols.setAttribute('aria-pressed', view.tasksCols ? 'true' : 'false');
+        text(el.tasksCols, colsText());
+      }
+    }
+
+    // 「第 p/pages 页 · 共 total 条」—— total = 快照里未认领且未过期的条数 (与 chip 同源), 不是本页渲染了几条。
+    function pageInfoText(p, pages, total) {
+      return lang() === 'en'
+        ? 'Page ' + p + '/' + pages + ' · ' + total + ' task' + (total === 1 ? '' : 's')
+        : '第 ' + p + '/' + pages + ' 页 · 共 ' + total + ' 条';
+    }
+
+    // 分栏按钮的文案随状态走 (分栏 ↔ 单栏), 所以它**故意没有 data-zh/data-en** ——
+    // applyLang 只自动翻静态标记节点, 这个按钮由本函数在每次重画时按当前语言写 (切语言走 redraw() 会再进来)。
+    function colsText() {
+      var en = lang() === 'en';
+      return view.tasksCols ? (en ? 'one column' : '单栏') : (en ? 'two columns' : '分栏');
     }
 
     // 空态只能说「暂未观察到」—— 不显示假 0, 也不写与事实相反的「尚未接入」(入口是接了的)。
@@ -1149,6 +1204,7 @@ var BOLLOON_IPNS = (function () {
     function clearData() {
       view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.tasks = []; view.sourceKind = null;
       view.actTotals = null; view.chainScope = null; view.totalsScope = null; view.totalsFields = null;
+      view.tasksPage = 0;    // 快照读不到 → 页码归零 (分栏偏好是读者的选择, 保留)
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.tasksSettled, null);
@@ -1310,12 +1366,18 @@ var BOLLOON_IPNS = (function () {
       });
     }
 
+    // —— 分页 / 分栏的交互 (只在有这套钩子的页面生效; 没有钩子这些节点就是 null) ——
+    // 越界不自己做判断: 一律交给 renderTasks 收拢页码 (它拿快照条数算出页数), 免得两处各算一套。
+    if (el.tasksPrev) el.tasksPrev.addEventListener('click', function () { view.tasksPage = view.tasksPage - 1; renderTasks(); });
+    if (el.tasksNext) el.tasksNext.addEventListener('click', function () { view.tasksPage = view.tasksPage + 1; renderTasks(); });
+    if (el.tasksCols) el.tasksCols.addEventListener('click', function () { view.tasksCols = !view.tasksCols; renderTasks(); });
+
     api = {
       version: 2,
       root: root,
       key: root.id || root.getAttribute('data-pulse-name') || '',
       state: 'loading',
-      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, activityMax: ACTIVITY_MAX, tasksMax: TASKS_LIMIT },
+      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, activityMax: ACTIVITY_MAX, tasksMax: TASKS_LIMIT, tasksPageSize: TASKS_PAGE_SIZE },
       refresh: function () { try { return refresh(); } catch (e) { return null; } },
       tick: function () { try { updateRelTimes(); } catch (e) {} },
       redraw: function () { try { redraw(); } catch (e) {} },
