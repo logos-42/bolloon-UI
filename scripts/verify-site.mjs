@@ -38,7 +38,7 @@
  *      并带阴性对照 (把这一格塞回页面 → 必红, 见 docs/wiki/log.md)。
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=29 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=31 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -126,11 +126,31 @@
  *      就这个目前的高度就可以, 以后可以下滑滚动查看, 分页分栏切换」): 列表容器 `[data-pulse-tasks]` 由 CSS
  *      固定成**一行 chip 的高度** (`--pulse-task-row-h`, 1440px 实测 40.69px / 390px 61.38px) 且 `overflow-y:auto`
  *      —— 条目再多也不撑高这一块; 一页 = `data-pulse-tasks-page` (网关页 4) 条, 页数由**快照条数**算出;
- *      控件 (`[data-pulse-tasks-ctl]`) 只在条数 > 一页时出现; 「分栏」按钮切 `is-cols2` 双栏并记 `aria-pressed`;
+ *      控件 (`[data-pulse-tasks-ctl]`) 只在条数 > 一页时出现; 「切到双栏 / 切回单栏」按钮切 `is-cols2` 双栏并记
+ *      `aria-pressed` (2026-09-24 leo:「切换也太模糊」→ 按钮文案写**动作 + 去向**: 分栏按钮不写状态名「双栏」, 翻页
+ *      写「上一页 / 下一页」, 每个按钮另带 title 与含可见文案的 aria-label, 禁用时也写明「已经是第一页/最后一页」;
+ *      门里有一条专门抓「切换」这类两边都指的说法);
  *      「+N」仍只数**上限之外**被截掉的条目 (与分页口径不混)。断言 [14] 分两段: 先用**真数据**量出这一块的
  *      高度当基准 (并验「一页装得下 ⇒ 控件整行隐藏」), 再注入夹具 FX_TASKS_MANY (7 条) 验分页/分栏/边界,
  *      并在每步都要求 **高度逐像素等于基准** (即「加了 6 条, 这一块一像素没长」), 390px 下双栏不许撑破视口。
  *      期望值全部从夹具/快照推导 (页数 `Math.ceil(7/每页)`, 第 2 页的 capability = 排序后的后段), 不写死。
+ *   ㉕ 链上活动表的**高度上限 = 十五行 + 表头钉住 + 底部十五行/页** (2026-09-24 leo:「链上索引 · 全量 · 15 行 …
+ *      可以按十五行的高度来设计吗」+「分页栏切换…在十五行底部」): 表体外面那一层 `[data-pulse-activity-scroll]`
+ *      用 CSS 变量 `--pulse-activity-h` 封顶在**现在这份 15 行的真高度**上 (1440px 实测 865.03px = caption 30.69
+ *      + 表头 41.19 + 15×52.84; 窄屏 1233px), 超出就在框内滚 —— 整页不再被表拉长; 表头 `position: sticky`
+ *      + 不透明底 (滚到下面列名还在, 行不从背后透出来)。分页栏 (`[data-pulse-activity-ctl]`) 贴着十五行底部,
+ *      一页 = `data-pulse-activity-page` (15) 行 = 高度上限那一份 ⇒「翻页」= 「换一屏」; 与待接单任务那一行**故意
+ *      不同**: 只要有行就**始终显示** (leo 要的就是这条栏), 一行都没有才整行 hidden (不写「共 0 行」这种假 0)。
+ *      断言 [15] 分两段: 先用**真数据**量出 15 行的几何当基准 (并验 max-height 与它逐像素一致 —— 样式里那个
+ *      字面量不许跟真实行高漂开), 再注入夹具 FX_ACTIVITY_MANY (70 行 = 60 上限 + 10 未列) 验「高度一像素没长」
+ *      「多出来的真在框里滚」「逐页翻到底每页行数 = min(每页, 剩余)」「末页按钮禁用」「上限口径 (页信息 60+10)
+ *      与口径行 (70 行) 对得上」「390px 上限跟着窄屏行高走且横向仍可滚」。期望值全部推导, 不写死某页几行。
+ *      ① 每页 = 上限那一份 ⇒ 每页**正好一屏** (scrollHeight == clientHeight): 翻页就够了, 不用在框里盲滚;
+ *      「内容一超上限就在框内滚」这条是**安全网**, 门用「页面里临时把行摞到 60 行」直接量它 —— 并顺手量一次
+ *      「把上限拿掉这一块会被撑到多高」(拿掉才长的上限才是载荷的; 只在 15 行上量不出来: 15 行正好等于上限)。
+ *      ② 分页栏文案同样按「动作 + 去向」断言 (含禁用态的说法), 与 [14] 共用同一支控件探针;
+ *      ③ 控件配色按**品牌色**断言: 禁用态 = 暗调 lime + 虚线边 (真快照长期 1/1 页 ⇒ 这栏天天是禁用样, 一旦写成
+ *      灰字灰边, bolloon 色系在线上根本看不见 —— 这条回归是真截图复核抓到的, 所以要有门守着)。
  *
  * 活动区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
  * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago / data-pulse-age
@@ -139,6 +159,9 @@
  *               但 markup 里没有 = 渲染不出来)
  *            / data-pulse-scope-tag="<同上>|…"  (2026-09-24: 每个数就地贴的逐字段口径短标记)
  *            / data-pulse-activity-body / data-pulse-activity-empty / data-pulse-activity-source
+ *            / data-pulse-activity-scroll (表体那一层: 高度上限 / 框内滚动 / 表头 sticky —— 纯 CSS, app.js 不读它,
+ *              但门要从它身上量几何, 所以也列为钩子) / data-pulse-activity-ctl / -pageinfo / -prev / -next
+ *              (2026-09-24: 链上活动表底部那行分页栏; 一页几行由 <section> 上的 data-pulse-activity-page 声明)
  *            / data-pulse-feed / data-pulse-notes / data-pulse-hint
  *            / data-pulse-sites / data-pulse-sites-empty
  *            / data-pulse-ipns-form / data-pulse-ipns-input / data-pulse-ipns-open / data-pulse-ipns-msg
@@ -156,6 +179,11 @@ import path from 'node:path';
 const BASE = (process.argv[2] || 'https://bolloon.cn').replace(/\/$/, '');
 const PAGES = ['index.html', 'install.html', 'hibs.html', 'gateway.html', 'docs.html'];
 const ALL_PAGES = [...PAGES, 'privacy.html', 'skill.html'];
+// 链上活动表一页几行 + 行数上限 (2026-09-24): 与页面/样式对齐 —— markup 上 data-pulse-activity-page="15",
+// app.js 的 ACTIVITY_MAX = 60。两个数在断言里都用**推导** (页数 = ceil(行数/每页), 每页行数 = min(每页, 剩余)),
+// 不写死某一页画几行 —— 只有这两个「来源」是常量。
+const ACT_PAGE_EXP = 15;
+const ACT_MAX_EXP = 60;
 
 function resolveChrome() {
   const cands = [
@@ -306,6 +334,38 @@ const pulseProbe = (rootSel) => `(() => {
         const n = q('[data-pulse-activity-totals]');
         return n ? getComputedStyle(n).display !== 'none' : null;
       })(),
+      // —— 表框几何 + 分页栏 (2026-09-24「上限 = 十五行 + 底部十五行/页」) ——
+      // box = .pulse-table-scroll 那一层 (表体唯一滚动归属); 高度上限/表头是否钉住/能不能滚都从这里量。
+      box: (function () {
+        const b = q('[data-pulse-activity-scroll]');
+        if (!b) return null;
+        const r = b.getBoundingClientRect();
+        const cs = getComputedStyle(b);
+        const cap = q('[data-pulse-activity] caption');
+        const thead = q('[data-pulse-activity] thead');
+        const th = q('[data-pulse-activity] thead th');
+        const thcs = th ? getComputedStyle(th) : null;
+        const r0 = trs[0] ? trs[0].getBoundingClientRect() : null;
+        return {
+          h: +r.height.toFixed(2), clientH: b.clientHeight, scrollH: b.scrollHeight,
+          scrollW: b.scrollWidth, clientW: b.clientWidth, scrollTop: b.scrollTop, top: Math.round(r.top),
+          maxH: cs.maxHeight, overflowY: cs.overflowY, overflowX: cs.overflowX,
+          capH: cap ? +cap.getBoundingClientRect().height.toFixed(2) : null,
+          theadH: thead ? +thead.getBoundingClientRect().height.toFixed(2) : null,
+          rowH: r0 ? +r0.height.toFixed(2) : null,
+          thPos: thcs ? thcs.position : null, thBg: thcs ? thcs.backgroundColor : null,
+        };
+      })(),
+      ctlShown: (function () {
+        const c = q('[data-pulse-activity-ctl]');
+        return c ? !(c.hasAttribute('hidden') || getComputedStyle(c).display === 'none') : null;
+      })(),
+      pageInfo: txt('[data-pulse-activity-pageinfo]').trim(),
+      prevDisabled: q('[data-pulse-activity-prev]') ? q('[data-pulse-activity-prev]').disabled : null,
+      nextDisabled: q('[data-pulse-activity-next]') ? q('[data-pulse-activity-next]').disabled : null,
+      declaredPage: root.getAttribute('data-pulse-activity-page'),
+      cfgPageSize: (window.__bolloonPulses && window.__bolloonPulses[0] && window.__bolloonPulses[0].config)
+        ? window.__bolloonPulses[0].config.activityPageSize : null,
     } : null,
     // 旧版网关页的三块内容 (8 个数字格 / 能力分布 / 最近活动) 已不该出现在活动区里
     // (不算 .pulse-sub —— 智能体私有站的标题仍在用这个类)
@@ -851,7 +911,8 @@ async function main() {
     //        'pulse-zero-legacy' → 同形但没有口径三块 (口径行必须整行隐藏)
     if (p.request.url.includes('network-pulse-verify-c')) {
       const tag = cMode === 'full' ? 'live' : cMode === 'no-tasks' ? 'no-tasks'
-        : cMode === 'pulse-zero' ? 'pulse-zero' : cMode === 'tasks-many' ? 'tasks-many' : 'pulse-zero-legacy';
+        : cMode === 'pulse-zero' ? 'pulse-zero' : cMode === 'tasks-many' ? 'tasks-many'
+          : cMode === 'activity-many' ? 'activity-many' : 'pulse-zero-legacy';
       fxHit(tag, p.request.url);
       fxLog(`C 档 (${cMode}) → 回夹具 ${tag}`);
       fulfillJson(p.requestId,
@@ -859,7 +920,8 @@ async function main() {
           : cMode === 'no-tasks' ? FX_NO_TASKS
             : cMode === 'pulse-zero' ? FX_PULSE_ZERO
               : cMode === 'tasks-many' ? FX_TASKS_MANY
-                : FX_PULSE_ZERO_LEGACY);
+                : cMode === 'activity-many' ? (FX_ACTIVITY_MANY || FX_LIVE)
+                  : FX_PULSE_ZERO_LEGACY);
       return;
     }
     // 第五档: 浏览器链接夹具 (2026-09-23) —— 每轮按 eMode 自动回夹具 (不走手工队列),
@@ -1289,6 +1351,29 @@ async function main() {
         short: { zh: '未接入', en: 'not connected' },
         label: { zh: '没有可用源 → 报「未接入」而不是 0 (本机签名审计账读不到)', en: 'no source → report not connected, not 0' } } } };
     return fxMark(c, 'sig-unavailable');
+  })();
+
+  // ★★★★★ 链上活动表「七十行」夹具 (2026-09-24 leo:「链上索引 · 全量 · 15 行 … 可以按十五行的高度来设计吗」):
+  //   真快照此刻正好 15 行 = 一页 → 翻页按钮全禁用, 拿它**验不出**「翻页真换行」, 也验不出「行数涨了这一块一像素不长」。
+  //   这里从**真快照**把行复制到 70 条 (= 60 行上限之内的 60 + 被上限截掉的 10), activity_totals.rows 同步改 70 ——
+  //   于是「页信息 (共 60 行 · 另 10 行未列)」与「口径行 (70 行)」两个数**对得上** (不是各说各话)。
+  //   行数/页数/每页几条的期望值全部从这份夹具**推导**, 不写死某一页画几行。
+  //   (位置: 必须排在 REAL_SNAP_ON_DISK / snapClone 之后 —— 早一步引用就是 TDZ 崩, 踩过。)
+  const ACT_MANY_ROWS = 70;
+  const FX_ACTIVITY_MANY = (() => {
+    if (!REAL_SNAP_ON_DISK || !Array.isArray(REAL_SNAP_ON_DISK.confirmed_activity)
+      || !REAL_SNAP_ON_DISK.confirmed_activity.length) return null;
+    const c = snapClone(REAL_SNAP_ON_DISK);
+    const src = c.confirmed_activity;
+    c.confirmed_activity = Array.from({ length: ACT_MANY_ROWS }, (_, i) => {
+      const r = snapClone(src[i % src.length]);
+      r.block = (Number(r.block) || 1) + Math.floor(i / src.length);   // 每条仍是一条独立事实 (区块各不相同)
+      return r;
+    });
+    if (c.activity_totals && typeof c.activity_totals === 'object') {
+      c.activity_totals = { ...c.activity_totals, rows: ACT_MANY_ROWS };
+    }
+    return fxMark(c, 'activity-many');
   })();
 
   const fxNotesHas = (tag) => (v) => !!(v && typeof v.notes === 'string' && v.notes.includes(fxNoteText(tag)));
@@ -1774,7 +1859,9 @@ async function main() {
   const mob = await evalJs(`(() => {
     const de = document.documentElement;
     const sum = document.querySelector('#pulse .pulse-summary');
-    const wrap = document.querySelector('#pulse .pulse-table-wrap');
+    // 2026-09-24: 承接滚动的是**内层** .pulse-table-scroll (它同时管横向 overflow:auto 与十五行的高度上限);
+    //   外层 .pulse-table-wrap 只剩外边距 —— 量的东西必须和负责滚的东西是同一个, 否则量到的是 342==342 的假绿。
+    const wrap = document.querySelector('#pulse .pulse-table-scroll');
     const overAll = de.scrollWidth - de.clientWidth;
     const prev = wrap.style.display;
     wrap.style.display = 'none';
@@ -2371,10 +2458,21 @@ async function main() {
   // 断言前自证 + 等「消费证」出现 (夹具 notes 里的 __vfy:pulse-zero 出现 = 整轮渲染跑完):
   // 既治固定 sleep 量到中间态, 也让「夹具没生效」与「页面错」分得开。
   await fxSelfProof('pulse-zero', { what: 'FX_PULSE_ZERO (0 任务 + 25 行 + 口径三块)' });
-  // 等「状态到 live 且表格真画满 25 行」再断言 —— 固定 sleep 会量到中间态 (实测 rows:0 的假失败)
-  const pz = await waitStable(pulseProbe('#pulse'), (v) => v && v.state === 'live' && v.act.rowCount === 25);
-  check('25 行真画出来 (与快照 activity_totals.rows 一致)', pz.state === 'live' && pz.act.rowCount === 25,
-    JSON.stringify({ s: pz.state, rows: pz.act.rowCount }));
+  // 等「状态到 live 且第 1 页真画满一页 (ACT_PAGE_EXP 行)」再断言 —— 固定 sleep 会量到中间态 (实测 rows:0 的假失败)。
+  // 2026-09-24 改 (leo 要的「分页栏在十五行底部」): 25 行现在**分页** —— DOM 里是一页的量, 25 是页信息/口径行里的总数。
+  const pz = await waitStable(pulseProbe('#pulse'), (v) => v && v.state === 'live' && v.act.rowCount === ACT_PAGE_EXP);
+  check(`25 行 → 第 1 页真画满 ${ACT_PAGE_EXP} 行 (剩下 ${25 - ACT_PAGE_EXP} 行在第 2 页), 页信息说总数 25 (与快照 activity_totals.rows 一致)`,
+    pz.state === 'live' && pz.act.rowCount === ACT_PAGE_EXP && pz.act.pageInfo === `第 1/2 页 · 共 25 行`,
+    JSON.stringify({ s: pz.state, rows: pz.act.rowCount, info: pz.act.pageInfo }));
+  await evalJs(`(() => { const b = document.querySelector('#pulse [data-pulse-activity-next]'); if (b) b.click(); return !!b; })()`);
+  await sleep(250);
+  const pz2 = await evalJs(pulseProbe('#pulse'));
+  check(`点「下一页」→ 第 2/2 页画剩下 ${25 - ACT_PAGE_EXP} 行, 且「下一页」禁用 / 「上一页」可用 (页边界不靠用户猜)`,
+    pz2.act.rowCount === 25 - ACT_PAGE_EXP && pz2.act.pageInfo === '第 2/2 页 · 共 25 行' &&
+    pz2.act.nextDisabled === true && pz2.act.prevDisabled === false,
+    JSON.stringify({ rows: pz2.act.rowCount, info: pz2.act.pageInfo, next: pz2.act.nextDisabled, prev: pz2.act.prevDisabled }));
+  await evalJs(`(() => { const b = document.querySelector('#pulse [data-pulse-activity-prev]'); if (b) b.click(); return !!b; })()`);
+  await sleep(250);
   check('小结行如实显示 0 (24h 脉冲事件口径) —— 不为了"好看"改数字; 「已验证」槽已下线 (夹具给的 0 不再占一格)',
     pz.tasks === '0' && pz.tasksDone === '0' && pz.signatures === '0' && pz.tasksVerified === null,
     JSON.stringify({ t: pz.tasks, d: pz.tasksDone, v: pz.tasksVerified, sig: pz.signatures }));
@@ -2402,9 +2500,9 @@ async function main() {
   // 同一档换了夹具但 URL 相同 —— 必须等「这一份」的消费证 (__vfy:pulse-zero-legacy) 出现,
   // 否则会读到上一轮夹具的中间态 (这才是它以前会「时绿时红」的根因)
   await fxSelfProof('pulse-zero-legacy', { what: 'FX_PULSE_ZERO_LEGACY (缺口径三块)' });
-  const pzL = await waitStable(pulseProbe('#pulse'), (v) => v && v.state === 'live' && v.act.rowCount === 25);
-  check('老快照 (缺口径三块) → 口径行整行隐藏 (不自己数行数/不编网络名), 行照旧画 25 行',
-    pzL.state === 'live' && pzL.act.rowCount === 25 && pzL.act.totalsLineShown === false && pzL.act.totalsLine === '',
+  const pzL = await waitStable(pulseProbe('#pulse'), (v) => v && v.state === 'live' && v.act.rowCount === ACT_PAGE_EXP);
+  check(`老快照 (缺口径三块) → 口径行整行隐藏 (不自己数行数/不编网络名), 行照旧**一页** ${ACT_PAGE_EXP} 行 (25 行分页: 第 2 页 ${25 - ACT_PAGE_EXP} 行)`,
+    pzL.state === 'live' && pzL.act.rowCount === ACT_PAGE_EXP && pzL.act.totalsLineShown === false && pzL.act.totalsLine === '',
     JSON.stringify({ rows: pzL.act.rowCount, shown: pzL.act.totalsLineShown, line: pzL.act.totalsLine }));
   check('★ 老快照: 口径行没了 → 表区短标记退到表下数据源行 (「链上索引 · 全量」), 表里的行不会成为没口径的数字',
     pzL.act.source === '链上索引 · 全量' && scopeMarkers(pzL).tableOk,
@@ -2898,17 +2996,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=29 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=29 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=31 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=31 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=29');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=31');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=29/.test(html) || !/app\.js\?v=29/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=31/.test(html) || !/app\.js\?v=31/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=29 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=29 + app.js?v=29 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=31 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=31 + app.js?v=31 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):
@@ -3420,6 +3518,31 @@ async function main() {
   // 拿真数据**验不出分页**(也验不出「加了条目高度不变」)。所以这里注入 FX_TASKS_MANY (7 条),
   // 并**先量真数据下的高度当基准** —— 用户要的是「就这个目前的高度」, 那就要证明加条目后**一像素没变**。
   // 夹具未自证生效时, 本节失败会被 check() 报成「夹具错 · 未生效」, 不会被读成页面缺陷。
+  // 控件文案探针 (2026-09-24 leo:「切换也太模糊」): 把**每一个**控件按钮的可见文案 + title/aria-label + 禁用态抓出来。
+  //   断言口径: ① 不许出现「切换 / switch」这类两边都指、要读者自己猜的说法, 也不许空文案;
+  //   ② 文案是**动词 + 去向**(上一页 / 下一页 / 切到双栏 / 切回单栏); ③ title 非空, 连禁用时也有说法 (按不动要有原因);
+  //   ④ aria-label 里**含可见文案** (读屏念出的名字与眼睛看到的字一致, 不做两套说法)。
+  const CTL_BUTTONS_JS = `(() => Array.prototype.map.call(document.querySelectorAll('#pulse .pulse-ctl-btn'), (b) => ({
+    hook: b.hasAttribute('data-pulse-activity-prev') ? 'act-prev' : b.hasAttribute('data-pulse-activity-next') ? 'act-next'
+      : b.hasAttribute('data-pulse-tasks-prev') ? 'tasks-prev' : b.hasAttribute('data-pulse-tasks-next') ? 'tasks-next'
+        : b.hasAttribute('data-pulse-tasks-cols') ? 'tasks-cols' : '?',
+    text: (b.textContent || '').trim(), title: b.getAttribute('title') || '', aria: b.getAttribute('aria-label') || '',
+    disabled: b.disabled === true, shown: !b.closest('[hidden]'),
+    color: getComputedStyle(b).color, borderStyle: getComputedStyle(b).borderTopStyle, bg: getComputedStyle(b).backgroundColor,
+  })))()`;
+  const VAGUE_CTL = ['切换', 'switch', 'toggle'];   // 这些词不说明"切什么、切成什么"
+  // 品牌色 (与 style.css 的 --lime / --lime-deep 同一个值): 控件四态都要在这两个色上, 不许退回中性灰 ——
+  //   真截图复核抓到过: 真快照正好 15 行 ⇒ 翻页按钮**长期禁用**, 禁用态一旦写成灰字灰边, 这条栏在线上永远是灰的。
+  const LIME = 'rgb(196, 214, 64)';
+  const LIME_DEEP = 'rgb(138, 148, 48)';
+  const GREY_ISH = ['rgb(92, 92, 84)', 'rgb(144, 144, 136)', 'rgb(136, 136, 136)'];   // --ink-3 / --ink-2 (旧控件色)
+  const ctlVerdict = (btns) => {
+    const shown = btns.filter((b) => b.shown);
+    const vague = shown.filter((b) => b.text.length === 0 || VAGUE_CTL.includes(b.text));
+    return { shown, vague, ok: shown.length > 0 && vague.length === 0 };
+  };
+  const ctlActsOf = (btns) => btns.filter((b) => b.shown && b.hook.startsWith('act-'));
+
   console.log('\n[14] 待接单任务: 固定高度 + 下滑滚动 + 分页 + 分栏 (真数据量基数 → 夹具 7 条验行为)');
 
   const tasksBoxProbe = `(() => {
@@ -3539,17 +3662,31 @@ async function main() {
     cols2.isCols2 === true && uniq(cols2.lefts) === 2, JSON.stringify({ isCols2: cols2.isCols2, lefts: cols2.lefts }));
   check(`[14] ★ 分栏不改高度: 双栏列表高 ${cols2.listH}px == 基准 ${tasksRef && tasksRef.listH}px`,
     refOk && cols2.listH === tasksRef.listH, JSON.stringify({ cols2: cols2.listH, ref: tasksRef && tasksRef.listH }));
-  check(`[14] 分栏按钮状态与文案跟着走 (aria-pressed=true · 文案「单栏」= 再点一下回到单栏), 且这一页条数不变 (${cols2.chipCount})`,
-    cols2.colsPressed === 'true' && cols2.colsLabel === '单栏' && cols2.chipCount === pg2.chipCount,
+  check(`[14] 分栏按钮状态与文案跟着走 (aria-pressed=true · 文案「切回单栏」= 按一下切回单栏), 且这一页条数不变 (${cols2.chipCount})`,
+    cols2.colsPressed === 'true' && cols2.colsLabel === '切回单栏' && cols2.chipCount === pg2.chipCount,
     JSON.stringify({ pressed: cols2.colsPressed, label: cols2.colsLabel, chips: cols2.chipCount }));
   await evalJs(`(() => { const b = document.querySelector('#pulse [data-pulse-tasks-cols]'); if (b) b.click(); return !!b; })()`);
   await sleep(200);
   const cols1 = await evalJs(tasksBoxProbe);
-  check(`[14] 再点一次回到单栏 (is-cols2 移除 · 左边界只剩一种取值 · aria-pressed=false · 文案「分栏」)`,
-    cols1.isCols2 === false && uniq(cols1.lefts) === 1 && cols1.colsPressed === 'false' && cols1.colsLabel === '分栏',
+  check(`[14] 再按一下回到单栏 (is-cols2 移除 · 左边界只剩一种取值 · aria-pressed=false · 文案「切到双栏」)`,
+    cols1.isCols2 === false && uniq(cols1.lefts) === 1 && cols1.colsPressed === 'false' && cols1.colsLabel === '切到双栏',
     JSON.stringify({ isCols2: cols1.isCols2, lefts: cols1.lefts, pressed: cols1.colsPressed, label: cols1.colsLabel }));
 
-  // ⑤ 390px: 双栏也不许撑破视口 (窄屏是这套版式最容易翻车的地方)
+  // ⑤ 控件文案 (2026-09-24 leo:「切换也太模糊」): 按钮说清"按下去会发生什么", 且带同源的 title/aria-label
+  const ctlT = await evalJs(CTL_BUTTONS_JS);
+  const ctlTV = ctlVerdict(ctlT);
+  check(`[14] ★ 控件文案说清动作, 不用「切换」这类要读者自己猜的说法: ${ctlTV.shown.map((b) => b.hook + '=' + JSON.stringify(b.text)).join(' ')}`,
+    ctlTV.ok, JSON.stringify(ctlT));
+  check('[14] 控件文案是**动词 + 去向**: 翻页 = 「上一页 / 下一页」, 分栏按钮 = 「切到双栏 / 切回单栏」(动作, 不是状态名)',
+    ctlTV.shown.every((b) => b.hook === 'tasks-prev' ? b.text === '上一页'
+      : b.hook === 'tasks-next' ? b.text === '下一页'
+        : b.hook === 'tasks-cols' ? (b.text === '切到双栏' || b.text === '切回单栏') : true),
+    JSON.stringify(ctlTV.shown.map((b) => [b.hook, b.text])));
+  check('[14] 每个控件按钮都带 title + aria-label (同源去向; aria-label 里含可见文案 —— 读屏与眼睛看到的是同一件事)',
+    ctlTV.shown.every((b) => b.title.length >= 4 && b.aria.startsWith(b.text) && b.aria.includes(b.title)),
+    JSON.stringify(ctlTV.shown.map((b) => [b.hook, b.text, b.title, b.aria])));
+
+  // ⑥ 390px: 双栏也不许撑破视口 (窄屏是这套版式最容易翻车的地方)
   //    这里不拿 window.innerWidth 当尺子 (真机上那是布局视口, 会被页面/设备缩放改), 而是拿
   //    ① 两列都在**列表框**里 (右边界 ≤ 框右边界) ② 这一块**隐藏前后**整页横向溢出不变 两条硬事实。
   await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
@@ -3583,6 +3720,206 @@ async function main() {
     JSON.stringify(mob2));
   check(`[14] 390px: 这一块不贡献横向溢出 (显示时 ${mob2.overWith}px / 隐藏后 ${mob2.overWithout}px)`,
     mob2.overWith === mob2.overWithout, JSON.stringify({ with: mob2.overWith, without: mob2.overWithout }));
+  await cdp('Emulation.clearDeviceMetricsOverride');
+  await sleep(200);
+  await fxDisable().catch(() => {});
+  shouldIntercept = () => false;
+  cMode = 'full';
+  fxOff();
+
+  // ═══ [15] 链上活动表: 高度上限 = 十五行 + 表头钉住 + 底部十五行/页 (2026-09-24 leo 要求) ═══
+  // leo:「链上索引 · 全量 · 15 行 … 可以按十五行的高度来设计吗」+「分页栏切换…在十五行底部」
+  //   → 表体外面那一层 (.pulse-table-scroll) 用 --pulse-activity-h 封顶在**现在这份 15 行的真高度**上
+  //     (1440px 实测 865.03px = caption 30.69 + 表头 41.19 + 15×52.84), 超出就在框内滚 —— 整页不再被表拉长;
+  //     分页栏贴在十五行底下, 一页 = data-pulse-activity-page 行 = 高度上限那一份, 所以「翻页」= 「换一屏」。
+  // 为什么必须吃夹具: 真快照此刻正好 15 行 = 一页 → 两个翻页按钮全禁用, 拿它验不出「翻页真的换行」;
+  //   也验不出「行数涨了这一块一像素没长」。所以注入 FX_ACTIVITY_MANY (70 行 = 60 行上限 + 10 行未列),
+  //   并**先量真数据那 15 行的几何当基准** —— leo 要的是「按十五行的高度」, 那就要证明多 55 行时高度不变。
+  // 夹具未自证生效时, 本节失败会被 check() 报成「夹具错 · 未生效」, 不会被读成页面缺陷。
+  console.log('\n[15] 链上活动表: 上限=十五行 + 表头钉住 + 底部十五行/页 (真数据量基准 → 夹具 70 行验行为)');
+
+  // ① 基准 = 真数据那份的几何 (不加任何夹具)
+  shouldIntercept = () => false;
+  await fxDisable().catch(() => {});
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
+  await waitUntil(`document.readyState === 'complete' && window.__bolloonPulses && window.__bolloonPulses.length > 0`);
+  const actRef = await waitStable(pulseProbe('#pulse'),
+    (v) => v && v.state === 'live' && v.act && v.act.rowCount > 0 && !!v.act.box);
+  fxOff();
+  let actSnap = null;
+  try { actSnap = JSON.parse(await fetchText(`${BASE}/network-pulse.json`)); } catch { actSnap = null; }
+  const actSnapRows = actSnap && Array.isArray(actSnap.confirmed_activity) ? actSnap.confirmed_activity.length : null;
+  const refBox = actRef && actRef.act.box ? actRef.act.box : null;
+  const refRows = actRef && actRef.act ? actRef.act.rowCount : null;
+  const refSum = refBox && refBox.rowH ? +(refBox.capH + refBox.theadH + refRows * refBox.rowH).toFixed(2) : null;
+  const actRefOk = !!(refBox && typeof refRows === 'number' && refRows > 0);
+  check(`[15] 基准: 表框高度 ${refBox && refBox.h}px = caption ${refBox && refBox.capH} + 表头 ${refBox && refBox.theadH} + ${refRows}×${refBox && refBox.rowH} 行 (差 ${refSum != null && refBox ? +(refBox.h - refSum).toFixed(2) : '?'}px)`,
+    actRefOk && Math.abs(refBox.h - refSum) <= 2,
+    JSON.stringify({ h: refBox && refBox.h, sum: refSum, capH: refBox && refBox.capH, theadH: refBox && refBox.theadH, rowH: refBox && refBox.rowH, rows: refRows }));
+  check(`[15] 基准: 真快照行数 ${actSnapRows == null ? '读取失败' : actSnapRows} → 表里 ${refRows} 行 (= 上限 ${ACT_MAX_EXP} 之内那份)`,
+    actRefOk && (actSnapRows == null || refRows === Math.min(actSnapRows, ACT_MAX_EXP)),
+    JSON.stringify({ snap: actSnapRows, dom: refRows }));
+  check(`[15] ★ 高度上限就是这份真高度: max-height = ${refBox && refBox.maxH} ≈ 表框高 ${refBox && refBox.h}px (样式里那个字面量不许跟真实行高漂开)`,
+    actRefOk && Math.abs(parseFloat(refBox.maxH) - refBox.h) <= 1,
+    JSON.stringify({ maxH: refBox && refBox.maxH, h: refBox && refBox.h }));
+  check('[15] 表框 overflow-y = auto (框内滚动) 且这一份 15 行正好装满 ⇒ scrollHeight == clientHeight (此刻没有藏起来的行)',
+    actRefOk && refBox.overflowY === 'auto' && refBox.scrollH === refBox.clientH,
+    JSON.stringify({ oy: refBox && refBox.overflowY, sh: refBox && refBox.scrollH, ch: refBox && refBox.clientH }));
+  check(`[15] ★ 表头钉在框顶: position = sticky + 不透明底色 (滚到下面时列名还在, 行不会从它背后透出来)`,
+    actRefOk && refBox.thPos === 'sticky' && !/rgba\(\d+, \d+, \d+, 0\)/.test(refBox.thBg),
+    JSON.stringify({ pos: refBox && refBox.thPos, bg: refBox && refBox.thBg }));
+  check(`[15] 基准: 分页栏就在十五行底部 —— 真数据 ${refRows} 行 = 一页 ⇒ 写着「第 1/1 页 · 共 ${refRows} 行」且两个按钮都禁用 (leo 要的就是这条栏, 不是藏起来)`,
+    actRefOk && actRef.act.ctlShown === true && actRef.act.pageInfo === `第 1/1 页 · 共 ${refRows} 行` &&
+    actRef.act.prevDisabled === true && actRef.act.nextDisabled === true,
+    JSON.stringify({ shown: actRef.act.ctlShown, info: actRef.act.pageInfo, prev: actRef.act.prevDisabled, next: actRef.act.nextDisabled }));
+  check(`[15] 基准: 网关页 markup 声明每页 ${ACT_PAGE_EXP} 行 (data-pulse-activity-page) 且 app 实例按它取值`,
+    actRefOk && actRef.act.declaredPage === String(ACT_PAGE_EXP) && actRef.act.cfgPageSize === ACT_PAGE_EXP,
+    JSON.stringify({ declared: actRef.act.declaredPage, cfg: actRef.act.cfgPageSize }));
+
+  // ①b 分页栏文案 (2026-09-24 leo:「切换也太模糊」): 真数据 1 页时两个按钮都禁用 —— 正是验「按不动也有说法」的时候
+  const ctlBase = await evalJs(CTL_BUTTONS_JS);
+  const ctlBaseV = ctlVerdict(ctlBase);
+  check(`[15] ★ 分页栏文案说清动作: ${ctlActsOf(ctlBase).map((b) => b.hook + '=' + JSON.stringify(b.text)).join(' ')} (翻页写「上一页 / 下一页」, 不用「切换」这种要读者猜的说法)`,
+    ctlBaseV.ok && ctlActsOf(ctlBase).every((b) => b.text === '上一页' || b.text === '下一页'), JSON.stringify(ctlBase));
+  check(`[15] 1/1 页时两个按钮都禁用**且都写明为什么按不动** (${ctlActsOf(ctlBase).map((b) => JSON.stringify(b.title)).join(' / ')}), 不留空 title`,
+    ctlActsOf(ctlBase).length === 2 && ctlActsOf(ctlBase).every((b) => b.disabled === true && b.title.length >= 4 && b.title !== b.text && b.aria.startsWith(b.text)),
+    JSON.stringify(ctlActsOf(ctlBase).map((b) => [b.hook, b.text, b.title, b.aria, b.disabled])));
+  check(`[15] ★ 禁用态也穿品牌色 (暗调 lime ${LIME_DEEP} + 虚线边), 不退回中性灰 —— 真快照长期 1/1 页, 这条栏天天是禁用样; 灰了就看不见 bolloon 色系 (真截图复核抓到的回归)`,
+    ctlActsOf(ctlBase).length === 2 && ctlActsOf(ctlBase).every((b) => b.color === LIME_DEEP && b.borderStyle === 'dashed' && !GREY_ISH.includes(b.color)),
+    JSON.stringify(ctlActsOf(ctlBase).map((b) => [b.hook, b.color, b.borderStyle, b.bg])));
+
+  // ② 夹具 70 行: 高度不变 + 框内真滚 + 翻页真换行 + 页边界 + 上限口径与截断口径对得上
+  fxPre('activity-many-fixture', !!FX_ACTIVITY_MANY,
+    'network-pulse.json 读不到 (或 confirmed_activity 为空) → 70 行夹具造不出来 (先跑 refresh-pulse)');
+  cMode = 'activity-many';
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify');
+  await fxEnable(PULSE_PATTERN);
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-c.json`)}` });
+  await fxSelfProof('activity-many', {
+    what: `FX_ACTIVITY_MANY (${ACT_MANY_ROWS} 行链上活动)`, probeExpr: pulseProbe('#pulse'),
+    domSignal: (v) => !!(v && v.act && v.act.rowCount === ACT_PAGE_EXP),
+  });
+  const manyAct = await evalJs(pulseProbe('#pulse'));
+  const mBox = manyAct.act.box;
+  const cappedTotal = Math.min(ACT_MANY_ROWS, ACT_MAX_EXP);          // 上限之内的行数 = 分页总量
+  const restRows = ACT_MANY_ROWS - cappedTotal;                      // 被上限截掉的 = 「另 R 行未列」
+  const actExpPages = Math.ceil(cappedTotal / ACT_PAGE_EXP);
+  const wantInfo = (p) => `第 ${p}/${actExpPages} 页 · 共 ${cappedTotal} 行 · 另 ${restRows} 行未列`;
+  check(`[15] 夹具 ${ACT_MANY_ROWS} 行 → 第 1 页只画 ${ACT_PAGE_EXP} 行 (一页一屏, 不是把 ${ACT_MANY_ROWS} 行一次铺开)`,
+    manyAct.act.rowCount === ACT_PAGE_EXP, JSON.stringify({ rows: manyAct.act.rowCount, want: ACT_PAGE_EXP }));
+  check(`[15] ★ 行数从 ${refRows} 涨到 ${cappedTotal} 这一块**一像素没长**: 表框高 ${mBox.h}px == 真数据基准 ${refBox.h}px`,
+    actRefOk && Math.abs(mBox.h - refBox.h) <= 1, JSON.stringify({ many: mBox.h, ref: refBox.h }));
+  // 一页 = 高度上限那一份 (15 行) ⇒ 每一页**正好一屏**: scrollHeight == clientHeight。
+  // 这不是"没滚起来", 而是设计本身 (leo 要的「分页栏在十五行底部」): 翻页就够, 不用在框里盲滚。
+  // 「内容一旦超过上限就在框里滚」是**安全网** (行被撑高 / 字体回退 / 系统字号放大), 由下一段"临时摞到 60 行"直接验。
+  check(`[15] 一页 = 上限那一份 ⇒ 每页正好一屏 (scrollHeight ${mBox.scrollH} == clientHeight ${mBox.clientH}), 框里没有藏着的行`,
+    mBox.scrollH === mBox.clientH && mBox.overflowY === 'auto', JSON.stringify({ sh: mBox.scrollH, ch: mBox.clientH, oy: mBox.overflowY }));
+  check(`[15] 页信息 = 「${wantInfo(1)}」(页数从行数算出来; 超上限被截掉的部分如实补一句)`,
+    manyAct.act.pageInfo === wantInfo(1), JSON.stringify({ got: manyAct.act.pageInfo, want: wantInfo(1) }));
+  check(`[15] ★ 上限/截断两个口径对得上: 页信息「共 ${cappedTotal} 行 + 另 ${restRows} 行未列」= 口径行的「${ACT_MANY_ROWS} 行」(并排不打架)`,
+    manyAct.act.totalsLine.includes(`${ACT_MANY_ROWS} 行`) && manyAct.act.totalsLine.includes('链上索引') && cappedTotal + restRows === ACT_MANY_ROWS,
+    JSON.stringify({ info: manyAct.act.pageInfo, totals: manyAct.act.totalsLine }));
+  check('[15] 第 1 页时「上一页」禁用 / 「下一页」可用', manyAct.act.prevDisabled === true && manyAct.act.nextDisabled === false,
+    JSON.stringify({ prev: manyAct.act.prevDisabled, next: manyAct.act.nextDisabled }));
+
+  // 逐页翻到底: 每页行数 = min(每页, 剩余), 页信息逐页对上, 高度每页都不变
+  const clickAct = (sel) => evalJs(`(() => { const b = document.querySelector('#pulse [data-pulse-activity-${sel}]'); if (b) b.click(); return !!b; })()`);
+  const pagesSeen = [];
+  for (let p = 2; p <= actExpPages; p++) {
+    await clickAct('next');
+    await sleep(250);
+    const v = await evalJs(pulseProbe('#pulse'));
+    pagesSeen.push({ p, rows: v.act.rowCount, info: v.act.pageInfo, h: v.act.box.h, sh: v.act.box.scrollH, ch: v.act.box.clientH, next: v.act.nextDisabled, prev: v.act.prevDisabled });
+  }
+  check(`[15] 逐页翻到最后一页 (共 ${actExpPages} 页): 每页行数 = min(${ACT_PAGE_EXP}, 剩余) 且页信息逐页对上`,
+    pagesSeen.length === actExpPages - 1 &&
+    pagesSeen.every((s, i) => s.rows === Math.min(ACT_PAGE_EXP, cappedTotal - (i + 1) * ACT_PAGE_EXP) && s.info === wantInfo(i + 2)),
+    JSON.stringify(pagesSeen.map((s) => [s.p, s.rows, s.info])));
+  check(`[15] 末页「下一页」禁用 / 「上一页」可用 (页码边界不靠用户猜)`,
+    pagesSeen.length > 0 && pagesSeen[pagesSeen.length - 1].next === true && pagesSeen[pagesSeen.length - 1].prev === false,
+    JSON.stringify(pagesSeen[pagesSeen.length - 1]));
+  check(`[15] ★ 翻页不改高度: 每一页表框高都 == 基准 ${refBox && refBox.h}px, 且每一页都正好一屏 (scrollHeight == clientHeight: 页 = 一屏, 翻页不是盲滚)`,
+    actRefOk && pagesSeen.every((s) => Math.abs(s.h - refBox.h) <= 1 && s.sh === s.ch),
+    JSON.stringify(pagesSeen.map((s) => [s.p, s.h, s.sh, s.ch])));
+  await clickAct('prev');
+  await sleep(250);
+  const backPage = await evalJs(pulseProbe('#pulse'));
+  check(`[15] 点「上一页」回到第 ${actExpPages - 1}/${actExpPages} 页 (页信息与行数都对上, 不是单向走到黑)`,
+    backPage.act.pageInfo === wantInfo(actExpPages - 1) && backPage.act.nextDisabled === false,
+    JSON.stringify({ info: backPage.act.pageInfo, next: backPage.act.nextDisabled }));
+  // ①c 翻页按钮的 title 必须写明**去哪一页** (不写「下一页」这种只说不做的), 且 aria-label 里含可见文案
+  const ctlMid = ctlActsOf(await evalJs(CTL_BUTTONS_JS));
+  const tipOf = (hook) => (ctlMid.find((b) => b.hook === hook) || {}).title || '';
+  check(`[15] 中途页的按钮写明去哪一页: 上一页=${JSON.stringify(tipOf('act-prev'))} · 下一页=${JSON.stringify(tipOf('act-next'))}`,
+    tipOf('act-prev') === `回到第 ${actExpPages - 2} 页（共 ${actExpPages} 页）` && tipOf('act-next') === `翻到第 ${actExpPages} 页（共 ${actExpPages} 页）`,
+    JSON.stringify(ctlMid.map((b) => [b.hook, b.title, b.aria])));
+  check(`[15] ★ 可点态 = 亮品牌色 (lime 文字 ${LIME} + 实线边 + 淡 lime 底), 与禁用态 (暗调 + 虚线) 一眼分得开`,
+    ctlMid.length === 2 && ctlMid.every((b) => b.disabled === false && b.color === LIME && b.borderStyle === 'solid'),
+    JSON.stringify(ctlMid.map((b) => [b.hook, b.color, b.borderStyle, b.bg, b.disabled])));
+
+  // ③ 安全网与表头: 「内容一旦超过上限就在框内滚, 整页不被拉长」+「滚起来时表头还钉在框顶」。
+  //    真快照 15 行、夹具又被分页挡成一页 —— 拿数据量不出「内容 > 上限」的样子, 所以在页面里把行**临时**摞到 60 行
+  //    直接量 (量完立刻删)。同一批行里再量一次「把上限拿掉会怎样」: 上限必须**载荷** (拿掉它这一块就该被撑起来),
+  //    否则等于没上限 (而门只在 15 行上量是不够的: 15 行正好等于上限, 有没有上限量出来都一样)。
+  const capProof = await evalJs(`(() => {
+    const b = document.querySelector('#pulse [data-pulse-activity-scroll]');
+    const body = document.querySelector('#pulse [data-pulse-activity-body]');
+    const th = document.querySelector('#pulse [data-pulse-activity] thead th');
+    if (!b || !body || !th || !body.children.length) return null;
+    const first = body.children[0];
+    const n0 = body.children.length;
+    for (let i = 0; i < 45; i++) body.appendChild(first.cloneNode(true));   // 临时摞到 60 行 (只为本段测量)
+    const n1 = body.children.length;
+    const capped = +b.getBoundingClientRect().height.toFixed(2);
+    const sh = b.scrollHeight, ch = b.clientHeight, oy = getComputedStyle(b).overflowY;
+    b.scrollTop = 240;
+    const br = b.getBoundingClientRect();
+    const thTopRel = +(th.getBoundingClientRect().top - br.top).toFixed(2);
+    const firstTopRel = +(first.getBoundingClientRect().top - br.top).toFixed(2);
+    b.scrollTop = b.scrollHeight;
+    const reachBottom = Math.abs(b.scrollTop + b.clientHeight - b.scrollHeight) <= 1;
+    const st = document.createElement('style');
+    st.textContent = '#pulse [data-pulse-activity-scroll]{max-height:none !important}';
+    document.head.appendChild(st);
+    const free = +b.getBoundingClientRect().height.toFixed(2);              // 拿掉上限 → 这一块该被撑起来
+    st.remove();
+    b.scrollTop = 0;
+    while (body.children.length > n0) body.removeChild(body.lastElementChild);
+    return { n0, n1, left: body.children.length, capped, free, sh, ch, oy, thTopRel, firstTopRel, reachBottom };
+  })()`);
+  check(`[15] ★ 内容超上限就在框内滚 (临时摞到 ${capProof && capProof.n1} 行: 这一块仍高 ${capProof && capProof.capped}px, scrollHeight ${capProof && capProof.sh} > clientHeight ${capProof && capProof.ch}, overflow-y ${capProof && capProof.oy})`,
+    !!capProof && capProof.n1 === capProof.n0 + 45 && capProof.sh > capProof.ch && capProof.oy === 'auto' && Math.abs(capProof.capped - refBox.h) <= 1,
+    JSON.stringify(capProof));
+  check(`[15] ★ 上限是载荷的 (不是摆设): 同一批 ${capProof && capProof.n1} 行把上限拿掉 → 这一块被撑到 ${capProof && capProof.free}px (高出封顶 ${capProof && Math.round(capProof.free - capProof.capped)}px)`,
+    !!capProof && capProof.free > capProof.capped + 1000, JSON.stringify({ capped: capProof && capProof.capped, free: capProof && capProof.free }));
+  check(`[15] ★ 框内滚起来后表头仍钉在框顶 (相对框顶 ${capProof && capProof.thTopRel}px ≈ 0), 而首行已移到 ${capProof && capProof.firstTopRel}px (真滚了, 不是没滚)`,
+    !!capProof && Math.abs(capProof.thTopRel) <= 1 && capProof.firstTopRel < -100,
+    JSON.stringify({ th: capProof && capProof.thTopRel, first: capProof && capProof.firstTopRel }));
+  check(`[15] 框内滚到底可达 (最末一行不吊在半空), 且量完 DOM 行数回到原样 ${capProof && capProof.n0} 行 (这一节不把页面改脏)`,
+    !!capProof && capProof.reachBottom === true && capProof.left === capProof.n0,
+    JSON.stringify({ reachBottom: capProof && capProof.reachBottom, left: capProof && capProof.left, n0: capProof && capProof.n0 }));
+
+  // ④ 390px: 上限跟着窄屏行高走 (那个字面量同样是实测值), 横向仍能滚 (列不被压扁)
+  //    先回第 1 页 (上一段停在中间页) —— 窄屏要比的正是"同一页码下口径不因宽度换一套"。
+  for (let i = 0; i < actExpPages; i++) {
+    const v0 = await evalJs(pulseProbe('#pulse'));
+    if (v0.act.prevDisabled === true) break;
+    await clickAct('prev');
+    await sleep(200);
+  }
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await sleep(400);
+  const mobAct = await evalJs(pulseProbe('#pulse'));
+  const mb = mobAct.act.box;
+  const mobSum = mb && mb.rowH ? +(mb.capH + mb.theadH + mobAct.act.rowCount * mb.rowH).toFixed(2) : null;
+  check(`[15] 390px: 高度上限跟着窄屏行高走 (max-height ${mb && mb.maxH} ≈ caption+表头+${mobAct.act.rowCount}行 = ${mobSum}px)`,
+    !!mb && mobSum != null && Math.abs(parseFloat(mb.maxH) - mobSum) <= 2,
+    JSON.stringify({ maxH: mb && mb.maxH, sum: mobSum, rowH: mb && mb.rowH, rows: mobAct.act.rowCount }));
+  check(`[15] 390px: 表框横向仍可滚 (scrollWidth ${mb && mb.scrollW} > clientWidth ${mb && mb.clientW}), 列不被压扁`,
+    !!mb && mb.scrollW > mb.clientW, JSON.stringify({ sw: mb && mb.scrollW, cw: mb && mb.clientW }));
+  check('[15] 390px: 分页栏仍在 (条数不变), 页信息与桌面一致 (不因窄屏换一套口径)',
+    mobAct.act.ctlShown === true && mobAct.act.pageInfo === wantInfo(1),
+    JSON.stringify({ shown: mobAct.act.ctlShown, info: mobAct.act.pageInfo }));
   await cdp('Emulation.clearDeviceMetricsOverride');
   await sleep(200);
   await fxDisable().catch(() => {});

@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=31">
 </head>
 <body data-page="gateway">
 
@@ -96,7 +96,7 @@
      本页 = 链上活动的仪表盘入口: 一句短说明 + 一行小结 + 一张表, 不用大字标题占屏。
      静态站, 访客浏览器到不了站点作者的节点 —— 无数据时如实显示 unavailable, 绝不编造数字。
      多实例模块见 app.js 末尾: 本区用 data-pulse / data-pulse-* 钩子 (不再用 id), 与首页序栏那份互不干扰。 -->
-<section class="doc gateway-pulse" id="pulse" data-pulse data-pulse-name="gateway" data-pulse-state="loading" data-pulse-tasks-page="4">
+<section class="doc gateway-pulse" id="pulse" data-pulse data-pulse-name="gateway" data-pulse-state="loading" data-pulse-tasks-page="4" data-pulse-activity-page="15">
   <div class="section-head">
     <p class="kicker">— 01 · Agent Gateway</p>
     <h2 class="section-title" data-zh="链上活动" data-en="On-chain activity">链上活动</h2>
@@ -164,23 +164,48 @@
 
   <!-- 链上活动表: 一行 = 快照 confirmed_activity 里的一条; 列 = 任务|状态|事件|网络|区块|确认数/最终性|时间。
        空表不留给空白 ——「没观察到」与「快照读不到」是两种真相, 各有各的话。
-       每一格都由 app.js 用 textContent 造 (不用 innerHTML), 任务与交易标识一律短写。 -->
+       每一格都由 app.js 用 textContent 造 (不用 innerHTML), 任务与交易标识一律短写。
+
+       ★ 2026-09-24 (leo:「链上索引 · 全量 · 15 行 … 可以按十五行的高度来设计吗」): 表体外面加一层
+       .pulse-table-scroll —— **上限 = 十五行的高度** (--pulse-activity-h, 1440px 实测 865px / 窄屏 1233px,
+       都取「现在这份 15 行的真高度」). 行数 ≤ 15 时这一层贴着内容高 (不留空档, 5 行就是 5 行的高度);
+       行数 > 15 (链上活动只会越攒越多) 时**封顶在十五行**, 多出来的在这一层里滚 —— 整页高度不再被表拉长.
+       表头 position:sticky (拿不透明底撑住) 所以滚到下面时列名还在.
+       口径行 (本表下方那两行: 行数/不同任务 + 合计口径) 仍留在**框外**下方 —— 它们是「这批行算什么」的诚实标记,
+       不许跟着行一起被滚走. -->
   <div class="pulse-table-wrap">
-    <table class="pulse-table" data-pulse-activity>
-      <caption class="pulse-table-cap" data-zh="已确认的链上任务与交易（本节点观察到）" data-en="Confirmed on-chain tasks and trades (observed by this node)">已确认的链上任务与交易（本节点观察到）</caption>
-      <thead>
-        <tr>
-          <th scope="col" data-zh="任务" data-en="Task">任务</th>
-          <th scope="col" data-zh="状态" data-en="State">状态</th>
-          <th scope="col" data-zh="事件" data-en="Event">事件</th>
-          <th scope="col" data-zh="网络" data-en="Network">网络</th>
-          <th scope="col" data-zh="区块" data-en="Block">区块</th>
-          <th scope="col" data-zh="确认数 / 最终性" data-en="Confirmations / finality">确认数 / 最终性</th>
-          <th scope="col" data-zh="时间" data-en="Time">时间</th>
-        </tr>
-      </thead>
-      <tbody data-pulse-activity-body></tbody>
-    </table>
+    <div class="pulse-table-scroll" data-pulse-activity-scroll>
+      <table class="pulse-table" data-pulse-activity>
+        <caption class="pulse-table-cap" data-zh="已确认的链上任务与交易（本节点观察到）" data-en="Confirmed on-chain tasks and trades (observed by this node)">已确认的链上任务与交易（本节点观察到）</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-zh="任务" data-en="Task">任务</th>
+            <th scope="col" data-zh="状态" data-en="State">状态</th>
+            <th scope="col" data-zh="事件" data-en="Event">事件</th>
+            <th scope="col" data-zh="网络" data-en="Network">网络</th>
+            <th scope="col" data-zh="区块" data-en="Block">区块</th>
+            <th scope="col" data-zh="确认数 / 最终性" data-en="Confirmations / finality">确认数 / 最终性</th>
+            <th scope="col" data-zh="时间" data-en="Time">时间</th>
+          </tr>
+        </thead>
+        <tbody data-pulse-activity-body></tbody>
+      </table>
+    </div>
+    <!-- 链上活动表的**分页栏** (2026-09-24 leo:「分页栏…在十五行底部」) —— 就贴在十五行底下:
+         ① 一页 = data-pulse-activity-page (15 · 声明在 <section> 上, app.js 读它) 行 = 表框高度上限那一份,
+            所以「翻页」与「框内滚动」是一回事的两个说法: 一页正好一屏, 不用在框里盲滚;
+         ② 与待接单任务那一行**故意有一处不同**: 这里只要有行就**始终显示**(leo 要的就是这条栏);
+            一行都没有 (真 0 / 快照读不到) → 整行 hidden, 交给空态那句话 (不写「共 0 行」这种假 0 味的字);
+         ③ 页数从**表里真有的行数**算出来, 不写死; 上一页/下一页禁用状态由 app.js 按当前页给;
+         ④ 「共 N 行」= 表里真有的行数; 超出 60 行上限被截掉的部分**就地补一句「另 R 行未列」** ——
+            与下面那行口径 (快照同源全量计数) 并排也不打架;
+         ⑤ 按钮文案 (2026-09-24 leo:「切换也太模糊」): 写**动词 + 去向**(上一页 / 下一页), 每个按钮另带 title/aria-label
+            由 app.js 按当前页写 (「翻到第 3 页」/「已经是最后一页」) —— 不做「切换」这种要读者自己猜的说法。 -->
+    <p class="pulse-activity-ctl" data-pulse-activity-ctl hidden>
+      <button type="button" class="pulse-ctl-btn" data-pulse-activity-prev data-zh="上一页" data-en="Prev" title="回到上一页">上一页</button>
+      <span class="pulse-activity-pageinfo" data-pulse-activity-pageinfo></span>
+      <button type="button" class="pulse-ctl-btn" data-pulse-activity-next data-zh="下一页" data-en="Next" title="翻到下一页">下一页</button>
+    </p>
     <p class="pulse-empty pulse-activity-empty" data-pulse-activity-empty data-zh="本节点暂未观察到链上任务。" data-en="This node has not observed any on-chain task yet.">本节点暂未观察到链上任务。</p>
     <p class="pulse-activity-source" data-pulse-activity-source></p>
     <!-- 口径行 (2026-09-22): 表格下方再补一行 —— 行数/不同任务 (与上表同源)、上表这批行属于哪条链、
@@ -206,10 +231,10 @@
             一页装得下就整行 hidden (不添噪音); ③ 页数从快照条数算, 不写死; ④ 「分栏」按钮按一下切双栏,
             aria-pressed 记状态, 文案随状态走 (故此按钮**没有 data-zh/data-en** —— 动态文字归 app.js 管)。 -->
     <p class="pulse-tasks-ctl" data-pulse-tasks-ctl hidden>
-      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-prev data-zh="上一页" data-en="Prev">上一页</button>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-prev data-zh="上一页" data-en="Prev" title="回到上一页">上一页</button>
       <span class="pulse-tasks-pageinfo" data-pulse-tasks-pageinfo></span>
-      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-next data-zh="下一页" data-en="Next">下一页</button>
-      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-cols aria-pressed="false">分栏</button>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-next data-zh="下一页" data-en="Next" title="翻到下一页">下一页</button>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-cols aria-pressed="false" title="按一下切到双栏显示">分栏</button>
     </p>
   </div>
 
@@ -353,6 +378,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=29"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>

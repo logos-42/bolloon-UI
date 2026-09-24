@@ -571,20 +571,30 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-tasks-list { margin: 0; height: var(--pulse-task-row-h); overflow-y: auto; overscroll-behavior: contain; }
 /* 分栏 (双栏): 同一固定高度下并排两条 —— 条目更多时先横着看, 再竖着滚 */
 .pulse-tasks-list.is-cols2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; align-content: start; }
-/* 分页 / 分栏控件 (只在网关页有钩子; 一页装得下 → 整行隐藏, 不添噪音) */
-.pulse-tasks-ctl {
+/* 分页 / 分栏控件 (只在网关页有钩子; 一页装得下 → 整行隐藏, 不添噪音)
+   2026-09-24 leo:「切换也太模糊, 颜色换一下 bolloon 色系」:
+   ① 颜色 = 品牌色 (--lime): 控件默认就穿 lime 文字 + lime-deep 描边 + 极淡 lime 底 —— 一眼看出"这是能按的",
+      不再是灰字灰边那种"看着像说明文字"的样子; 悬停反白 (实心 lime + 深底文字)、
+      按下 (aria-pressed=true) = 实心 lime、禁用 = 退回弱色无底色。四态各有明确样子, 不靠猜。
+   ② 文案的"模糊"不在这层修 —— 按钮写的是**动词+去向**(上一页/下一页/切到双栏), 见 app.js 的 colsText/翻页 title。 */
+.pulse-tasks-ctl, .pulse-activity-ctl {
   display: flex; align-items: center; gap: 10px; margin: 8px 0 0;
   font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-3);
 }
-.pulse-tasks-ctl[hidden] { display: none; }
-.pulse-tasks-pageinfo { color: var(--ink-3); }
+.pulse-tasks-ctl[hidden], .pulse-activity-ctl[hidden] { display: none; }
+.pulse-tasks-pageinfo, .pulse-activity-pageinfo { color: var(--ink-2); }
 .pulse-ctl-btn {
-  font: inherit; letter-spacing: inherit; color: var(--ink-2); background: none; cursor: pointer;
-  border: 1px solid var(--hairline); border-radius: 2px; padding: 4px 8px;
+  font: inherit; letter-spacing: inherit; cursor: pointer;
+  color: var(--lime); background: rgba(196, 214, 64, 0.07);
+  border: 1px solid var(--lime-deep); border-radius: 2px; padding: 4px 8px;
 }
-.pulse-ctl-btn:hover:not(:disabled) { color: var(--lime); border-color: var(--lime); }
-.pulse-ctl-btn:disabled { opacity: 0.4; cursor: default; }
-.pulse-ctl-btn[aria-pressed="true"] { color: var(--lime); border-color: var(--lime); }
+.pulse-ctl-btn:hover:not(:disabled) { color: var(--bg); background: var(--lime-hover); border-color: var(--lime-hover); }
+.pulse-ctl-btn:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+/* 禁用不是"退回灰色" (2026-09-24 真截图复核抓到): 真快照此刻正好 15 行 = 一页 ⇒ 两个翻页按钮**长期**禁用,
+   若禁用态写成灰字灰边, 这条栏在线上永远是一片灰 —— leo 要的 bolloon 色系根本看不见。
+   所以禁用 = **暗调的品牌色 + 虚线边** (仍是 lime 系, 但一眼看出按不动), 实心 lime 只留给可点的那一态。 */
+.pulse-ctl-btn:disabled { color: var(--lime-deep); background: none; border: 1px dashed var(--lime-deep); cursor: default; }
+.pulse-ctl-btn[aria-pressed="true"] { color: var(--bg); background: var(--lime); border-color: var(--lime); }
 .pulse-task-chip {
   display: block; padding: 9px 0; border-bottom: 1px solid var(--hairline);
   font-family: var(--mono); font-size: 11.5px; line-height: 1.8; color: var(--ink-2);
@@ -604,7 +614,13 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
    编辑式排版: 发丝线分隔 / 等宽字体装标识 / 圆角 ≤ 2px / 窄屏整表横向滚动。
    最终性三档各一色徽标: 已观察 (中性) · 已确认 (深 lime 描边) · 已最终确定 (lime 实底)。
    未知/认不出的最终性用虚线徽标 —— 不假装它是三档之一。 */
-.pulse-table-wrap { overflow-x: auto; margin: 0 0 clamp(18px, 2.6vh, 28px); }
+/* 链上活动表的**高度上限 = 十五行** (2026-09-24 leo:「可以按十五行的高度来设计吗」):
+   --pulse-activity-h 取「现在这份 15 行的真高度」的实测值 —— 1440px = 30.69(caption) + 41.19(表头) + 15×52.84(行)
+   = 865.03px; 窄屏 (≤640px) 行高变 77.38 → 1233px. 两个数都由真浏览器量出来, 不是拍的.
+   ≤ 15 行: 这一层贴着内容高 (5 行就是 5 行的高度, 不留空档); > 15 行: 封顶后**框内滚动** —— 整页不被拉长.
+   表头 sticky + 不透明底: 滚到下面时列名还在, 行不会从它底下透出来. */
+.pulse-table-wrap { --pulse-activity-h: 865.03px; margin: 0 0 clamp(18px, 2.6vh, 28px); }
+.pulse-table-scroll { max-height: var(--pulse-activity-h); overflow: auto; overscroll-behavior: contain; }
 .pulse-table { width: 100%; min-width: 880px; border-collapse: collapse; }
 .pulse-table-cap {
   caption-side: top; text-align: left; padding: 0 0 12px;
@@ -614,6 +630,9 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-table thead th {
   font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 1.2px;
   text-transform: uppercase; color: var(--ink-3); border-bottom-color: var(--line);
+  /* 表头钉住 (2026-09-24): 行数超过十五行时框内滚动, 列名不许跟着滚走.
+     不透明底 (--bg 是实色) + z-index —— 否则底下的行会从它背后透出来. */
+  position: sticky; top: 0; z-index: 1; background: var(--bg);
 }
 .pulse-table tbody tr:first-child td { border-top: 1px solid var(--hairline); }
 .pulse-table tbody tr:hover td { background: color-mix(in srgb, var(--lime) 4%, transparent); }
@@ -748,8 +767,10 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   }
   .pulse-summary li:last-child { border-bottom: none; padding-bottom: 0; }
   .pulse-summary b { font-size: 1.5rem; }
-  /* 链上活动表: 窄屏整表横向滚动 (由 .pulse-table-wrap 承接), 列宽不被压扁 */
+  /* 链上活动表: 窄屏整表横向滚动 (由 .pulse-table-scroll 承接), 列宽不被压扁;
+     行高在窄屏变高 (52.84 → 77.38) → 十五行的上限跟着变 (这是实测值, 不是拍的) */
   .pulse-table { min-width: 720px; }
+  .pulse-table-wrap { --pulse-activity-h: 1233px; }
   .pulse-feed li { flex-direction: column; gap: 2px; }
   .pulse-feed-time { flex: none; }
   /* 智能体私有站: 列表纵向, 粘贴框纵向 (输入框 + 按钮各占整行, 不横向溢出) */

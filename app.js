@@ -425,6 +425,10 @@ var BOLLOON_IPNS = (function () {
   var SNAPSHOT_FILE = 'network-pulse.json'; // 静态签名快照（可能已过期 → 就显示 stale）
   var FEED_MAX = 5;                         // 活动流条数上限 (可被 data-pulse-feed-max 覆盖)
   var ACTIVITY_MAX = 60;                    // 链上活动表行数上限
+  // 链上活动表一页几行 (2026-09-24 leo:「分页栏…在十五行底部」): 15 = 这一块**高度上限**那一份的行数
+  // (表框上限= 十五行, 见 style.css 的 --pulse-activity-h) —— 一页正好一屏, 翻页而不是在框里盲滚。
+  // 网关页 markup 用 data-pulse-activity-page 可改; 首页序栏没有这套钩子 → 不渲染控件也不分页。
+  var ACTIVITY_PAGE = 15;
   var SITES_MAX = 20;                       // 智能体私有站条数上限
   var TASKS_MAX = 20;                       // 待接单任务条数上限
   var TASKS_PAGE = 4;                       // 待接单任务一页几条 (分页; 网关页用 data-pulse-tasks-page 可改)
@@ -652,6 +656,8 @@ var BOLLOON_IPNS = (function () {
     var TASKS_LIMIT = readLimit(root.getAttribute('data-pulse-tasks-max'), TASKS_MAX);
     // 一页几条 (2026-09-24 leo: 固定高度 + 下滑滚动 + 分页 + 分栏切换)。分页控件只在一页装不下时出现。
     var TASKS_PAGE_SIZE = readLimit(root.getAttribute('data-pulse-tasks-page'), TASKS_PAGE);
+    // 链上活动表一页几行 (同上): 15 = 表框高度上限那一份的行数 (--pulse-activity-h 就是按它量的)
+    var ACTIVITY_PAGE_SIZE = readLimit(root.getAttribute('data-pulse-activity-page'), ACTIVITY_PAGE);
     var el = {
       scope: root.querySelector('[data-pulse-scope]'),
       snapTime: root.querySelector('[data-pulse-time]'),
@@ -676,6 +682,12 @@ var BOLLOON_IPNS = (function () {
       actEmpty: root.querySelector('[data-pulse-activity-empty]'),
       actSource: root.querySelector('[data-pulse-activity-source]'),
       actTotals: root.querySelector('[data-pulse-activity-totals]'),
+      // 链上活动表的分页栏 (2026-09-24): 只在网关页有这套钩子; 首页序栏没有 → null, 不渲染
+      actScroll: root.querySelector('[data-pulse-activity-scroll]'),
+      actCtl: root.querySelector('[data-pulse-activity-ctl]'),
+      actPageInfo: root.querySelector('[data-pulse-activity-pageinfo]'),
+      actPrev: root.querySelector('[data-pulse-activity-prev]'),
+      actNext: root.querySelector('[data-pulse-activity-next]'),
       txLine: root.querySelector('[data-pulse-activity-tx]'),
       sites: root.querySelector('[data-pulse-sites]'),
       sitesEmpty: root.querySelector('[data-pulse-sites-empty]'),
@@ -693,9 +705,9 @@ var BOLLOON_IPNS = (function () {
     };
 
     var view = {
-      state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '',
+      state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '', actRest: 0,
       actTotals: null, chainScope: null, totalsScope: null, totalsFields: null, rawFeed: [], notes: [], sites: [], tasks: [],
-      tasksPage: 0, tasksCols: false,
+      tasksPage: 0, tasksCols: false, actPage: 0,
       scopeKey: 'observed', scopeLabels: null, sourceKind: null,
     };
     var timer = null, relTimer = null, failCount = 0, started = false, api = null;
@@ -772,8 +784,18 @@ var BOLLOON_IPNS = (function () {
       if (!el.actBody) return;
       var en = lang() === 'en';
       clear(el.actBody);
-      for (var i = 0; i < view.rows.length; i++) {
-        var r = view.rows[i];
+      // —— 分页 (2026-09-24 leo:「分页栏…在十五行底部」): 只渲染**当前页**的行 ——
+      //    一页 ACTIVITY_PAGE_SIZE 行 (= 表框高度上限 --pulse-activity-h 就是按这么些行量出来的),
+      //    页数由**表里真有的行数**算出来 (不写死); 行数变少 (快照换了一份) → 页码收拢到最后一页,
+      //    不空转、不显示空页 —— 与待接单任务块同一套纪律。
+      var actTotal = view.rows.length;
+      var actPages = actTotal > 0 ? Math.ceil(actTotal / ACTIVITY_PAGE_SIZE) : 1;  // 空 → 1 页 (不写「0 页」)
+      if (view.actPage > actPages - 1) view.actPage = actPages - 1;
+      if (view.actPage < 0) view.actPage = 0;
+      var actStart = view.actPage * ACTIVITY_PAGE_SIZE;
+      var pageRows = view.rows.slice(actStart, Math.min(actStart + ACTIVITY_PAGE_SIZE, actTotal));
+      for (var i = 0; i < pageRows.length; i++) {
+        var r = pageRows[i];
         var tr = document.createElement('tr');
         tr.className = 'pulse-row';
         tr.setAttribute('data-ref', r.refKind);
@@ -866,6 +888,34 @@ var BOLLOON_IPNS = (function () {
           text(el.actSource, en ? 'not specified by the snapshot' : '快照未标注');
         }
       }
+      renderActivityCtl(actTotal, actPages);
+    }
+
+    /**
+     * 链上活动表的分页栏 (2026-09-24 leo:「分页栏…在十五行底部」) —— 一行 = 上一页 · 第 p/pages 页 · 共 N 行 · 下一页。
+     * 与待接单任务块的那一行**故意有一处不同**: 这里**始终显示**(只要有行) —— leo 要的就是「十五行底部那条分页栏」,
+     * 表里正好 15 行 (= 一页) 时它写着「第 1/1 页 · 共 15 行」并禁用两个按钮 (不是藏起来)。
+     * 一行都没有 (真 0 / 快照读不到) → 整行隐藏, 交给空态那句话 (不写「共 0 行」这种假 0 味的字)。
+     * 「共 N 行」= 表里**真有的行数**; 超出 ACTIVITY_MAX 被截掉的部分**就地补一句** (不装看不见、也不混进分页口径)。
+     */
+    function renderActivityCtl(actTotal, actPages) {
+      if (!el.actCtl) return;
+      if (actTotal <= 0) { el.actCtl.setAttribute('hidden', ''); return; }
+      el.actCtl.removeAttribute('hidden');
+      var info = rowInfoText(view.actPage + 1, actPages, actTotal);
+      if (view.actRest > 0) info += (lang() === 'en' ? ' · +' + view.actRest + ' not listed' : ' · 另 ' + view.actRest + ' 行未列');
+      if (el.actPageInfo) text(el.actPageInfo, info);
+      if (el.actPrev) el.actPrev.disabled = view.actPage <= 0;
+      if (el.actNext) el.actNext.disabled = view.actPage >= actPages - 1;
+      setCtlTip(el.actPrev, ctlLabel('prev'), pageTip('prev', view.actPage, actPages));
+      setCtlTip(el.actNext, ctlLabel('next'), pageTip('next', view.actPage + 2, actPages));
+    }
+
+    // 「第 p/pages 页 · 共 N 行」—— N = 表里真有的行数 (与这一页画出来的行同源), 不是快照里那个全量计数。
+    function rowInfoText(p, pages, total) {
+      return lang() === 'en'
+        ? 'Page ' + p + '/' + pages + ' · ' + total + ' row' + (total === 1 ? '' : 's')
+        : '第 ' + p + '/' + pages + ' 页 · 共 ' + total + ' 行';
     }
 
     /**
@@ -1104,9 +1154,12 @@ var BOLLOON_IPNS = (function () {
       if (el.tasksPageInfo) text(el.tasksPageInfo, pageInfoText(view.tasksPage + 1, pages, total));
       if (el.tasksPrev) el.tasksPrev.disabled = view.tasksPage <= 0;
       if (el.tasksNext) el.tasksNext.disabled = view.tasksPage >= pages - 1;
+      setCtlTip(el.tasksPrev, ctlLabel('prev'), pageTip('prev', view.tasksPage, pages));
+      setCtlTip(el.tasksNext, ctlLabel('next'), pageTip('next', view.tasksPage + 2, pages));
       if (el.tasksCols) {
         el.tasksCols.setAttribute('aria-pressed', view.tasksCols ? 'true' : 'false');
         text(el.tasksCols, colsText());
+        setCtlTip(el.tasksCols, colsText(), colsTip());
       }
     }
 
@@ -1117,11 +1170,45 @@ var BOLLOON_IPNS = (function () {
         : '第 ' + p + '/' + pages + ' 页 · 共 ' + total + ' 条';
     }
 
-    // 分栏按钮的文案随状态走 (分栏 ↔ 单栏), 所以它**故意没有 data-zh/data-en** ——
+    // 分栏按钮的文案随状态走 (切到双栏 ↔ 切回单栏), 所以它**故意没有 data-zh/data-en** ——
     // applyLang 只自动翻静态标记节点, 这个按钮由本函数在每次重画时按当前语言写 (切语言走 redraw() 会再进来)。
+    // 2026-09-24 leo:「切换也太模糊」→ 写**动作 + 去向**(切到/切回), 不写状态名 (写「双栏」读者不知道按下去会变成什么),
+    // 也不用「切换」这种两边都指的说法。
     function colsText() {
       var en = lang() === 'en';
-      return view.tasksCols ? (en ? 'one column' : '单栏') : (en ? 'two columns' : '分栏');
+      return view.tasksCols ? (en ? 'to 1 column' : '切回单栏') : (en ? 'to 2 columns' : '切到双栏');
+    }
+    function colsTip() {
+      var en = lang() === 'en';
+      return view.tasksCols
+        ? (en ? 'press to go back to a single column (currently 2 columns)' : '按一下切回单栏显示（当前是双栏）')
+        : (en ? 'press to switch to two columns (currently 1 column)' : '按一下切到双栏显示（当前是单栏）');
+    }
+
+    // —— 控件提示文案 (2026-09-24 leo:「切换也太模糊」): 每个按钮都给一句「按下去会发生什么」—— 包括**禁用时**
+    //    (「已经是最后一页」), 因为"按不动"本身也要有说法。title 给鼠标/长按, aria-label 给读屏 —— 两句同源
+    //    (aria-label = 可见文案 + 这句), 屏幕阅读器念出来的名字里**包含可见文字**, 不做两套说法。
+    function ctlLabel(key) {
+      var en = lang() === 'en';
+      if (key === 'prev') return en ? 'Prev' : '上一页';
+      if (key === 'next') return en ? 'Next' : '下一页';
+      return en ? 'columns' : '分栏';
+    }
+    function pageTip(dir, toPage, pages) {
+      var en = lang() === 'en';
+      if (dir === 'prev') {
+        return toPage < 1
+          ? (en ? 'already on the first page' : '已经是第一页')
+          : (en ? 'back to page ' + toPage + ' of ' + pages : '回到第 ' + toPage + ' 页（共 ' + pages + ' 页）');
+      }
+      return toPage > pages
+        ? (en ? 'already on the last page' : '已经是最后一页')
+        : (en ? 'forward to page ' + toPage + ' of ' + pages : '翻到第 ' + toPage + ' 页（共 ' + pages + ' 页）');
+    }
+    function setCtlTip(node, label, tip) {
+      if (!node) return;
+      node.setAttribute('title', tip);
+      node.setAttribute('aria-label', label + ' · ' + tip);
     }
 
     // 空态只能说「暂未观察到」—— 不显示假 0, 也不写与事实相反的「尚未接入」(入口是接了的)。
@@ -1205,6 +1292,7 @@ var BOLLOON_IPNS = (function () {
       view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.tasks = []; view.sourceKind = null;
       view.actTotals = null; view.chainScope = null; view.totalsScope = null; view.totalsFields = null;
       view.tasksPage = 0;    // 快照读不到 → 页码归零 (分栏偏好是读者的选择, 保留)
+      view.actPage = 0;      // 同上: 活动表页码归零 (没有行可翻时不留着一个越界的页码)
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.tasksSettled, null);
@@ -1227,7 +1315,7 @@ var BOLLOON_IPNS = (function () {
       // 2026-09-23 追加: tx_hash / explorer_tx (链上索引行才有;
       //   本机 31337 没有公网浏览器 → 快照里就没有 explorer_tx → 交易标签保持纯文本, 不编死链)。
       //   `contract` (escrow 合约地址) 只存在于快照数据里, **页面不读它、不渲染它** —— 合约不上页面。
-      view.rows = (Array.isArray(payload.confirmed_activity) ? payload.confirmed_activity : [])
+      var actAll = (Array.isArray(payload.confirmed_activity) ? payload.confirmed_activity : [])
         .map(function (r) {
           if (!r || typeof r !== 'object') return null;
           var task = typeof r.task === 'string' ? r.task.trim() : '';
@@ -1251,8 +1339,11 @@ var BOLLOON_IPNS = (function () {
           };
         })
         .filter(function (x) { return !!x; })
-        .sort(function (a, b) { return (b.at || 0) - (a.at || 0); })   // 新的在上 (没有时间的沉底)
-        .slice(0, ACTIVITY_MAX);
+        .sort(function (a, b) { return (b.at || 0) - (a.at || 0); });  // 新的在上 (没有时间的沉底)
+      // 行数上限 (ACTIVITY_MAX) 之外被截掉的行数**如实记账** —— 分页只是换个窗口看同一批, **不算被截掉**;
+      // 这两个口径不许混 (页信息写「共 N 行」= 表里真有的行数, 被上限截掉的那部分就地补一句, 不装看不见)。
+      view.actRest = Math.max(0, actAll.length - ACTIVITY_MAX);
+      view.rows = actAll.slice(0, ACTIVITY_MAX);
       // 数据源: 原样读快照给的字符串, 缺就缺 (渲染时写「快照未标注」, 不替它认来源)
       view.actSource = typeof payload.confirmed_activity_source === 'string'
         ? payload.confirmed_activity_source.trim() : '';
@@ -1370,6 +1461,10 @@ var BOLLOON_IPNS = (function () {
     // 越界不自己做判断: 一律交给 renderTasks 收拢页码 (它拿快照条数算出页数), 免得两处各算一套。
     if (el.tasksPrev) el.tasksPrev.addEventListener('click', function () { view.tasksPage = view.tasksPage - 1; renderTasks(); });
     if (el.tasksNext) el.tasksNext.addEventListener('click', function () { view.tasksPage = view.tasksPage + 1; renderTasks(); });
+    // 活动表分页 (2026-09-24): 越界不在这里判断 —— 一律交给 renderActivity 收拢页码 (它拿行数算出页数),
+    // 免得两处各算一套 (与任务块同一条纪律)。
+    if (el.actPrev) el.actPrev.addEventListener('click', function () { view.actPage = view.actPage - 1; renderActivity(); });
+    if (el.actNext) el.actNext.addEventListener('click', function () { view.actPage = view.actPage + 1; renderActivity(); });
     if (el.tasksCols) el.tasksCols.addEventListener('click', function () { view.tasksCols = !view.tasksCols; renderTasks(); });
 
     api = {
@@ -1377,7 +1472,7 @@ var BOLLOON_IPNS = (function () {
       root: root,
       key: root.id || root.getAttribute('data-pulse-name') || '',
       state: 'loading',
-      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, activityMax: ACTIVITY_MAX, tasksMax: TASKS_LIMIT, tasksPageSize: TASKS_PAGE_SIZE },
+      config: { pollMs: POLL_MS, timeoutMs: TIMEOUT_MS, backoffMs: BACKOFF_MS.slice(), relTickMs: REL_TICK_MS, feedMax: FEED_LIMIT, activityMax: ACTIVITY_MAX, activityPageSize: ACTIVITY_PAGE_SIZE, tasksMax: TASKS_LIMIT, tasksPageSize: TASKS_PAGE_SIZE },
       refresh: function () { try { return refresh(); } catch (e) { return null; } },
       tick: function () { try { updateRelTimes(); } catch (e) {} },
       redraw: function () { try { redraw(); } catch (e) {} },
