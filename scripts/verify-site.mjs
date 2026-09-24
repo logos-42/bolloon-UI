@@ -38,7 +38,7 @@
  *      并带阴性对照 (把这一格塞回页面 → 必红, 见 docs/wiki/log.md)。
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=31 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=32 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -134,6 +134,12 @@
  *      高度当基准 (并验「一页装得下 ⇒ 控件整行隐藏」), 再注入夹具 FX_TASKS_MANY (7 条) 验分页/分栏/边界,
  *      并在每步都要求 **高度逐像素等于基准** (即「加了 6 条, 这一块一像素没长」), 390px 下双栏不许撑破视口。
  *      期望值全部从夹具/快照推导 (页数 `Math.ceil(7/每页)`, 第 2 页的 capability = 排序后的后段), 不写死。
+ *      **预算读数** (2026-09-24 leo:「1000 USDC 的待接单任务？我好像没那么多钱啊」): 快照的 `budget` 是**原子单位**
+ *      (主仓 task-contract: maxAmount 为正整数原子单位, 1 USDC = 10^6 ⇒ 1000 = 0.001 USDC), 只显示原子值会让读者
+ *      读成 1000 USDC ⇒ 页面按**主仓自己的精度表**(USDC 6 / ETH 18)折算后显示, 原始原子值留在 `title` 里。
+ *      门这边用 BigInt **独立**再算一遍当期望值 (与 app.js 的整数移位各写各的, 算错就对不上), 并钉两条:
+ *      ①能折算的币种页面上不许出现「4 位以上纯整数 + USDC/ETH」这种原子值当金额的形态;
+ *      ②夹具最后一条故意用页面**没有精度表**的币种 (DAI) ⇒ 必须**不折算**、显示原子值 + 就地标「最小单位」。
  *   ㉕ 链上活动表的**高度上限 = 十五行 + 表头钉住 + 底部十五行/页** (2026-09-24 leo:「链上索引 · 全量 · 15 行 …
  *      可以按十五行的高度来设计吗」+「分页栏切换…在十五行底部」): 表体外面那一层 `[data-pulse-activity-scroll]`
  *      用 CSS 变量 `--pulse-activity-h` 封顶在**现在这份 15 行的真高度**上 (1440px 实测 865.03px = caption 30.69
@@ -1306,6 +1312,9 @@ async function main() {
       capability: c, budget: String(1000 + i), currency: 'USDC', network: nets[i],
       deadline: T0 + (i + 1) * 3600000, claimed: false, announcementId: 'ann-9m' + String(i).padStart(2, '0'),
     }));
+    // 最后一条故意换成页面**没有精度表**的币种 (2026-09-24 预算折算): 折算一个不知道精度的币种 = 替数据编数,
+    // 所以那条必须**不折算**、显示原子值并就地标「最小单位」。这条没有夹具就等于没有反向验证。
+    fx.open_tasks[caps.length - 1].currency = 'DAI';
     return fxMark(fx, 'tasks-many');
   })();
 
@@ -2996,17 +3005,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=31 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=31 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=32 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=32 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=31');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=32');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=31/.test(html) || !/app\.js\?v=31/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=32/.test(html) || !/app\.js\?v=32/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=31 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=31 + app.js?v=31 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=32 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=32 + app.js?v=32 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):
@@ -3202,6 +3211,49 @@ async function main() {
     duo.pulseTitle === '链上活动' && duo.skillsTitle === '加入方式',
     JSON.stringify(duo && [duo.pulseKicker, duo.pulseTitle, duo.skillsKicker, duo.skillsTitle]));
 
+  // ★ 顶栏横线只能有**一条** (2026-09-24 leo:「网关页面怎么有两个顶栏横线」): 两栏子项原本各自都是 .doc、
+  //   各自带一条 border-top, 而栅格 gap 把这一条切成左右两段 ⇒ 视觉上就是两条断开的横线。
+  //   现在子项不画线、由 .gateway-row 的 ::before 横穿两栏 ⇒ 验三条: ①子项自己的 border-top 都是 0;
+  //   ②行上恰有一条顶线 (::before 有 1px 实线, 不是 none); ③线位 = 行的上内边距、左右内缩 = 行的水平内边距
+  //   (与原来那条线逐像素同位, 只是不再是两截)。
+  const topRule = await evalJs(`(() => {
+    const row = document.querySelector('.gateway-row');
+    if (!row) return { missing: true };
+    const kids = Array.from(row.children).filter((c) => c.tagName === 'SECTION');
+    const bf = getComputedStyle(row, '::before');
+    const cs = getComputedStyle(row);
+    return {
+      kidBorders: kids.map((k) => getComputedStyle(k).borderTopWidth),
+      kids: kids.map((k) => k.id),
+      bfWidth: bf.borderTopWidth, bfStyle: bf.borderTopStyle, bfContent: bf.content,
+      bfTop: bf.top, bfLeft: bf.left, bfRight: bf.right, padTop: cs.paddingTop,
+      rowW: Math.round(row.getBoundingClientRect().width),
+    };
+  })()`);
+  check('网关页顶栏只有**一条**横线: 两栏子项自己都不画顶线 (border-top 全为 0px) —— 否则栅格间隙会把一条线切成两条断线',
+    !!topRule && !topRule.missing && topRule.kidBorders.length === 2 && topRule.kidBorders.every((w) => parseFloat(w) === 0),
+    JSON.stringify(topRule && { kids: topRule.kids, borders: topRule.kidBorders }));
+  check(`网关页顶栏那条线由 .gateway-row 的 ::before 一条画满 (线宽 ${topRule && topRule.bfWidth}${topRule && topRule.bfStyle} · 左右内缩 ${topRule && topRule.bfLeft}/${topRule && topRule.bfRight} · 上沿 ${topRule && topRule.bfTop} = 行的上内边距 ${topRule && topRule.padTop})`,
+    !!topRule && !topRule.missing && parseFloat(topRule.bfWidth) === 1 && topRule.bfStyle === 'solid' &&
+      topRule.bfContent !== 'none' && topRule.bfLeft === topRule.bfRight && topRule.bfTop === topRule.padTop,
+    JSON.stringify(topRule && { w: topRule.bfWidth, s: topRule.bfStyle, c: topRule.bfContent, l: topRule.bfLeft, r: topRule.bfRight, t: topRule.bfTop, pad: topRule.padTop }));
+
+  // ★ 顺序: 待接单任务必须在链上活动表**上面** (2026-09-24 leo:「可以把待接的单放在交易结算表格前面,
+  //   任何看到重要的任务, 人会有反应」) —— 文档顺序与真几何两块都验 (光看 DOM 会被 CSS 换位骗过)。
+  const orderOk = await evalJs(`(() => {
+    const root = document.querySelector('#pulse');
+    const t = root && root.querySelector('.pulse-tasks'), tb = root && root.querySelector('.pulse-table-wrap');
+    if (!t || !tb) return { missing: true };
+    return {
+      docOrder: !!(t.compareDocumentPosition(tb) & 4),
+      tasksTop: Math.round(t.getBoundingClientRect().top), tasksBottom: Math.round(t.getBoundingClientRect().bottom),
+      tableTop: Math.round(tb.getBoundingClientRect().top), tableBottom: Math.round(tb.getBoundingClientRect().bottom),
+    };
+  })()`);
+  check(`网关页顺序: 待接单任务区块在链上活动表**上面** (待接单 y ${orderOk && orderOk.tasksTop}–${orderOk && orderOk.tasksBottom} · 表 y ${orderOk && orderOk.tableTop}–${orderOk && orderOk.tableBottom})`,
+    !!orderOk && !orderOk.missing && orderOk.docOrder === true && orderOk.tasksBottom <= orderOk.tableTop + 1,
+    JSON.stringify(orderOk));
+
   // 桌面 1440: 两区同一行, 加入方式在右 (真测量, 等稳定)
   await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   const desk = await waitStable(`(() => {
@@ -3333,6 +3385,17 @@ async function main() {
   await fxDisable();                       // 本节读**真**快照 (不吃夹具)
   shouldIntercept = () => false;
   const OT_KEYS = ['announcementId', 'budget', 'capability', 'claimed', 'currency', 'deadline', 'network'];
+  // 原子单位 → 人类可读 (2026-09-24): 精度表与主仓 task-contract 的币种白名单同源 (USDC = 10^6 / ETH = 10^18);
+  // 不在表里的币种返回 null ⇒ 期望值里就不该有折算, 页面若替它折算了也会对不上。
+  const ATOMIC_DEC = { USDC: 6, ETH: 18 };
+  const atomicHuman = (raw, cur) => {
+    const dec = ATOMIC_DEC[String(cur == null ? '' : cur).trim().toUpperCase()];
+    const s = String(raw == null ? '' : raw).trim();
+    if (dec == null || !/^\d+$/.test(s)) return null;
+    const base = 10n ** BigInt(dec), v = BigInt(s);
+    const frac = (v % base).toString().padStart(dec, '0').replace(/0+$/, '');
+    return (v / base).toString() + (frac ? '.' + frac : '');
+  };
   const otRaw = await fetchText(`${BASE}/network-pulse.json`);
   let otSnap = null;
   try { otSnap = JSON.parse(otRaw); } catch { /* 分支断言 */ }
@@ -3340,13 +3403,23 @@ async function main() {
   const otRows = (otAll || []).filter((t) => t && typeof t === 'object' &&
     typeof t.capability === 'string' && t.capability.trim() && t.claimed !== true);
   const otSorted = otRows.slice().sort((a, b) => (Number(a.deadline) || 0) - (Number(b.deadline) || 0));
-  const otWant = otSorted.map((t) => ({
-    cap: t.capability.trim(),
-    budget: String(t.budget == null ? '' : t.budget).trim() + (t.currency ? ' ' + String(t.currency).trim() : ''),
-    net: String(t.network || '').trim(),
-    id: String(t.announcementId || '').trim(),
-    dl: Number(t.deadline) || 0,
-  }));
+  const otWant = otSorted.map((t) => {
+    const raw = String(t.budget == null ? '' : t.budget).trim();
+    const cur = t.currency ? ' ' + String(t.currency).trim() : '';
+    const human = atomicHuman(t.budget, t.currency);
+    return {
+      cap: t.capability.trim(),
+      // 页面显示的预算 = **按币种精度折算后**的数 (2026-09-24 leo 把 "1000 USDC" 读成 1000 USDC ——
+      // 那其实是 0.001 USDC)。折算公式在下面 atomicHuman 里**独立**实现一遍 (BigInt), 与 app.js 的整数移位各写各的:
+      // 页面算错就会对不上这里的期望值。折不了的币种 → 显示原子值 + 「最小单位」标记, 期望值照样算得出来。
+      budget: human != null ? human + cur : raw + cur + ' · 最小单位',
+      atomic: raw,
+      converted: human != null,
+      net: String(t.network || '').trim(),
+      id: String(t.announcementId || '').trim(),
+      dl: Number(t.deadline) || 0,
+    };
+  });
   // 快照这一层的硬约束: 数组在 + 每行**只有**白名单 7 键 (正文/地址/DID 想搭车就没门)
   check('快照 open_tasks[] 是数组, 且每行只有白名单 7 键 (capability/budget/currency/network/deadline/claimed/announcementId)',
     Array.isArray(otAll) && otAll.every((t) => t && typeof t === 'object' && JSON.stringify(Object.keys(t).sort()) === JSON.stringify(OT_KEYS)),
@@ -3381,6 +3454,7 @@ async function main() {
     const q = (c, s) => { const e = c.querySelector(s); return e ? e.textContent.trim() : ''; };
     const chips = chipNodes.map((c) => ({
       cap: q(c, '.pulse-task-cap'), budget: q(c, '.pulse-task-budget'), net: q(c, '.pulse-task-net'),
+      budgetTitle: (() => { const b = c.querySelector('.pulse-task-budget'); return b ? (b.getAttribute('title') || '') : ''; })(),
       id: c.getAttribute('data-task-id') || '',
       dlIso: (c.querySelector('.pulse-task-deadline') || {}).dateTime || '',
       r: Math.round(c.getBoundingClientRect().right), w: Math.round(c.getBoundingClientRect().width),
@@ -3390,6 +3464,7 @@ async function main() {
     return {
       state: root.getAttribute('data-pulse-state'),
       hasList: !!list, hasEmpty: !!empty,
+      noteText: (root.querySelector('.pulse-task-note') || {}).textContent ? root.querySelector('.pulse-task-note').textContent.trim() : '',
       chips, moreText: more ? more.textContent.trim() : null,
       moreN: more && more.hasAttribute('data-pulse-tasks-more') ? Number(more.getAttribute('data-pulse-tasks-more')) : null,
       emptyVisible: !!(empty && empty.offsetParent !== null && empty.getBoundingClientRect().height > 0),
@@ -3458,8 +3533,22 @@ async function main() {
       (want[i].dl ? Date.parse(c.dlIso) === want[i].dl : true));
     check(`${label}: chip 条数 = 快照里未认领且未过期的公告数 (本页上限 ${cap === Infinity ? '20' : cap} · 每页 ${TASKS_PAGE_EXP}) 实际 ${p.chips.length} / 快照 ${otWant.length}`,
       nOk, JSON.stringify({ got: p.chips.length, want: Math.min(otWant.length, perPage) }));
-    check(`${label}: 每条 chip 的 capability / 预算(原子)+币种 / network / 短 id / 截止 = 快照逐字相同`,
+    check(`${label}: 每条 chip 的 capability / 预算(按币种精度折算)+币种 / network / 短 id / 截止 = 快照相符`, 
       fOk, JSON.stringify({ page: p.chips, snap: want }));
+    // ★ 预算读数 (2026-09-24 leo:「1000 USDC 的待接单任务？我好像没那么多钱啊」): 快照给的是**原子单位**,
+    //   页面要把 1000 折成 0.001 USDC (不能把原子值当金额显示), 且**原始原子值必须留在 title 里**。
+    //   两条一起守才是完整的: ①只显示原子值 → 被读成 1000 USDC (leo 就是这么读的); ②折完把原始值丢了 → 读者没法核对。
+    const budgetBad = p.chips.filter((c, i) => {
+      const w = want[i];
+      if (!w || !w.converted) return false;                      // 折不了的币种在下面单独断言
+      const head = w.budget.split(' ')[0];
+      return !(c.budgetTitle.includes(w.atomic) && c.budgetTitle.includes('最小单位') && c.budgetTitle.includes(head));
+    });
+    check(`${label}: 折好的预算带**原始原子值**的 title (悬停可见「= 原子值 最小单位」), 一个数都没藏`,
+      budgetBad.length === 0, JSON.stringify(budgetBad.map((c) => [c.budget, c.budgetTitle])));
+    const misread = p.chips.filter((c, i) => want[i] && want[i].converted && /(^|\s)\d{4,}\s+(USDC|ETH)\b/.test(c.budget));
+    check(`${label}: ★ 原子值不许当金额显示 (快照原子值 ${JSON.stringify(want.map((w) => w.atomic))} → 页面读数 ${JSON.stringify(p.chips.map((c) => c.budget))})`,
+      misread.length === 0, JSON.stringify(misread.map((c) => c.budget)));
     // 截断要如实计数: 页面列不完就挂 +N, 不静默吞掉
     const rest = otWant.length - want.length;
     check(`${label}: 被本页上限截掉的行用「+N」如实计数 (应 ${rest}, 页面上是 ${p.moreN})`,
@@ -3483,6 +3572,12 @@ async function main() {
         !hit, hit ? `${hit.label} → ${hit.needle.slice(0, 30)}` : '');
     } else {
       skip(`${label}: 任务正文样本串不在页面`, '本机没有 ~/.bolloon/tasks/board/ 里与快照对得上的公告文件, 拿不到样本串');
+    }
+    // ⑥b 预算标记 (2026-09-24): 区块级标记要写清「折算自最小单位」—— 原来那行「预算 · 原子」含义太弱,
+    //     读者照样把 1000 读成 1000 USDC (leo 就是这么读的)。紧凑序栏没有这个标记节点, 只验网关页。
+    if (rootSel === '#pulse') {
+      check(`${label}: 预算标记写清「折算自最小单位」(实际 ${JSON.stringify(p.noteText)}), 不再是「预算 · 原子」这种太弱的说法`,
+        p.noteText === '预算 · 折自最小单位', p.noteText);
     }
     // ⑥ 读数不该被这一块撑破 (真几何: 区块自己不横向溢出)
     check(`${label}: 待接单任务区块不撑破容器 (窗口 ${p.vw}px, 每行右边界 ≤ 视口)`,
@@ -3617,6 +3712,14 @@ async function main() {
     domSignal: (v) => !!(v && !v.missing && v.chipCount === TASKS_PAGE_EXP),
   });
   const many = await evalJs(tasksBoxProbe);
+  // ★ 预算折算 (2026-09-24 leo:「1000 USDC 的待接单任务？我好像没那么多钱啊」): 夹具前 6 条 USDC 的原子值
+  //   1000+i 必须显示成 0.00100x USDC (期望值在这里**用 BigInt 再算一遍**, 与 app.js 的整数移位各写各的);
+  //   最后一条 DAI 页面没有精度表 ⇒ 必须**不折算**、显示原子值 + 「最小单位」, title 里说明为什么不折。
+  const fxBud = await evalJs(probeTasks('#pulse'));
+  const fxBudWant = fxBud.chips.map((c, i) => atomicHuman(String(1000 + i), 'USDC') + ' USDC');
+  check(`[14] ★ 预算 1000 原子 USDC 显示成 ${fxBudWant[0]} 而不是 1000 USDC (原始原子值留在 title 里)`,
+    fxBud.chips.length === TASKS_PAGE_EXP && fxBud.chips.every((c, i) => c.budget === fxBudWant[i] && c.budgetTitle.includes(String(1000 + i)) && c.budgetTitle.includes('最小单位')),
+    JSON.stringify(fxBud.chips.map((c) => [c.budget, c.budgetTitle.slice(0, 44)])));
   const expPages = Math.ceil(7 / TASKS_PAGE_EXP);
   check(`[14] 夹具 7 条 → 首屏只画一页 (${many.chipCount} 条 = 每页 ${TASKS_PAGE_EXP}), 不是把 7 条一次铺开`,
     many.chipCount === TASKS_PAGE_EXP, JSON.stringify({ chips: many.chipCount, want: TASKS_PAGE_EXP }));
@@ -3722,6 +3825,16 @@ async function main() {
     mob2.overWith === mob2.overWithout, JSON.stringify({ with: mob2.overWith, without: mob2.overWithout }));
   await cdp('Emulation.clearDeviceMetricsOverride');
   await sleep(200);
+  // ★ 预算折算的**反向**验证 (2026-09-24): 夹具最后一条故意用页面**没有精度表**的币种 (DAI)。
+  //   这一刻页面停在第 2 页 (③ 翻过页), 第 7 条就在这一页的最后一条 ⇒ 必须**不折算**: 显示原子值 +
+  //   就地标「最小单位」, title 说明为什么不折。折算一个不知道精度的币种 = 替数据编数; 没有这条反向验证, 门就只验了一半。
+  const fxBud2 = await evalJs(probeTasks('#pulse'));
+  const fxLast = FX_TASKS_MANY.open_tasks[6];
+  const fxDai = fxBud2.chips[fxBud2.chips.length - 1] || {};
+  const daiWant = fxLast.budget + ' ' + fxLast.currency + ' · 最小单位';
+  check(`[14] ★ 没有精度表的币种 (${fxLast.currency}) 不折算: 显示「${daiWant}」, title 说明不折算 (替数据编精度才是错)`,
+    fxDai.budget === daiWant && String(fxDai.budgetTitle || '').includes(fxLast.budget) && /不折算/.test(String(fxDai.budgetTitle || '')),
+    JSON.stringify([fxDai.budget, fxDai.budgetTitle, daiWant]));
   await fxDisable().catch(() => {});
   shouldIntercept = () => false;
   cMode = 'full';

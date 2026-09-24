@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=31">
+<link rel="stylesheet" href="style.css?v=32">
 </head>
 <body data-page="gateway">
 
@@ -162,7 +162,37 @@
        链上索引口径那一侧还有表格下方那行 (「链上索引 · 全量」)。 -->
   <p class="pulse-caveat" data-zh="观察窗口 24h" data-en="24h observation window">观察窗口 24h</p>
 
-  <!-- 链上活动表: 一行 = 快照 confirmed_activity 里的一条; 列 = 任务|状态|事件|网络|区块|确认数/最终性|时间。
+  <!-- 待接单任务 (2026-09-23 / 2026-09-24): 快照 open_tasks[] = 本节点公告板上**未认领且未过期**的公告。
+       ★ 2026-09-24 (leo:「可以把待接的单放在交易结算表格前面，任何看到重要的任务，人会有反应」):
+         这一块从表**下面**挪到表**上面** (现在的位置 = 小结计数行与链上活动表之间) —— 待接单的是「有事可做」,
+         得先被人看见; 已结算的是历史, 读不读都不影响行动。顺序 = 计数 → 待接单 → 全量表。 --> 
+  <!-- 每个 chip 只拼**白名单字段** (capability · 预算 + currency · network · 截止 · announcementId 前 8 位);
+       任务正文、正文摘要与预览、买方 DID/公钥、认领者、公告签名**不在快照里、页面也不读**(连读都不读)。
+       预算 (2026-09-24 leo:「1000 USDC 的待接单任务？我好像没那么多钱啊」): 快照给的是**原子单位**
+       (主仓 task-contract: maxAmount 是正整数原子单位, 1 USDC = 10^6) ⇒ "1000" 不是 1000 USDC, 是 **0.001 USDC**。
+       原先只显示原子值 + 一行「预算 · 原子」标记 —— 读者会把它读成 1000 USDC (leo 就是这么读的) = **标记太弱**;
+       现在按**主仓自己的精度表**(USDC 6 位 / ETH 18 位)折算后显示, **原始原子值留在 title 里**(一个数都没藏),
+       本页没有精度的币种**不折算**、就地标「最小单位」—— 折算一个不知道精度的币种 = 替数据编数。
+       空态只说「暂未观察到」(空 ≠ 未接入, 也不显示假 0)。 -->
+  <div class="pulse-tasks">
+    <h3 class="pulse-task-sub" data-zh="待接单任务" data-en="Open tasks">待接单任务</h3>
+    <p class="pulse-task-note" data-zh="预算 · 折自最小单位" data-en="budget · converted from atomic">预算 · 折自最小单位</p>
+    <p class="pulse-tasks-list" data-pulse-tasks></p>
+    <p class="pulse-empty" data-pulse-tasks-empty data-zh="暂未观察到" data-en="Empty = none observed">暂未观察到</p>
+    <!-- 分页 / 分栏 (2026-09-24 leo:「固定高度…下滑滚动查看, 分页分栏切换」):
+         ① 列表框自身固定高度 + 框内滚动 (纯 CSS, 见 style.css 的 --pulse-task-row-h) ——
+            条目再多也不撑高这一块; ② 控件**只在快照条数 > 一页 (data-pulse-tasks-page, 默认 4)** 时出现,
+            一页装得下就整行 hidden (不添噪音); ③ 页数从快照条数算, 不写死; ④ 「分栏」按钮按一下切双栏,
+            aria-pressed 记状态, 文案随状态走 (故此按钮**没有 data-zh/data-en** —— 动态文字归 app.js 管)。 -->
+    <p class="pulse-tasks-ctl" data-pulse-tasks-ctl hidden>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-prev data-zh="上一页" data-en="Prev" title="回到上一页">上一页</button>
+      <span class="pulse-tasks-pageinfo" data-pulse-tasks-pageinfo></span>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-next data-zh="下一页" data-en="Next" title="翻到下一页">下一页</button>
+      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-cols aria-pressed="false" title="按一下切到双栏显示">分栏</button>
+    </p>
+  </div>
+
+  <!-- 链上活动表 (**位于待接单任务区块下面**; 结算 = 历史, 顺序见上面那条注释): 一行 = 快照 confirmed_activity 里的一条; 列 = 任务|状态|事件|网络|区块|确认数/最终性|时间。
        空表不留给空白 ——「没观察到」与「快照读不到」是两种真相, 各有各的话。
        每一格都由 app.js 用 textContent 造 (不用 innerHTML), 任务与交易标识一律短写。
 
@@ -214,29 +244,6 @@
     <p class="pulse-activity-source pulse-activity-totals" data-pulse-activity-totals></p>
   </div>
 
-  <!-- 待接单任务 (2026-09-23): 快照 open_tasks[] = 本节点公告板上**未认领且未过期**的公告。
-       每个 chip 只拼**白名单字段** (capability · 预算原子值 + currency · network · 截止 · announcementId 前 8 位);
-       任务正文、正文摘要与预览、买方 DID/公钥、认领者、公告签名**不在快照里、页面也不读**(连读都不读)。
-       预算按**原子单位原样**显示 —— 页面没有汇率表, 不替数据换算成"0.001 USDC"这种它没说的数;
-       单位含义由标题旁那行极短标记「预算 · 原子」承接。
-       空态只说「暂未观察到」(空 ≠ 没接入, 也不显示假 0)。 -->
-  <div class="pulse-tasks">
-    <h3 class="pulse-task-sub" data-zh="待接单任务" data-en="Open tasks">待接单任务</h3>
-    <p class="pulse-task-note" data-zh="预算 · 原子" data-en="budget · atomic">预算 · 原子</p>
-    <p class="pulse-tasks-list" data-pulse-tasks></p>
-    <p class="pulse-empty" data-pulse-tasks-empty data-zh="暂未观察到" data-en="Empty = none observed">暂未观察到</p>
-    <!-- 分页 / 分栏 (2026-09-24 leo:「固定高度…下滑滚动查看, 分页分栏切换」):
-         ① 列表框自身固定高度 + 框内滚动 (纯 CSS, 见 style.css 的 --pulse-task-row-h) ——
-            条目再多也不撑高这一块; ② 控件**只在快照条数 > 一页 (data-pulse-tasks-page, 默认 4)** 时出现,
-            一页装得下就整行 hidden (不添噪音); ③ 页数从快照条数算, 不写死; ④ 「分栏」按钮按一下切双栏,
-            aria-pressed 记状态, 文案随状态走 (故此按钮**没有 data-zh/data-en** —— 动态文字归 app.js 管)。 -->
-    <p class="pulse-tasks-ctl" data-pulse-tasks-ctl hidden>
-      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-prev data-zh="上一页" data-en="Prev" title="回到上一页">上一页</button>
-      <span class="pulse-tasks-pageinfo" data-pulse-tasks-pageinfo></span>
-      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-next data-zh="下一页" data-en="Next" title="翻到下一页">下一页</button>
-      <button type="button" class="pulse-ctl-btn" data-pulse-tasks-cols aria-pressed="false" title="按一下切到双栏显示">分栏</button>
-    </p>
-  </div>
 
   <!-- 智能体私有站 (IPNS): 后端 agent_sites[] 是**本节点显式发布**的私有站, 可能是空数组。
        列表为空 → 空提示 (没发布 ≠ 没数据); 粘贴框独立于取数 —— 快照挂了它照样能用。
@@ -378,6 +385,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=31"></script>
+<script src="app.js?v=32"></script>
 </body>
 </html>

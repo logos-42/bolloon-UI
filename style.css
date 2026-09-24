@@ -445,8 +445,19 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   align-items: start;
   max-width: 1240px; margin: 0 auto;
   padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px);
+  /* ★ 2026-09-24 leo:「网关页面怎么有两个顶栏横线」: 两栏子项各自都是 .doc ⇒ 各自带一条 border-top
+     (.doc 的规则见上), 而栅格 gap 把这条线**切成左右两段** —— 看上去就是两条断开的横线。
+     修法: 子项不再各画线 (.gateway-row > .doc 清掉 border-top), 由 .gateway-row 用**一条** ::before
+     横穿两栏 (左右内缩 = 行的水平内边距, 上沿 = 行的上内边距 ⇒ 位置与原来那条线逐像素相同, 只是不再是两截)。 */
+  position: relative;
+}
+.gateway-row::before {
+  content: ""; position: absolute; pointer-events: none;
+  left: clamp(24px, 6vw, 80px); right: clamp(24px, 6vw, 80px); top: clamp(60px, 10vh, 130px);
+  border-top: 1px solid var(--hairline);
 }
 .gateway-row > .doc {
+  border-top: none;                      /* 两栏不再各画一条线 ⇒ 顶栏只有 .gateway-row::before 那一条 */
   padding: 0; padding-top: clamp(40px, 7vh, 90px);
   max-width: none; margin: 0;
 }

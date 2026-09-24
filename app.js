@@ -1087,13 +1087,56 @@ var BOLLOON_IPNS = (function () {
         : '快照读不到，说不清发布了什么';
     }
 
+    // —— 原子单位 → 人类可读 (2026-09-24 leo:「1000 USDC 的待接单任务？我好像没那么多钱啊」) ——
+    // 公告里的预算字段是**正整数原子单位** (主仓 src/agents/task-contract.ts: `maxAmount: string; // 正整数原子单位
+    // 字符串 (与 x402 一致)`, 且测试里 `toAtomicAmount('1','USDC') === '1000000'`) —— 所以 "1000" 不是
+    // 1000 USDC, 而是 **0.001 USDC**。只显示原子值 + 一行「预算 · 原子」标记, 读者会把它读成 1000 USDC
+    // (leo 就是这么读的) —— **标记太弱 = 缺陷**, 跟「切换也太模糊」是同一类问题。
+    // 纪律: ① 只按**主仓自己的精度表**折算 (USDC 6 位 / ETH 18 位 —— 与 task-contract 只允许 USDC/ETH 的
+    // 白名单同源), 不认识的币种**不折算** (折算不知道精度的币种 = 替数据编数); ② 原始原子值**留在 title 里**
+    // (一个数都没被藏起来, 悬停即见 "= 1000 最小单位"); ③ 用整数移位, 不经过浮点 (0.001 不许因为 double 变 0.00100000000000000002)。
+    var ATOMIC_DECIMALS = { USDC: 6, ETH: 18 };
+    function fromAtomic(amount, currency) {
+      var cur = String(currency == null ? '' : currency).trim().toUpperCase();
+      var raw = String(amount == null ? '' : amount).trim();
+      var dec = ATOMIC_DECIMALS[cur];
+      if (dec == null || !/^\d+$/.test(raw)) return null;          // 不认识的币种 / 非正整数原子串 → 不折算
+      var digits = raw.replace(/^0+(?=\d)/, '');
+      if (digits.length <= dec) digits = new Array(dec - digits.length + 1).join('0') + digits;
+      var intPart = digits.slice(0, digits.length - dec).replace(/^0+(?=\d)/, '') || '0';
+      var frac = digits.slice(digits.length - dec).replace(/0+$/, '');
+      return intPart + (frac ? '.' + frac : '');
+    }
+    // chip 上那个预算节点: 能折算就显示折算值, 折不了就显示原子值并**就地**说明按最小单位显示 (不做区块级含糊标记)。
+    function budgetNode(amount, currency) {
+      var cur = String(currency == null ? '' : currency).trim();
+      var raw = String(amount == null ? '' : amount).trim();
+      var human = fromAtomic(raw, cur);
+      var en = lang() === 'en';
+      var unit = en ? 'minimal units' : '最小单位';
+      var node = textNode('span', 'pulse-task-budget', human != null
+        ? (human + (cur ? ' ' + cur : ''))
+        : (raw + (cur ? ' ' + cur : '') + (en ? ' · ' + unit : ' · ' + unit)));
+      var pow = ATOMIC_DECIMALS[cur.toUpperCase()];
+      if (human != null) {
+        node.setAttribute('title', en
+          ? human + ' ' + cur + ' (= ' + raw + ' minimal units · 1 ' + cur + ' = 10^' + pow + ')'
+          : human + ' ' + cur + '（= ' + raw + ' 最小单位 · 1 ' + cur + ' = 10^' + pow + '）');
+      } else {
+        node.setAttribute('title', en
+          ? raw + ' ' + (cur || 'units') + ' (minimal units; this page has no precision for ' + (cur || 'this currency') + ', so it does not convert)'
+          : raw + ' ' + (cur || '单位') + '（最小单位；本页没有 ' + (cur || '该币种') + ' 的精度，不折算）');
+      }
+      return node;
+    }
+
     // —— 待接单任务 (快照 open_tasks[]): 一行一个 chip ——
-    // chip 只拼**白名单字段**: capability · 预算(原子) + currency · network · 截止 MM-DD · announcementId(前 8 位)。
+    // chip 只拼**白名单字段**: capability · 预算 + currency · network · 截止 MM-DD · announcementId(前 8 位)。
     // 纪律 (与主仓 OpenTaskRow 的白名单一一对应):
     //   · 任务正文 / 正文摘要与预览 / 买方 DID 与公钥 / 认领者 / 签名 —— **根本不读** (不读就没有
     //     "某天顺手渲染出来"的可能; 快照里本来也不该有, 由主仓门 + 站点隐私守卫双重拒)。
-    //   · 预算按**原子单位原样**显示 (USDC 是 6 位小数, 但页面没有汇率表也不该替数据换算 —— 换算
-    //     等于替快照编一个它没说的数; 单位含义由标题旁的极短标记「预算 · 原子」承接)。
+    //   · 预算: 快照给的是**原子单位**, 按币种精度折算后显示 (见上面 fromAtomic / budgetNode, 2026-09-24
+    //     leo 把 "1000 USDC" 读成了 1000 USDC —— 那其实是 0.001 USDC), 原始值留在 title 里, 折不了的币种不折。
     //   · `claimed === true` 的行不画:「待接单」区块里出现已认领的单是事实错误 (主仓门也会拒这种快照)。
     //   · 2026-09-24 leo:「这个任务条目你设置一下固定高度…以后可以下滑滚动查看, 分页分栏切换」:
     //     ① 固定高度 + 框内滚动 = **纯 CSS** (style.css 里 .pulse-tasks-list 的 height: var(--pulse-task-row-h)) ——
@@ -1118,7 +1161,7 @@ var BOLLOON_IPNS = (function () {
         chip.className = 'pulse-task-chip';
         chip.setAttribute('data-task-id', t.announcementId || '');
         chip.appendChild(textNode('span', 'pulse-task-cap', t.capability));
-        if (t.budget) chip.appendChild(textNode('span', 'pulse-task-budget', t.budget + (t.currency ? ' ' + t.currency : '')));
+        if (t.budget) chip.appendChild(budgetNode(t.budget, t.currency));
         if (t.network) chip.appendChild(textNode('span', 'pulse-task-net', t.network));
         if (t.deadline) {
           var tm = document.createElement('time');
