@@ -63,24 +63,8 @@ python3 "$UI_REPO/scripts/pulse-privacy-check.py" "$OUT"
 
 python3 scripts/deploy-pages.py 2>&1 | tail -3
 
-# 4) 第二通道: 备案主机 (阿里云 ECS, nginx root /var/www/bolloon.cn) —— CF Pages **不会**自动同步它。
-#    ⚠️ 2026-09-24 踩过: 只跑 CF 部署时, **备案主机那份不会被同步** —— 两条通道各自算「已发布」,
-#       走 bolloon.cn 的人看到的可能还是上一次的快照 (而 pages.dev 已经是新的)。别再依赖「记得手动 rsync」。
-#    凭据不入库: 目标写进 ECS_TARGET (或 ~/.bolloon-ecs-target 文件), 没配就**显式说明这一通道没同步**,
-#    不许静默当作已完成 (静默才是那次踩坑的根因)。
-ECS_TARGET="${BOLLOON_ECS_TARGET:-}"
-[ -z "$ECS_TARGET" ] && [ -f "$HOME/.bolloon-ecs-target" ] && ECS_TARGET="$(cat "$HOME/.bolloon-ecs-target")"
-if [ -n "$ECS_TARGET" ]; then
-  echo "[refresh-pulse] 同步备案主机 ($ECS_TARGET)……"
-  if rsync -az --delete --exclude '.git' --exclude 'build-site' --exclude 'dl' \
-       "$UI_REPO/" "$ECS_TARGET"; then
-    echo "[refresh-pulse] ✓ 备案主机已同步"
-  else
-    echo "[refresh-pulse] ✗ 备案主机同步失败 (rsync 非 0) → 该通道仍是旧字节, 别当作已发布" >&2
-  fi
-else
-  echo "[refresh-pulse] ⚠️ 备案主机 (ECS) 未同步 —— 未配置 BOLLOON_ECS_TARGET / ~/.bolloon-ecs-target。" >&2
-  echo "                两个通道各自算『已发布』: 配了才会同步, 否则 bolloon.cn 那份还是旧快照。" >&2
-fi
+# 4) 唯一对外通道 = CF Pages (bolloon.pages.dev)。备案主机 (阿里云 ECS /var/www/bolloon.cn) **不在验收范围** ——
+#    2026-09-24 leo 拍板「bolloon.pages.dev 的更新就行」, 故这里不做第二条 rsync (它的目标/凭据也不该落进仓库)。
+#    别再往这个脚本里加第二通道: 一次刷新只认一个「已发布」, 免得又出现「A 通道新、B 通道旧」的假绿。
 
-echo "[refresh-pulse] 完成 (记得等 20s 再用真域名验收 —— 有传播竞态)"
+echo "[refresh-pulse] 完成 (记得等 20s 再用部署域名验收 —— 有传播竞态)"
