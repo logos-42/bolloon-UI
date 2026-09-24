@@ -535,7 +535,8 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-sep { color: var(--ink-3); }
 [data-pulse] [hidden] { display: none !important; }
 
-/* 小结行: 一行六个计数 (节点 / 智能体 / 任务 / 已完成 / 已验证 / 钱包签名)。
+/* 小结行: 一行六个计数 (节点 / 智能体 / 任务 / 已完成 / 已结算 / 钱包签名)。
+   2026-09-24: 「已验证」槽已去掉 (链上索引没有对应事件 ⇒ 无源可报, 页面不再显示「未接入」)。
    数值仍是衬线字号, 但不再占屏 —— 网关页的主体现在是下面那张表。 */
 .pulse-summary { list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 30px; margin: clamp(20px, 3.4vh, 34px) 0 clamp(14px, 2.4vh, 24px); }
 .pulse-summary li { display: flex; align-items: baseline; gap: 8px; }

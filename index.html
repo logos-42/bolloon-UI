@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=27">
+<link rel="stylesheet" href="style.css?v=28">
 </head>
 <body data-page="product">
 
@@ -127,14 +127,17 @@
       <!-- 这里刻意只放 6 项 (不放「已验证」「钱包签名」)。
            实测: 1440px 下 6 项正好 1 行 (容器 620px), 第 7 项必然换行 →
            序厅从「一行数字」变「两行孤行数字墙」, 违背紧凑版一眼扫过的设计。
-           签名/验真这类精细活动账目由网关页那张链上活动表承接 (下面那条链接)。
+           签名这类精细活动账目由网关页那张链上活动表承接 (下面那条链接)。
            首页少列一项 ≠ 显示错误值: 拿不到的字段在网关页也是整行隐藏。
+           ★ 2026-09-24 (leo:「未接入是什么意思, 可以去掉吗」): 「已验证」这一格**任何页面都不再有**
+             —— 网关页那次也一并去掉了 (链上索引没有第四类事件可报 ⇒ 无源); 首页与网关页计数行
+             都不出现「未接入」字样 (由 scripts/verify-site.mjs 的门 [6e★★★★] 钉住)。
            ★ 2026-09-24 (leo:「数量怎么对不上」): 这 6 项里「任务/已完成」现在取**链上索引全量**
              的同源值 —— 与下面那条口径行 (pulse-c-totals-line:「链上索引 · 全量 · N 行 / M 个不同任务」)
              是同一个数, 两个数必须相等 (由 scripts/verify-site.mjs 的「同一概念不变量门」钉住)。
              紧凑版**不加**每项口径短标记: 6 项已占满一行 (容器 620px), 再加 6 个标记会把序厅挤成两行;
              它的口径由同屏那条口径行承担 (标题行)→ 仍不是"只靠 notes 辩解"。
-             网关页 (有链上活动表的那页) 则**每项都带**就近口径标记 (链上索引·全量 / 24h 脉冲 / 未接入)。 -->
+             网关页 (有链上活动表的那页) 则**每项都带**就近口径标记 (链上索引·全量 / 24h 脉冲 / 24h 签名审计)。 -->
 
       <p class="pulse-c-meta">
         <span data-zh="快照" data-en="Snapshot">快照</span>
@@ -254,6 +257,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=27"></script>
+<script src="app.js?v=28"></script>
 </body>
 </html>
