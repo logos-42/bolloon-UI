@@ -13,7 +13,7 @@
  *   ⑤′ /bolloon-network.md 线上正文 = 主仓 skills/bolloon-network/SKILL.md 的原样镜像
  *      (frontmatter 原样: name/version/protocol/paymentModes/hardRules + 正文首尾锚点都在)
  *   ⑥ gateway.html 链上活动 (公开只读接口 /api/public/network/progress 的 confirmed_activity):
- *      页面主体 = 一句短说明 + 小结行 (节点/智能体/任务/已完成/已验证/钱包签名) + 一张表
+ *      页面主体 = 一句短说明 + 小结行 (节点/智能体/任务/已完成/已结算/已验证/钱包签名) + 一张表
  *      (列 = 任务|状态|事件|网络|区块|确认数/最终性|时间)。断言: 表头/行渲染逐格逐字、
  *      短写 (40 位地址→0x…头4尾4, 64 位 sha256→sha256:头4…)、state 中英单词、
  *      finality 三档徽标 (data-finality + 三档颜色互不相同)、数据源标注三种取值、
@@ -32,7 +32,7 @@
  *      缺失 → 小结行整行隐藏, 不编造; 空表要说清 + agent_sites=[] 诚实提示
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=26 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=27 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -44,16 +44,22 @@
  *      页面可见文本无 40 位地址 / 64 位哈希
  *   ⑲ 技能索引版本号逐字断言 (bolloon-network = 1.2.0), 且与线上 .md frontmatter 一致
  *      —— 不再只匹配「1.x.y 形状」(那会漏掉「本机改了、线上没部署」)
- *   ⑳ 公开页数字不许自相矛盾 (2026-09-22 leo 拍板 · 2026-09-23 文案精简后更严): 小结行
- *      「任务/已完成/已验证/签名」= 24h 脉冲事件口径 (真快照里是 0), 链上活动表 N 行 = 链上索引口径
- *      —— 两者同屏时, **两套口径必须各自带一个就近的极短标记**:
- *        ① 统计区 (小结行下) 必须有「观察窗口」类短标记 (.pulse-caveat, 如「观察窗口 24h」);
- *        ② 表区 (口径行 data-pulse-activity-totals, 老快照没有它时退到表下 data-pulse-activity-source)
- *           必须有「链上索引」+「全量」类短标记 + 行数/不同任务 + 这批行属于哪条链 (本机 31337 · 不是公网)。
- *      少任何一个标记 = 红 (删成一片空白也红)。整句解释已删 (2026-09-23 leo 要求页面干净):
- *      两套口径的差异靠上面两个短标记就近承接, 不靠长句、也不靠「不是全网…」这类否定句兜底 ——
- *      本脚本同时反向断言这些长句/夸大措辞不再出现在可见文案里。
- *      老快照缺 activity_totals/chain_id_scope → 口径行整行隐藏 (不自己数行数、不编网络名)。
+ *   ⑳ 公开页数字不许自相矛盾 (2026-09-22 立 · 2026-09-23 文案精简后更严 · **2026-09-24 加强成"同一概念不变量门"**):
+ *      (a) **两套口径各自带就近短标记**: 统计区「观察窗口」类标记 (.pulse-caveat) + 表区
+ *          「链上索引·全量」类标记 (口径行 data-pulse-activity-totals, 老快照没有它时退到表下
+ *          data-pulse-activity-source) + 行数/不同任务 + 这批行属于哪条链。少任何一个标记 = 红。
+ *      (b) ★ **同一概念的顶部计数不得与其表格矛盾而不解释** (`contradictionFindings`, 只看真 DOM):
+ *          ① 顶部数就地标了「链上索引·全量」→ 必须与表里同概念数**逐字相等** (解释无效);
+ *          ② 不同源时 0 vs N → 顶部口径标记 + 表区标记两个都必须在场, 缺一即"并排矛盾且无一字解释";
+ *          ③ 反向: 顶部报数而表里一行都没有, 且没有一处说明两者不同源;
+ *          ④ 快照标「无源」(`source:'none'`)的数不许显示裸 0 (0 = "没发生过", 是另一句话);
+ *          ⑤ 快照标 `unavailable` 的数必须真写「未接入」(不许 0 / 隐藏 / —)。
+ *          并**自证这道门活着** (§[6e★★★] 变异验证): 拿真快照改成 tasks=0 / signatures=0 而口径仍写
+ *          链上索引 → 门必须真判红; 改成 null+未接入 → 页面必须写「未接入」而门保持干净。
+ *      整句解释已删 (2026-09-23 leo 要求页面干净): 差异靠就近短标记承接, 不靠长句、也不靠
+ *      「不是全网…」这类否定句兜底 —— 本脚本同时反向断言这些长句/夸大措辞不再出现在可见文案里。
+ *      老快照缺 activity_totals/chain_id_scope → 口径行整行隐藏 (不自己数行数、不编网络名),
+ *      也不写任何逐字段口径标记 (页面绝不替快照编口径)。
  *   ⑳² 文案预算 (2026-09-23 leo: 「这些内容不用显示, 简洁最好」): 脉冲区三个动态文案节点
  *      (caveat / 口径行 / 数据源行) 一律**不写整句** —— 不得出现句号「。」「；」或「 —— 」这类
  *      成句标点, 且每个节点长度有硬上限; 「智能体私有网站」的列表说明整句已删, 空态压成
@@ -103,7 +109,8 @@
  *
  * 活动区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
  * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago / data-pulse-age
- *            / data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
+ *            / data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_settled|tasks_verified|signatures"
+ *            / data-pulse-scope-tag="<同上>|…"  (2026-09-24: 每个数就地贴的逐字段口径短标记)
  *            / data-pulse-activity-body / data-pulse-activity-empty / data-pulse-activity-source
  *            / data-pulse-feed / data-pulse-notes / data-pulse-hint
  *            / data-pulse-sites / data-pulse-sites-empty
@@ -207,11 +214,21 @@ const pulseProbe = (rootSel) => `(() => {
     tasks: t('[data-pulse-total="tasks"]'),
     tasksDone: t('[data-pulse-total="tasks_completed"]'),
     tasksVerified: t('[data-pulse-total="tasks_verified"]'),
+    tasksSettled: t('[data-pulse-total="tasks_settled"]'),
     signatures: t('[data-pulse-total="signatures"]'),
-    tasksHidden: { tasks: hid('tasks'), done: hid('tasks_completed'), verified: hid('tasks_verified'), sig: hid('signatures') },
+    tasksHidden: { tasks: hid('tasks'), done: hid('tasks_completed'), settled: hid('tasks_settled'), verified: hid('tasks_verified'), sig: hid('signatures') },
+    // ★ 2026-09-24: 每个数**就地**带的口径短标记 (i.pulse-scope-tag; 快照没给口径 → 空字符串)
+    scopeTags: (() => {
+      const out = {};
+      Array.from(root.querySelectorAll('[data-pulse-scope-tag]')).forEach((n) => {
+        out[n.getAttribute('data-pulse-scope-tag')] = { text: n.textContent.trim(), title: n.getAttribute('title') || '' };
+      });
+      return out;
+    })(),
     summary: Array.from(root.querySelectorAll('.pulse-summary li')).map((li) => {
-      const b = li.querySelector('b'); const sp = li.querySelector('span');
+      const b = li.querySelector('b'); const sp = li.querySelector('span'); const st = li.querySelector('.pulse-scope-tag');
       return { value: b ? b.textContent.trim() : null, label: sp ? sp.textContent.trim() : null,
+        scopeTag: st ? st.textContent.trim() : null,
         key: b ? b.getAttribute('data-pulse-total') : null, hidden: li.hasAttribute('hidden') };
     }),
     act: table ? {
@@ -373,6 +390,83 @@ const scopeMarkers = (v) => {
     statsOk: SCOPE_WINDOW_MARK.test(stats),
     tableOk: SCOPE_WHOLE_MARK.test(table),
     both: SCOPE_WINDOW_MARK.test(stats) && SCOPE_WHOLE_MARK.test(table) };
+};
+
+// ★★ 同一概念不变量门 (2026-09-24 leo:「数量怎么对不上, 尤其是后面的任务和钱包」)。
+//    线上真事: 顶部写「0 任务」, 同屏的链上活动表有 15 行任务 —— 同一个概念两个数字并排, 无人解释。
+//    这道门只看**页面真渲染出来的字**(DOM), 不看快照自述, 返回 [] = 无矛盾, 否则每条 = 一处并排矛盾。
+//    规则 (逐条都要能在「变异快照」上真判红, 见 [6e★★★]):
+//      ① 顶部数若标了「链上索引 · 全量」(与表同源) → 必须与表里同概念数**逐字相等**: 解释无效;
+//      ② 不同源时 0 vs N → 顶部必须就地有口径标记 **且** 表区有「链上索引 · 全量」标记, 缺一即并排矛盾;
+//      ③ 反向矛盾: 顶部报了数而表里一行都没有;
+//      ④ 快照标无源 (`source:'none'`) 的数不许显示裸 0 (0 会被读成「没发生过」);
+//      ⑤ 快照标 `unavailable` 的数, 页面必须真写「未接入」(不许 0 / 隐藏 / —)。
+const CONTRADICTION_PAIRS = [
+  ['tasks', 'tasks', '任务'],
+  ['tasks_completed', 'tasks_completed', '已完成'],
+  ['tasks_settled', 'tasks_settled', '已结算'],
+];
+const contradictionFindings = (p, snap) => {
+  const out = [];
+  if (!p || !p.act) return ['探针没取到活动区 (判断不了同一概念是否打架)'];
+  const rows = p.act.rows || [];
+  const rowCount = p.act.rowCount || 0;
+  const at = (snap && snap.activity_totals) || null;
+  const fields = (snap && snap.totals_scope && snap.totals_scope.fields) || null;
+  const tagOf = (k) => String(((p.scopeTags || {})[k] || {}).text || '');
+  const fieldOf = (k) => (fields && typeof fields[k] === 'object' && fields[k]) || null;
+  const domNum = (v) => (v == null || v === '' || v === '—' ? null : (/^-?\d+$/.test(String(v)) ? Number(v) : null));
+  const top = { tasks: domNum(p.tasks), tasks_completed: domNum(p.tasksDone), tasks_settled: domNum(p.tasksSettled) };
+  const raw = { tasks: p.tasks, tasks_completed: p.tasksDone, tasks_settled: p.tasksSettled };
+  const atN = { tasks: at && at.tasks, tasks_completed: at && at.tasks_completed, tasks_settled: at && at.tasks_settled };
+  // 表格里**真画出来**的同概念数 (不同任务去重); 表只画前 60 行时用快照同源计数兜底 (不误判截断)
+  const truncated = !!(snap && Array.isArray(snap.confirmed_activity) && snap.confirmed_activity.length > rowCount);
+  const uniqTasks = (pred) => new Set(rows.filter(pred).map((r) => r.task).filter(Boolean)).size;
+  const tbl = {
+    tasks: truncated ? atN.tasks : uniqTasks(() => true),
+    tasks_completed: truncated ? atN.tasks_completed : uniqTasks((r) => r.kindKey === 'task_completed'),
+    tasks_settled: truncated ? atN.tasks_settled : uniqTasks((r) => r.kindKey === 'trade_settled'),
+  };
+  const tableMarks = [p.act.totalsLine, p.act.source].filter(Boolean).join(' · ');
+  const tableOk = SCOPE_WHOLE_MARK.test(tableMarks);
+  for (const [k, atKey, zh] of CONTRADICTION_PAIRS) {
+    const t = top[k];
+    const sameSource = SCOPE_WHOLE_MARK.test(tagOf(atKey)) ||
+      !!(fieldOf(atKey) && fieldOf(atKey).source === 'chain-index');
+    const n = tbl[k];
+    if (sameSource && t !== n) {
+      out.push(`同一概念两个数: 顶部「${zh}」=${raw[k]} 而表里 ${n} 个 (${rowCount} 行) —— 两处都标「链上索引 · 全量」却不相等`);
+    }
+    if (!sameSource && n > 0 && (t === null || t === 0)) {
+      const tag = tagOf(atKey);
+      // 「就地解释」= 这个数自带口径标记, 或统计区那条观察窗口标记 (老快照没有逐字段口径时的等价说法);
+      // 表区还必须有「链上索引 · 全量」—— 两处各说清一半, 才叫解释过。
+      const statsOk = SCOPE_WINDOW_MARK.test(tag) || SCOPE_WHOLE_MARK.test(tag) || SCOPE_WINDOW_MARK.test(String(p.caveat || ''));
+      if (!statsOk || !tableOk) {
+        out.push(`顶部「${zh}」=${raw[k]} 与表里 ${n} 个同类 (${rowCount} 行) 并排矛盾且无一字解释 (就地口径标记=${JSON.stringify(tag)})`);
+      }
+    }
+    if (t !== null && t > 0 && rowCount === 0 && n === 0) {
+      // 反向 (顶部报数 / 表里一行都没有): 只有**一处口径标记都没有**时才算矛盾 ——
+      // 顶部数允许比表宽 (24h 脉冲事件 ⊃ 已确认链上行), 但必须两处各自说清, 否则读者只能读成"在撒谎"。
+      const tag = tagOf(atKey);
+      const statsOk = SCOPE_WINDOW_MARK.test(tag) || SCOPE_WHOLE_MARK.test(tag) || SCOPE_WINDOW_MARK.test(String(p.caveat || ''));
+      if (!statsOk || !tableOk) {
+        out.push(`反向矛盾: 顶部「${zh}」=${raw[k]} 而表里一行都没有, 且没有一处说明这两个数不同源`);
+      }
+    }
+  }
+  for (const k of ['tasks_verified', 'signatures']) {
+    const f = fieldOf(k);
+    const v = k === 'signatures' ? p.signatures : p.tasksVerified;
+    if (f && f.source === 'none' && domNum(v) === 0) {
+      out.push(`「${k}」快照标了无源却显示裸 0 (0 会被读成「没发生过」)`);
+    }
+    if (f && f.unavailable === true && !/未接入|not connected/.test(String(v == null ? '' : v))) {
+      out.push(`「${k}」快照标了未接入, 页面却显示 ${JSON.stringify(v)} —— 必须如实写「未接入」`);
+    }
+  }
+  return out;
 };
 
 async function main() {
@@ -656,6 +750,8 @@ async function main() {
   let growMode = 'base';
   // 浏览器链接夹具 (第五档) 的开关: chain → 六行混装 (真链可点 / 本机链纯文本); local → 只有本机链一行
   let eMode = 'chain';
+  // 变异快照 (第六档, 2026-09-24 新不变量门) 的开关: 'tasks-zero' | 'sig-bare-zero' | 'sig-unavailable'
+  let contraMode = 'tasks-zero';
 
   // ——— 夹具自证的取证通道 (只记账, 不改拦截行为) ———
   // 为什么需要: 靠拦截换夹具的断言, 一旦拦截没命中 (请求被放行去了 CDN / 命中缓存 / 超时),
@@ -688,6 +784,21 @@ async function main() {
     if (p.resourceType === 'Document' || !shouldIntercept(p)) {
       if (p.resourceType !== 'Document') fxLog(`放行(未拦) ${shortUrl(p.request.url)}`);
       cdp('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {});
+      return;
+    }
+    // 第六档: 变异快照 (2026-09-24 新不变量门) —— contraMode 决定回哪一份:
+    //   'tasks-zero' → 顶部 0 任务 + 逐字段口径仍写链上索引 (同源不相等, 必须判红)
+    //   'sig-bare-zero' → 签名 = 0 而无源 (裸 0, 必须判红)
+    //   'sig-unavailable' → 签名 = null + 未接入 (正例: 页面必须写「未接入」, 门必须干净)
+    // ⚠️ 必须排在 C 档之前: URL 里的 'network-pulse-verify-contra' 含有 'network-pulse-verify-c' 子串,
+    //    放在后面会被 C 档先吃掉 (夹具名撞了 → 变异根本没生效, 而断言会读成"页面错")。
+    if (p.request.url.includes('network-pulse-verify-contra')) {
+      const pick = contraMode === 'sig-bare-zero' ? FX_CONTRA_SIG_BARE_ZERO
+        : contraMode === 'sig-unavailable' ? FX_SIG_UNAVAILABLE : FX_CONTRA_TASKS_ZERO;
+      if (!pick) { cdp('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {}); return; }
+      fxHit(`contra-${contraMode}`, p.request.url);
+      fxLog(`Contra 档 (${contraMode}) → 回变异快照 contra-${contraMode}`);
+      fulfillJson(p.requestId, pick);
       return;
     }
     // 第二实例的来源: 按 bMode 直接失败或回过期夹具 (不走手工队列)
@@ -725,6 +836,19 @@ async function main() {
       fxHit(tag, p.request.url);
       fxLog(`Explorer 档 (${eMode}) → 回夹具 ${tag}`);
       fulfillJson(p.requestId, fxMark(eMode === 'local' ? FX_EXPLORER_LOCAL : FX_EXPLORER, tag));
+      return;
+    }
+    // 第六档: 变异快照 (2026-09-24 新不变量门) —— contraMode 决定回哪一份:
+    //   'tasks-zero' → 顶部 0 任务 + 逐字段口径仍写链上索引 (同源不相等, 必须判红)
+    //   'sig-bare-zero' → 签名 = 0 而无源 (裸 0, 必须判红)
+    //   'sig-unavailable' → 签名 = null + 未接入 (正例: 页面必须写「未接入」, 门必须干净)
+    if (p.request.url.includes('network-pulse-verify-contra')) {
+      const pick = contraMode === 'sig-bare-zero' ? FX_CONTRA_SIG_BARE_ZERO
+        : contraMode === 'sig-unavailable' ? FX_SIG_UNAVAILABLE : FX_CONTRA_TASKS_ZERO;
+      if (!pick) { cdp('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {}); return; }
+      fxHit(`contra-${contraMode}`, p.request.url);
+      fxLog(`Contra 档 (${contraMode}) → 回变异快照 contra-${contraMode}`);
+      fulfillJson(p.requestId, pick);
       return;
     }
     // 第四档: 新事件 kind + 数值变化自动反映 —— 每轮请求都按 growMode 自动回夹具 (不走手工队列),
@@ -1075,6 +1199,50 @@ async function main() {
   fxMark(FX_PULSE_ZERO, 'pulse-zero');
   fxMark(FX_PULSE_ZERO_LEGACY, 'pulse-zero-legacy');   // 覆盖继承来的 __vfy:pulse-zero
 
+  // ★★★ 变异快照夹具 (2026-09-24 新不变量门用): 全部从**真快照** (network-pulse.json) 改一个字段得到。
+  //   为什么必须变异: 一条永远返回 [] 的门等于没有门 —— 只有「故意做成自相矛盾的快照必须判红」
+  //   才能证明这道门活着 (跟 [6e] 的真数据断言互为反向: 真数据必须干净, 变异数据必须脏)。
+  //   真快照在磁盘上真读 (不经 HTTP), 所以"真快照长什么样"决定变异长什么样; 读不到就整段跳过 (下面按需 fxPre)。
+  const REAL_SNAP_ON_DISK = (() => {
+    try { return JSON.parse(fs.readFileSync(new URL('../network-pulse.json', import.meta.url), 'utf8')); }
+    catch { return null; }
+  })();
+  const snapClone = (o) => JSON.parse(JSON.stringify(o));
+  // 变异 1 (① 同源不相等): 顶部「任务」改成 0, 逐字段口径**仍**写「链上索引 · 全量」+ 表格 N 行 →
+  //   线上那一幕的重演 (顶部 0 个任务 vs 表里 N 行), 必须判「同一概念两个数」。
+  const FX_CONTRA_TASKS_ZERO = (() => {
+    if (!REAL_SNAP_ON_DISK) return null;
+    const c = snapClone(REAL_SNAP_ON_DISK);
+    c.totals = { ...c.totals, tasks: 0, tasks_completed: 0, tasks_settled: 0 };
+    return fxMark(c, 'contra-tasks-zero');
+  })();
+  // 变异 2 (④ 裸 0 冒充): 「钱包签名」= 0 而口径标 source='none' (无源) → 0 会被读成「没发生过」,
+  //   但本机明明签过名 —— 必须判「裸 0」。
+  const FX_CONTRA_SIG_BARE_ZERO = (() => {
+    if (!REAL_SNAP_ON_DISK) return null;
+    const c = snapClone(REAL_SNAP_ON_DISK);
+    const f = ((c.totals_scope || {}).fields || {}).signatures || {};
+    c.totals = { ...c.totals, signatures: 0 };
+    c.totals_scope = { ...c.totals_scope, fields: { ...c.totals_scope.fields,
+      signatures: { ...f, source: 'none', window: 'unknown', unavailable: true,
+        short: { zh: '未接入', en: 'not connected' },
+        label: { zh: '没有可用源 → 报「未接入」而不是 0 (本机签名审计账读不到)', en: 'no source → report not connected, not 0' } } } };
+    return fxMark(c, 'contra-sig-bare-zero');
+  })();
+  // 变异 3 (⑤ 正例, 不是矛盾): 「钱包签名」= null + 口径标「未接入」→ 页面**必须写「未接入」**
+  //   (不写 0、不隐藏、不显示 —); 同时门必须干净 (未接入 ≠ 矛盾)。
+  const FX_SIG_UNAVAILABLE = (() => {
+    if (!REAL_SNAP_ON_DISK) return null;
+    const c = snapClone(REAL_SNAP_ON_DISK);
+    const f = ((c.totals_scope || {}).fields || {}).signatures || {};
+    c.totals = { ...c.totals, signatures: null };
+    c.totals_scope = { ...c.totals_scope, fields: { ...c.totals_scope.fields,
+      signatures: { ...f, source: 'none', window: 'unknown', unavailable: true,
+        short: { zh: '未接入', en: 'not connected' },
+        label: { zh: '没有可用源 → 报「未接入」而不是 0 (本机签名审计账读不到)', en: 'no source → report not connected, not 0' } } } };
+    return fxMark(c, 'sig-unavailable');
+  })();
+
   const fxNotesHas = (tag) => (v) => !!(v && typeof v.notes === 'string' && v.notes.includes(fxNoteText(tag)));
   // 首页紧凑版没有 notes 元素 → 用「只有夹具才有的形态」当消费证 (夹具值是脚本自己定的, 真快照撞不出来)
   const fxFeedHas = (text) => (v) => !!(v && Array.isArray(v.feedText) && v.feedText.some((t) => t === text));
@@ -1233,8 +1401,8 @@ async function main() {
   check('表头 7 列 = 任务|状态|事件|网络|区块|确认数 / 最终性|时间',
     !!region && JSON.stringify(region.headers) === JSON.stringify(['任务', '状态', '事件', '网络', '区块', '确认数 / 最终性', '时间']),
     JSON.stringify(region && region.headers));
-  check('小结行钩子 = nodes/agents/tasks/tasks_completed/tasks_verified/signatures (不再有 active/24h)',
-    !!region && JSON.stringify(region.summaryKeys) === JSON.stringify(['nodes', 'agents', 'tasks', 'tasks_completed', 'tasks_verified', 'signatures']),
+  check('小结行钩子 = nodes/agents/tasks/tasks_completed/tasks_settled/tasks_verified/signatures (不再有 active/24h)',
+    !!region && JSON.stringify(region.summaryKeys) === JSON.stringify(['nodes', 'agents', 'tasks', 'tasks_completed', 'tasks_settled', 'tasks_verified', 'signatures']),
     JSON.stringify(region && region.summaryKeys));
   check('旧三块 (8 个数字格 / 能力分布 / 最近活动) 在网关页活动区里已不存在',
     !!region && region.legacy === 0, String(region && region.legacy));
@@ -1268,14 +1436,20 @@ async function main() {
   const LV = live.act;
   const has = (k, v) => LV.rows.some((r) => r[k] === v);
   check('live: 状态标签 = 实时', live.state === 'live' && live.visible.includes('实时'), JSON.stringify({ s: live.state, v: live.visible }));
-  check('live: 小结行 6 个计数 = 接口原值 (节点 7 / 智能体 12 / 任务 21 / 已完成 13 / 已验证 6 / 钱包签名 42)',
+  check('live: 小结行 6 个老计数 = 接口原值 (节点 7 / 智能体 12 / 任务 21 / 已完成 13 / 已验证 6 / 钱包签名 42); 新增「已结算」本夹具没给 → 整行隐藏 (不拿 0 冒充)',
     live.nodes === '7' && live.agents === '12' && live.tasks === '21' && live.tasksDone === '13' &&
-    live.tasksVerified === '6' && live.signatures === '42' &&
+    live.tasksVerified === '6' && live.signatures === '42' && live.tasksSettled === '—' && live.tasksHidden.settled === true &&
     live.tasksHidden.tasks === false && live.tasksHidden.done === false && live.tasksHidden.verified === false && live.tasksHidden.sig === false,
-    JSON.stringify({ n: live.nodes, a: live.agents, t: live.tasks, d: live.tasksDone, v: live.tasksVerified, s: live.signatures, h: live.tasksHidden }));
+    JSON.stringify({ n: live.nodes, a: live.agents, t: live.tasks, d: live.tasksDone, v: live.tasksVerified, s: live.signatures,
+      settled: live.tasksSettled, h: live.tasksHidden }));
   check('live: 小结行标签 = 节点 / 智能体 / 任务 / 已完成 / 已验证 / 钱包签名',
-    JSON.stringify(live.summary.map((r) => r.label)) === JSON.stringify(['节点', '智能体', '任务', '已完成', '已验证', '钱包签名']),
+    JSON.stringify(live.summary.map((r) => r.label)) === JSON.stringify(['节点', '智能体', '任务', '已完成', '已结算', '已验证', '钱包签名']),
     JSON.stringify(live.summary.map((r) => r.label)));
+  // ★ 同一概念不变量门 (2026-09-24) 在**老形态夹具**上的表现: 顶部 21 任务 vs 表里 N 个已确认任务
+  //   = 两套口径 (24h 脉冲 ⊃ 已确认链上行), 页面两处都标了口径 → 门**不许**误判成矛盾 (否则这道门会到处假红)。
+  const liveFindings = contradictionFindings(live, FX_LIVE);
+  check('★ 同一概念不变量门 · 老形态夹具: 两套口径各自标出 → 门干净 (不把"上宽下窄"的口径差当矛盾)',
+    liveFindings.length === 0, JSON.stringify(liveFindings));
   check('live: 9 条夹具画成 8 行 (task 与 tx 都空的那条不画), 没有空白行',
     LV.rowCount === 8 && LV.blankRows === 0, JSON.stringify({ rows: LV.rowCount, blank: LV.blankRows }));
   check('live: 每行 7 格 (表头 7 列的列数一致)',
@@ -1397,8 +1571,9 @@ async function main() {
   check('★ app.js 的**可执行代码**里不再有那几段长文案 (注释里保留的说明不算)',
     killedHits(appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '')).length === 0,
     JSON.stringify(killedHits(appSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, ''))));
-  check('app.js 真的绑定 signatures 钩子 (取数赋值 + 加载/失败时清空)',
-    /data-pulse-total="signatures"/.test(appSrc) && (appSrc.match(/setOptCount\(el\.signatures/g) || []).length === 2);
+  check('app.js 真的绑定 signatures 钩子 (取数赋值走三态 setFieldCount + 加载/失败时按"拿不到"清空)',
+    /data-pulse-total="signatures"/.test(appSrc) && (appSrc.match(/setFieldCount\(el\.signatures/g) || []).length === 1 &&
+    (appSrc.match(/setOptCount\(el\.signatures/g) || []).length === 1);
   check('app.js 真的绑定表格三个钩子 (data-pulse-activity-body / -empty / -source)',
     appSrc.includes('[data-pulse-activity-body]') && appSrc.includes('[data-pulse-activity-empty]') && appSrc.includes('[data-pulse-activity-source]'));
   check('app.js 从不按活动 kind 分支渲染 (无 item.kind 比较 / 无 switch) — 未知 kind 不可能报错',
@@ -1430,8 +1605,8 @@ async function main() {
   check('EN: 短写不受语言影响 (sha256:1a2b… 仍在)',
     en.act.rows.some((r) => r.task === 'sha256:1a2b…'), JSON.stringify(en.act.rows.map((r) => r.task)));
   const enSummary = await evalJs(`Array.from(document.querySelectorAll('#pulse .pulse-summary span')).map(e=>e.textContent.trim())`);
-  check('EN: 小结行标签英文 = nodes/agents/tasks/completed/verified/wallet signatures',
-    JSON.stringify(enSummary) === JSON.stringify(['nodes', 'agents', 'tasks', 'completed', 'verified', 'wallet signatures']),
+  check('EN: 小结行标签英文 = nodes/agents/tasks/completed/settled/verified/wallet signatures',
+    JSON.stringify(enSummary) === JSON.stringify(['nodes', 'agents', 'tasks', 'completed', 'settled', 'verified', 'wallet signatures']),
     JSON.stringify(enSummary));
   check('EN: 表区口径短标记英文 (chain index · whole index) —— 原来的「On-chain data source:」前缀已删',
     en.act.source === 'chain index · whole index', en.act.source);
@@ -1803,6 +1978,72 @@ async function main() {
   check('★ 真快照: 脉冲区文案不写整句、且都在长度上限内 (口径行/数据源行/caveat) —— 长解释删掉后页面不靠新长句补回来',
     proseBudgetOk(real).length === 0, JSON.stringify(proseBudgetOk(real)));
 
+  // ⑥‴★★★ 同一概念不变量门 (2026-09-24 leo:「数量怎么对不上, 尤其是后面的任务和钱包」):
+  //   验收对象 = **页面真渲染出来的字**: 顶部「任务/已完成/已结算」与同屏表格里的同概念数必须相等。
+  //   两半都要有: (a) 真快照上门必须**干净** + 数字确实是链上索引同源值;
+  //              (b) 三个变异快照上门必须**真判红** (否则这道门等于不存在)。
+  console.log('\n[6e★★★] 同一概念不变量门: 顶部计数 vs 表格同概念数 (真快照干净 + 变异快照必红)');
+  const realAt = (realObj && realObj.activity_totals) || null;
+  const realFields = (realObj && realObj.totals_scope && realObj.totals_scope.fields) || null;
+  const realFindings = contradictionFindings(real, realObj);
+  check('★ 真快照: 同一概念不变量门 = 干净 (顶部任务类计数与表格同概念数一个都不打架)',
+    realFindings.length === 0, JSON.stringify(realFindings));
+  check('★ 真快照: 顶部「任务/已完成/已结算」= 链上索引同源值 activity_totals.tasks/tasks_completed/tasks_settled (不再是窄脉冲流的 0)',
+    !!realAt && real.tasks === String(realAt.tasks) && real.tasksDone === String(realAt.tasks_completed) &&
+    real.tasksSettled === String(realAt.tasks_settled) && realAt.tasks > 0,
+    JSON.stringify({ dom: [real.tasks, real.tasksDone, real.tasksSettled],
+      at: realAt && [realAt.tasks, realAt.tasks_completed, realAt.tasks_settled] }));
+  check('★ 真快照: 顶部这个数就地标了口径短标记「链上索引 · 全量」(与表同源写在数字旁, 不藏在 notes / title 里)',
+    SCOPE_WHOLE_MARK.test(((real.scopeTags || {}).tasks || {}).text || '') &&
+    SCOPE_WHOLE_MARK.test(((real.scopeTags || {}).tasks_completed || {}).text || ''),
+    JSON.stringify({ tasks: (real.scopeTags || {}).tasks, done: (real.scopeTags || {}).tasks_completed }));
+  check('★ 真快照: 「已验证」口径在链上索引里没有对应事件 → 页面如实写「未接入」(不写 0, 不整行隐藏, 也不显示 —)',
+    !!realFields && realFields.tasks_verified.source === 'none' &&
+    real.tasksVerified === '未接入' && real.tasksHidden.verified === false,
+    JSON.stringify({ field: realFields && realFields.tasks_verified, dom: real.tasksVerified, hidden: real.tasksHidden.verified }));
+  check('★ 真快照: 「钱包签名」要么是审计账真值 (数字), 要么如实「未接入」—— 绝不许在无源时裸写 0',
+    !!realFields && ((realFields.signatures.source === 'none' && real.tasksVerified !== undefined &&
+      real.signatures === '未接入') || (/^\d+$/.test(String(real.signatures)) && real.signatures !== '0')) ||
+    /^\d+$/.test(String(real.signatures)),
+    JSON.stringify({ field: realFields && realFields.signatures, dom: real.signatures }));
+
+  // (b) 变异验证: 拿**真快照**改一个数 → 页面必然自相矛盾 → 门必须判红 (真判红, 不是"理论上会红")
+  shouldIntercept = (p) => p.request.url.includes('network-pulse-verify-contra');
+  await fxEnable(PULSE_PATTERN);
+  fxPre('contra-fixtures', !!REAL_SNAP_ON_DISK, 'network-pulse.json 读不到 → 变异快照造不出来 (先跑 refresh)');
+  // 变异 1: 顶部「任务」= 0 而口径仍标「链上索引·全量」+ 表里 N 行 → 同一概念两个数
+  contraMode = 'tasks-zero';
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-contra.json`)}` });
+  const cTZ = await waitStable(pulseProbe('#pulse'), (v) => !!(v && v.act && v.act.rowCount === expRows), { tries: 80, interval: 150 });
+  const cTZf = contradictionFindings(cTZ, FX_CONTRA_TASKS_ZERO);
+  check('★ 变异验证 1 (顶部 0 任务 + 表里 N 行) → 门真判红: 页面顶部显示 0, 表格却真有 N 行, 门报「同一概念两个数」',
+    cTZ.tasks === '0' && cTZ.act.rowCount === expRows && expRows > 0 && cTZf.length > 0 &&
+    cTZf.some((s) => /同一概念两个数/.test(s) && /任务|已完成|已结算/.test(s)),
+    JSON.stringify({ dom: cTZ.tasks, rows: cTZ.act.rowCount, findings: cTZf }));
+  // 变异 2: 「钱包签名」= 0 但口径标无源 → 裸 0 会被读成「没发生过」→ 门真判红
+  contraMode = 'sig-bare-zero';
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-contra.json`)}` });
+  const cSB = await waitStable(pulseProbe('#pulse'), (v) => !!(v && v.act && v.act.rowCount === expRows), { tries: 80, interval: 150 });
+  const cSBf = contradictionFindings(cSB, FX_CONTRA_SIG_BARE_ZERO);
+  check('★ 变异验证 2 (签名 = 0 却标无源) → 门真判红: 「裸 0 会被读成没发生过」被抓住',
+    cSB.signatures === '0' && cSBf.some((s) => /signatures/.test(s) && /裸 0/.test(s)),
+    JSON.stringify({ dom: cSB.signatures, findings: cSBf }));
+  // 变异 3 (正例): 「钱包签名」= null + 未接入 → 页面必须写「未接入」, 且门保持干净 (未接入 ≠ 矛盾)
+  contraMode = 'sig-unavailable';
+  await cdp('Page.navigate', { url: `${BASE}/gateway.html?pulse=${encodeURIComponent(`${BASE}/network-pulse-verify-contra.json`)}` });
+  const cSU = await waitStable(pulseProbe('#pulse'), (v) => !!(v && v.act && v.act.rowCount === expRows), { tries: 80, interval: 150 });
+  const cSUf = contradictionFindings(cSU, FX_SIG_UNAVAILABLE);
+  check('★ 变异验证 3 (签名 = null + 未接入) → 页面如实写「未接入」(不是 0 / 不是 — / 不隐藏), 且门判**干净**',
+    cSU.signatures === '未接入' && cSU.tasksHidden.sig === false && cSUf.length === 0,
+    JSON.stringify({ dom: cSU.signatures, hidden: cSU.tasksHidden.sig, findings: cSUf }));
+  check('★ 「未接入」的就地口径标记也贴在数字旁 (data-pulse-scope-tag=signatures → 未接入), 不藏在 notes / 不给 title 了事',
+    ((await evalJs(`(() => { const n = document.querySelector('#pulse [data-pulse-scope-tag="signatures"]'); return n ? n.textContent.trim() : null; })()`)) === '未接入'),
+    'data-pulse-scope-tag=signatures 的就地口径标记');
+  // 收尾: 门自己的反向自证 (空探针必须报「判断不了」, 不能静默返回 [])
+  check('★ 门自身不留空门: 探针缺失时返回「判断不了」(不是悄悄返回 [])',
+    JSON.stringify(contradictionFindings(null, null)) !== '[]' && JSON.stringify(contradictionFindings(null, null)).includes('判断不了'),
+    JSON.stringify(contradictionFindings(null, null)));
+
   // ⑥‴★★ 浏览器链接 (2026-09-23): 「网页行可索引到链上合约 + 交易可跳区块浏览器」——**两页各验一遍**
   //   为什么必须分页: 网关页 = 完整表 (任务格里的交易标签 + 网络格尾的合约链接); 首页序栏 = 紧凑快照区
   //   (只有「最新一笔链上交易」一行)。两处共用 app.js 同一份 view.rows / 同一套链接校验与短写 ⇒
@@ -1983,9 +2224,10 @@ async function main() {
     noT.state === 'live' && noT.tasksHidden.tasks === true && noT.tasksHidden.done === true && noT.tasksHidden.verified === true &&
     noT.tasks === '—' && noT.tasksDone === '—' && noT.tasksVerified === '—',
     JSON.stringify({ s: noT.state, h: noT.tasksHidden, v: [noT.tasks, noT.tasksDone, noT.tasksVerified] }));
-  check('缺字段时节点/智能体照常显示 (2/3) — 只有拿不到的才不显示 (真 0 照常显示 0)',
-    noT.nodes === '2' && noT.agents === '3' && noT.summary.filter((r) => r.hidden).length === 4,
-    JSON.stringify({ n: noT.nodes, a: noT.agents, rows: noT.summary.map((r) => [r.key, r.hidden]) }));
+  check('缺字段时节点/智能体照常显示 (2/3) — 只有拿不到的才不显示 (真 0 照常显示 0); 新增「已结算」本夹具没给 → 也整行隐藏',
+    noT.nodes === '2' && noT.agents === '3' && noT.summary.filter((r) => r.hidden).length === 5 &&
+    noT.tasksSettled === '—' && noT.tasksHidden.settled === true,
+    JSON.stringify({ n: noT.nodes, a: noT.agents, settled: noT.tasksSettled, rows: noT.summary.map((r) => [r.key, r.hidden]) }));
   check('confirmed_activity=[] → 0 行 + 明说「本节点暂未观察到链上任务」(不是空白表格)',
     noT.act.rowCount === 0 && noT.act.emptyShown === true && noT.act.emptyText === '本节点暂未观察到链上任务。',
     JSON.stringify({ rows: noT.act.rowCount, shown: noT.act.emptyShown, text: noT.act.emptyText }));
@@ -2050,6 +2292,14 @@ async function main() {
   check('★ 老快照: 口径行没了 → 表区短标记退到表下数据源行 (「链上索引 · 全量」), 表里的行不会成为没口径的数字',
     pzL.act.source === '链上索引 · 全量' && scopeMarkers(pzL).tableOk,
     JSON.stringify({ src: pzL.act.source, caveat: pzL.caveat }));
+  // ★ 同一概念不变量门 (2026-09-24) 在老快照上的表现: 顶部 0 任务 vs 表里 N 行**不算**矛盾 ——
+  //   统计区「观察窗口 24h」+ 表区「链上索引 · 全量」两个就地标记都在场 = 解释过了 (与变异快照必红互为对照)。
+  const pzLFindings = contradictionFindings(pzL, FX_PULSE_ZERO_LEGACY);
+  check('★ 同一概念不变量门 · 老快照: 门判「有解释」→ 干净 (两处就地标记都在场), 不把话说清的数字当矛盾',
+    pzLFindings.length === 0, JSON.stringify(pzLFindings));
+  check('★ 老快照: 一个就地口径标记都不编 (快照没给 totals_scope.fields → 页面绝不替它编口径)',
+    Object.keys(pzL.scopeTags).length > 0 && Object.keys(pzL.scopeTags).every((k) => pzL.scopeTags[k].text === ''),
+    JSON.stringify(pzL.scopeTags));
   cMode = 'full';
 
   // ⑥″ IPNS 粘贴框: 真 input + 真按钮, 严格校验, 合法才开新窗口, 本页不发任何网络请求
@@ -2531,17 +2781,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=26 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=26 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=27 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=27 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=26');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=27');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=26/.test(html) || !/app\.js\?v=26/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=27/.test(html) || !/app\.js\?v=27/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=26 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=26 + app.js?v=26 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=27 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=27 + app.js?v=27 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):

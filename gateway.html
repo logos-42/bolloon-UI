@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=26">
+<link rel="stylesheet" href="style.css?v=27">
 </head>
 <body data-page="gateway">
 
@@ -135,20 +135,27 @@
     </p>
   </div>
 
-  <!-- 小结行: 只报 节点 / 智能体 / 任务 / 已完成 / 已验证 / 钱包签名 六个计数。
-       拿不到的聚合计数整行隐藏 (不拿 0 或 — 冒充数据); 真 0 照常显示 0。 -->
+  <!-- 小结行: 报 节点 / 智能体 / 任务 / 已完成 / 已结算 / 已验证 / 钱包签名 七个计数。
+       拿不到的聚合计数整行隐藏 (不拿 0 或 — 冒充数据); 真 0 照常显示 0。
+       ★ 2026-09-24 (leo:「数量怎么对不上, 尤其是后面的任务和钱包」):
+         每个数旁边贴**它自己的**口径短标记 (i.pulse-scope-tag, 由快照 totals_scope.fields[*].short
+         填入; 明细进 title) —— 「任务/已完成/已结算」= 链上索引全量同源值 (与下面那张表同源,
+         表里几个任务这里就是几个, 从根上不许并排打架); 「已验证」在链上索引口径下没有对应事件
+         → 如实显示「未接入」而不是 0 (0 会被读成"没有验证过"); 「钱包签名」= 本机签名审计账真值。 -->
   <ul class="pulse-summary">
-    <li><b data-pulse-total="nodes">—</b><span data-zh="节点" data-en="nodes">节点</span></li>
-    <li><b data-pulse-total="agents">—</b><span data-zh="智能体" data-en="agents">智能体</span></li>
-    <li><b data-pulse-total="tasks">—</b><span data-zh="任务" data-en="tasks">任务</span></li>
-    <li><b data-pulse-total="tasks_completed">—</b><span data-zh="已完成" data-en="completed">已完成</span></li>
-    <li><b data-pulse-total="tasks_verified">—</b><span data-zh="已验证" data-en="verified">已验证</span></li>
-    <li><b data-pulse-total="signatures">—</b><span data-zh="钱包签名" data-en="wallet signatures">钱包签名</span></li>
+    <li><b data-pulse-total="nodes">—</b><span data-zh="节点" data-en="nodes">节点</span><i class="pulse-scope-tag" data-pulse-scope-tag="nodes"></i></li>
+    <li><b data-pulse-total="agents">—</b><span data-zh="智能体" data-en="agents">智能体</span><i class="pulse-scope-tag" data-pulse-scope-tag="agents"></i></li>
+    <li><b data-pulse-total="tasks">—</b><span data-zh="任务" data-en="tasks">任务</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks"></i></li>
+    <li><b data-pulse-total="tasks_completed">—</b><span data-zh="已完成" data-en="completed">已完成</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks_completed"></i></li>
+    <li><b data-pulse-total="tasks_settled">—</b><span data-zh="已结算" data-en="settled">已结算</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks_settled"></i></li>
+    <li><b data-pulse-total="tasks_verified">—</b><span data-zh="已验证" data-en="verified">已验证</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks_verified"></i></li>
+    <li><b data-pulse-total="signatures">—</b><span data-zh="钱包签名" data-en="wallet signatures">钱包签名</span><i class="pulse-scope-tag" data-pulse-scope-tag="signatures"></i></li>
   </ul>
 
-  <!-- 作用域短标记 (2026-09-23 精简): 直接贴在小结行下面 —— 上面这四个数 (任务/已完成/已验证/签名)
-       是 24h 脉冲事件口径。原来是一整句「观察窗口内计数 · 不是全网精确总量。」, 现压成极短标记:
-       不写整句、不用否定句兜底、也不改口径措辞。链上索引口径的标记在表格下方那行 (「链上索引 · 全量」)。 -->
+  <!-- 作用域短标记 (2026-09-23 精简 / 2026-09-24 细到每个数): 这行说的是**整块统计区**的观察窗口;
+       每个数各自的来源改由上面每项自带的 pulse-scope-tag 就近标注 (链上索引·全量 / 24h 脉冲 /
+       24h 签名审计 / 未接入) —— 不写整句、不用否定句兜底、也不改口径措辞。
+       链上索引口径那一侧还有表格下方那行 (「链上索引 · 全量」)。 -->
   <p class="pulse-caveat" data-zh="观察窗口 24h" data-en="24h observation window">观察窗口 24h</p>
 
   <!-- 链上活动表: 一行 = 快照 confirmed_activity 里的一条; 列 = 任务|状态|事件|网络|区块|确认数/最终性|时间。
@@ -331,6 +338,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=26"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>

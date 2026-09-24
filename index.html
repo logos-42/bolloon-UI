@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=26">
+<link rel="stylesheet" href="style.css?v=27">
 </head>
 <body data-page="product">
 
@@ -128,7 +128,13 @@
            实测: 1440px 下 6 项正好 1 行 (容器 620px), 第 7 项必然换行 →
            序厅从「一行数字」变「两行孤行数字墙」, 违背紧凑版一眼扫过的设计。
            签名/验真这类精细活动账目由网关页那张链上活动表承接 (下面那条链接)。
-           首页少列一项 ≠ 显示错误值: 拿不到的字段在网关页也是整行隐藏。 -->
+           首页少列一项 ≠ 显示错误值: 拿不到的字段在网关页也是整行隐藏。
+           ★ 2026-09-24 (leo:「数量怎么对不上」): 这 6 项里「任务/已完成」现在取**链上索引全量**
+             的同源值 —— 与下面那条口径行 (pulse-c-totals-line:「链上索引 · 全量 · N 行 / M 个不同任务」)
+             是同一个数, 两个数必须相等 (由 scripts/verify-site.mjs 的「同一概念不变量门」钉住)。
+             紧凑版**不加**每项口径短标记: 6 项已占满一行 (容器 620px), 再加 6 个标记会把序厅挤成两行;
+             它的口径由同屏那条口径行承担 (标题行)→ 仍不是"只靠 notes 辩解"。
+             网关页 (有链上活动表的那页) 则**每项都带**就近口径标记 (链上索引·全量 / 24h 脉冲 / 未接入)。 -->
 
       <p class="pulse-c-meta">
         <span data-zh="快照" data-en="Snapshot">快照</span>
@@ -248,6 +254,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=26"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>

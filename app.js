@@ -364,7 +364,8 @@ var BOLLOON_IPNS = (function () {
    多实例: 页面上每个 [data-pulse] 根 = 一个独立实例, 各自取数 / 轮询 / 降级。
    区内节点一律靠 data-pulse-* 钩子查找 (不用 id, 不会撞):
      data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-age · data-pulse-hint
-     data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
+     data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_settled|tasks_verified|signatures"
+     data-pulse-scope-tag="<同上>|…"                     (贴在该数字旁的口径短标记; 快照没给口径就留空)
      data-pulse-activity-body · data-pulse-activity-empty · data-pulse-activity-source
      data-pulse-activity-totals                        (口径行: 口径短标记 + 同源行数/不同任务 + 网络归属)
      data-pulse-feed · data-pulse-feed-empty · data-pulse-notes
@@ -372,8 +373,11 @@ var BOLLOON_IPNS = (function () {
      data-pulse-tasks · data-pulse-tasks-empty            (待接单任务: 快照 open_tasks[])
      data-pulse-ipns-form · data-pulse-ipns-input · data-pulse-ipns-open · data-pulse-ipns-msg
        (粘贴打开器由上面的 IPNS 模块单独绑定, 与本模块无关)
-   聚合计数缺失 (tasks / tasks_completed / tasks_verified / signatures) → 整行隐藏:
-   「拿不到就不显示」, 不拿 0 或 — 冒充数据。真实计数 0 照常显示 0。
+   聚合计数三态 (2026-09-24): 有数 → 显示数字 (真 0 就是 0); 快照给 null 且口径标
+   `unavailable` → 显示「未接入」+ 说明 (不隐藏、不写 0 —— 写 0 等于说「没发生过」);
+   快照给 null 又没有口径 (老快照) → 整行隐藏「拿不到就不显示」。
+   每个数旁边贴它**自己的**口径短标记 (链上索引·全量 / 24h 脉冲 / 24h 签名审计 / 未接入),
+   来自快照 `totals_scope.fields[<字段>].short` —— 明细口径进 title; 快照没给就一个都不写。
 
    链上活动表 (confirmed_activity) —— 网关页主体, 一行 = 一条已确认的链上任务/交易:
      列 = 任务 | 状态 | 事件 | 网络 | 区块 | 确认数/最终性 | 时间。
@@ -517,6 +521,39 @@ var BOLLOON_IPNS = (function () {
       if (row && row.removeAttribute) row.removeAttribute('hidden');
     }
   }
+
+  // —— 顶部计数的逐字段口径 (2026-09-24 leo:「数量怎么对不上」) ——
+  // 快照的 `totals_scope.fields` 给每个数各自的来源 (链上索引全量 / 24h 脉冲 / 签名审计 / 无源)。
+  // 页面**就地**把它贴在数字旁 (data-pulse-scope-tag), 不再只靠 notes 或一行总口径辩解。
+  // DOM 钩子名 → 快照字段名 (两处命名历史上不同: active / 24h)。
+  var DOMKEY_TO_FIELD = { active: 'active_agents', '24h': 'seen_last_24h' };
+  function fieldScopeOf(tf, key) {
+    if (!tf || typeof tf !== 'object') return null;
+    var f = tf[key];
+    return (f && typeof f === 'object') ? f : null;
+  }
+  function scopeTagText(fs) { return fs ? pickBi(fs.short) : ''; }
+  /**
+   * 顶部一个数的渲染 (三态, 一个都不能少):
+   *   · 快照给了数 → 显示数字 (真 0 就是 0: 0 是计数, 不是"没数据");
+   *   · 快照给 null 且口径标 unavailable → 显示「未接入」+ 说明 (title/aria), **不隐藏也不写 0** ——
+   *     写 0 等于说「没发生过」, 那是另一句话 (本机明明签过的签名曾被这样报成 0);
+   *   · 快照给 null 且没有口径 (老快照) → 整行隐藏 (老行为不变: 拿不到就不显示)。
+   */
+  function setFieldCount(node, v, fs) {
+    if (!node) return;
+    if (num(v) == null && fs && fs.unavailable === true) {
+      var row = node.parentNode;
+      var en = lang() === 'en';
+      text(node, en ? 'not connected' : '未接入');
+      var why = pickBi(fs.label);
+      if (why && node.setAttribute) node.setAttribute('title', why);
+      if (row && row.removeAttribute) row.removeAttribute('hidden');
+      return;
+    }
+    if (node.removeAttribute) node.removeAttribute('title');
+    setOptCount(node, v);
+  }
   function toggleEmpty(node, show) { if (node) node.classList.toggle('is-shown', !!show); }
   function clear(node) { if (node) while (node.firstChild) node.removeChild(node.firstChild); }
   function isReducedMotion() {
@@ -619,7 +656,14 @@ var BOLLOON_IPNS = (function () {
       tasks: root.querySelector('[data-pulse-total="tasks"]'),
       tasksCompleted: root.querySelector('[data-pulse-total="tasks_completed"]'),
       tasksVerified: root.querySelector('[data-pulse-total="tasks_verified"]'),
+      tasksSettled: root.querySelector('[data-pulse-total="tasks_settled"]'),
       signatures: root.querySelector('[data-pulse-total="signatures"]'),
+      // 顶部计数旁的口径短标记 (i.pulse-scope-tag[data-pulse-scope-tag=...]; 快照没给口径就留空)
+      scopeTags: (function () {
+        var out = {}, ns = root.querySelectorAll('[data-pulse-scope-tag]');
+        for (var i = 0; i < ns.length; i++) out[ns[i].getAttribute('data-pulse-scope-tag')] = ns[i];
+        return out;
+      })(),
       actBody: root.querySelector('[data-pulse-activity-body]'),
       actEmpty: root.querySelector('[data-pulse-activity-empty]'),
       actSource: root.querySelector('[data-pulse-activity-source]'),
@@ -636,7 +680,7 @@ var BOLLOON_IPNS = (function () {
 
     var view = {
       state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '',
-      actTotals: null, chainScope: null, totalsScope: null, rawFeed: [], notes: [], sites: [], tasks: [],
+      actTotals: null, chainScope: null, totalsScope: null, totalsFields: null, rawFeed: [], notes: [], sites: [], tasks: [],
       scopeKey: 'observed', scopeLabels: null, sourceKind: null,
     };
     var timer = null, relTimer = null, failCount = 0, started = false, api = null;
@@ -1073,17 +1117,38 @@ var BOLLOON_IPNS = (function () {
       for (var i = 0; i < nodes.length; i++) text(nodes[i], relTime(Number(nodes[i].getAttribute('data-at'))));
     }
 
+    /**
+     * 顶部计数旁的口径短标记 (2026-09-24): 从快照 `totals_scope.fields[*].short` 取**极短**标记,
+     * 就地贴在对应数字旁 (data-pulse-scope-tag), 完整口径进 title。
+     * 纪律: 快照没给 fields (老快照) → 一个标记都不写 (不自己编口径、不写「未接入」以外的判断);
+     *       只写 textContent + title 属性, 不用 innerHTML。
+     */
+    function renderScopeTags() {
+      var tf = view.totalsFields;
+      for (var domKey in el.scopeTags) {
+        if (!Object.prototype.hasOwnProperty.call(el.scopeTags, domKey)) continue;
+        var node = el.scopeTags[domKey];
+        var fs = fieldScopeOf(tf, DOMKEY_TO_FIELD[domKey] || domKey);
+        text(node, scopeTagText(fs));
+        var full = fs ? pickBi(fs.label) : '';
+        if (full && node.setAttribute) node.setAttribute('title', full);
+        else if (node.removeAttribute) node.removeAttribute('title');
+      }
+    }
+
     function redraw() {
       if (!view.payload) return;
-      renderScope(); renderActivity(); renderActivityTx(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderSnapTime(); updateRelTimes();
+      renderScope(); renderActivity(); renderActivityTx(); renderActivityTotals(); renderScopeTags(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderSnapTime(); updateRelTimes();
     }
 
     function clearData() {
       view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.tasks = []; view.sourceKind = null;
-      view.actTotals = null; view.chainScope = null; view.totalsScope = null;
+      view.actTotals = null; view.chainScope = null; view.totalsScope = null; view.totalsFields = null;
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
+      setOptCount(el.tasksSettled, null);
       setOptCount(el.signatures, null);
+      renderScopeTags();
       text(el.snapTime, '—'); text(el.snapAgo, ''); text(el.snapAge, '');
       renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderScope();
     }
@@ -1138,6 +1203,8 @@ var BOLLOON_IPNS = (function () {
       view.chainScope = (cis && typeof cis === 'object') ? cis : null;
       var ts = payload.totals_scope;
       view.totalsScope = (ts && typeof ts === 'object') ? ts : null;
+      // ★ 逐字段口径 (2026-09-24): 快照没给 (老快照) → null → 页面不写任何口径标记、也不编
+      view.totalsFields = (ts && typeof ts === 'object' && ts.fields && typeof ts.fields === 'object') ? ts.fields : null;
       // 活动流: 与 kind 无关 —— 只认服务端 text {zh,en} (新 kind 直用后端文案, 前端不再造一套)。
       // 没有可显示文案的条目直接丢弃: 宁可不显示一行, 也不渲染空白行 / 不臆造描述。
       // 保留原始双语对象, 语言在 renderFeed 时才取 (切语言重画不串语言)。
@@ -1193,10 +1260,16 @@ var BOLLOON_IPNS = (function () {
       text(el.agents, fmtCount(t.agents));
       text(el.active, fmtCount(t.active_agents));
       text(el.h24, fmtCount(t.seen_last_24h));
-      setOptCount(el.tasks, t.tasks);                            // 缺失 → 整行隐藏
-      setOptCount(el.tasksCompleted, t.tasks_completed);
-      setOptCount(el.tasksVerified, t.tasks_verified);
-      setOptCount(el.signatures, t.signatures);
+      // ★ 顶部计数三态渲染 (2026-09-24): 「任务/已完成/已结算」= 链上索引同源值 (与下表恒等);
+      //   「已验证」在链上索引口径下没有源 → 显示「未接入」而不是 0 (0 会被读成"没有验证过");
+      //   「钱包签名」= 本机签名审计账真值; 无源 → 同样「未接入」。每个数旁边贴自己的口径短标记。
+      var tf = view.totalsFields;
+      setFieldCount(el.tasks, t.tasks, fieldScopeOf(tf, 'tasks'));
+      setFieldCount(el.tasksCompleted, t.tasks_completed, fieldScopeOf(tf, 'tasks_completed'));
+      setFieldCount(el.tasksSettled, t.tasks_settled, fieldScopeOf(tf, 'tasks_settled'));
+      setFieldCount(el.tasksVerified, t.tasks_verified, fieldScopeOf(tf, 'tasks_verified'));
+      setFieldCount(el.signatures, t.signatures, fieldScopeOf(tf, 'signatures'));
+      renderScopeTags();
       renderSnapTime();
       setState(state);
       renderScope(); renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderTasks(); updateRelTimes();

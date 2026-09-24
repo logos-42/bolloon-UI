@@ -545,6 +545,11 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   font-variant-numeric: tabular-nums;
 }
 .pulse-summary span { font-family: var(--mono); font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-3); }
+/* 每个计数旁的口径短标记 (2026-09-24): 就地说明这个数**从哪来** —— 链上索引·全量 / 24h 脉冲 /
+   24h 签名审计 / 未接入。比标签更小更淡 (是旁注, 不是主角), 但必须与数字同屏可读 (不进 notes、不藏 title 里)。 */
+.pulse-scope-tag { font-family: var(--mono); font-style: normal; font-size: 9px; letter-spacing: 0.6px; color: var(--ink-3); opacity: 0.72; white-space: nowrap; }
+.pulse-scope-tag:empty { display: none; }
+.pulse-scope-tag[title] { cursor: help; }
 
 .pulse-sub { font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--lime); margin-bottom: 16px; }
 
