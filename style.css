@@ -527,6 +527,11 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-snapshot { color: var(--ink-3); }
 .pulse-snapshot time { font-family: var(--mono); color: var(--ink-2); }
 .pulse-snapshot-ago { color: var(--ink-3); }
+/* 快照年龄 (2026-09-24): 状态徽章右边的「(3 分钟前)」——
+   颜色不跟随 live/stale 的 lime (那是状态色, 年龄是附属信息), 正字不随 .pulse-state 的 uppercase;
+   全部内容由 app.js 用 textContent 写入 (无内部节点, 切语言/轮询刷新都不重建 DOM)。 */
+.pulse-age { color: var(--ink-3); text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.pulse-age:empty { display: none; }
 .pulse-sep { color: var(--ink-3); }
 [data-pulse] [hidden] { display: none !important; }
 

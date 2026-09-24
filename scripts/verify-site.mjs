@@ -32,7 +32,7 @@
  *      缺失 → 小结行整行隐藏, 不编造; 空表要说清 + agent_sites=[] 诚实提示
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=25 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=26 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -81,9 +81,28 @@
  *      区块与整页可见文本无 0x40 / DID / multiaddr / peerId / 64 位私钥形态; 页面不含本机公告
  *      文件的正文/买方身份/签名任何样本串 (全文 + 20 字窗口, 本机没有公告板时**显式跳过**);
  *      390px 下这一块在视口内、不自溢出、不贡献整页横向溢出。
+ *   ㉓ 快照自己标的生成时间显式上页面 (2026-09-24 leo:「为什么网页没有实时更新这个记录?」—— 纯静态站 +
+ *      签名快照架构下, 页面必须让人**一眼看出这份快照有多新**):
+ *      ① **绝对 + 相对**: 时间格 (`data-pulse-time`) 写本地 `YYYY-MM-DD HH:MM:SS` + `<time datetime>` =
+ *         同一时刻的 ISO; meta 行的 `data-pulse-ago` 与**状态徽章右边**的 `data-pulse-age` 都写相对时间
+ *         (「(3 分钟前)」/「(3 minutes ago)」), 三者同源 = 同一份字段; 期望值一律**从夹具的 generated_at
+ *         推导** (不写死字符串, 也不许拿当前时间凑)。
+ *      ② **唯一来源 = 快照字段 generated_at**: 毫秒数 / ISO 字符串两种写法都要吃 (`parseAt` 兼容解析);
+ *         页面显示的时刻必须逐字等于该字段 —— 「不是任意时间」由这条守着。
+ *      ③ **缺字段 → 如实写「快照未标注时间」/「Snapshot time not labeled」**: 时间格与徽章年龄都写,
+ *         `<time datetime>` 留空, 并且页面**不得出现当前时刻**(YYYY-MM-DD HH:MM 一个字符都不许有)、
+ *         不得出现「刚刚 / N 分钟前」这类只有拿 `now()` 顶替才会有的相对说法 —— 换句话说:
+ *         「绝不拿当前时间顶替」这件事有一条会判红的断言守着 (变异验证见 docs/wiki/log.md)。
+ *      ④ **随轮询刷新且只改文字节点**: 快进 2 小时后 `tick()` → 相对时间文本按同一套规则变成小时档,
+ *         而徽章 / 元信息行 / 表格行的**节点身份与 childNodes 结构一个都没动** (重建 DOM 就红)。
+ *      ⑤ **stale 也显示时间**: `fresh_until` 已过只是「不伪装实时」, 该快照多旧照样写出来
+ *         (绝对 + 相对 + 徽章年龄同一份); `stale` 语义本身**没被改动** (既有断言原样保留)。
+ *      ⑥ **aria-live 用法不变**: 徽章年龄那段在 `role=status`/`aria-live=polite` 的活区里, 每 20s 会重写 ——
+ *         故标 `aria-hidden="true"` (屏幕阅读器不被每 20s 打断), 同样的相对时间在活区外的 meta 行随时可读;
+ *         活区属性本身 (role/aria-live) 与改动前逐字相同, 由既有断言守着。
  *
  * 活动区钩子约定 (见 app.js 末尾多实例模块): 根 = [data-pulse],
- * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago
+ * 区内节点 = data-pulse-scope / data-pulse-time / data-pulse-ago / data-pulse-age
  *            / data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
  *            / data-pulse-activity-body / data-pulse-activity-empty / data-pulse-activity-source
  *            / data-pulse-feed / data-pulse-notes / data-pulse-hint
@@ -282,7 +301,16 @@ const pulseProbe = (rootSel) => `(() => {
     })(),
     scopeHidden: !!q('[data-pulse-scope]') && q('[data-pulse-scope]').hasAttribute('hidden'),
     snap: t('[data-pulse-time]'),
+    // <time datetime>: 机器可读的同一时刻 (缺 generated_at 时必须为空, 不许写假时刻)
+    snapIso: (function () { const n = q('[data-pulse-time]'); return n ? (n.getAttribute('datetime') || '') : null; })(),
     ago: t('[data-pulse-ago]'),
+    // 状态徽章右边的快照年龄 (data-pulse-age): 空 = 这份快照整份没读到 (此时不写任何年龄)
+    age: t('[data-pulse-age]'),
+    ageShown: (function () {
+      const n = q('[data-pulse-age]');
+      return n ? (getComputedStyle(n).display !== 'none' && !!n.textContent.trim()) : null;
+    })(),
+    stateKids: (function () { const n = q('.pulse-state'); return n ? n.childNodes.length : null; })(),
     feed: Array.from(root.querySelectorAll('[data-pulse-feed] li')).map((li) => li.textContent.trim()),
     feedText: Array.from(root.querySelectorAll('[data-pulse-feed] .pulse-feed-text')).map((e) => e.textContent),
     feedBlank: Array.from(root.querySelectorAll('[data-pulse-feed] li'))
@@ -743,6 +771,17 @@ async function main() {
   const fxDisable = async () => { await cdp('Fetch.disable'); fxFetchOn = false; };
 
   const T0 = Date.now();
+  // —— 快照时间的期望值一律**从夹具的 generated_at 推导** (脚本自己定的那个毫秒数), 不写死字符串 ——
+  // 写死就变成「页面必须显示我抄的那个时间」, 抄错了反而绿; 推导出来才能真正验「显示的就是快照字段」。
+  const localAbs = (ms) => {
+    const d = new Date(ms); const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  };
+  // 相对时间的分钟数 (与 app.js relTime 同一套取整) —— 断言用「与 generated_at 一致 (±1 分钟)」而不是逐字,
+  // 因为验收跑一轮要几分钟, 分钟数会自己走一格, 那不是页面错。
+  const relMinutes = (ms) => Math.round((Date.now() - ms) / 60000);
+  // 页面上的相对时间文本 → 分钟数 (只认「N 分钟前」; 小时/天档单独断言)
+  const agoMinutesOf = (s) => { const m = /\((\d+) 分钟前\)/.exec(String(s || '')); return m ? Number(m[1]) : null; };
   // 活动文本故意带 <b>: 用它证明渲染走 textContent 而不是 innerHTML
   const MARKUP_TEXT = { zh: '节点 <b>42</b> 发布 manifest & 计数', en: 'Node <b>42</b> published a manifest & counters' };
   const iso = (ms) => new Date(ms).toISOString();
@@ -830,6 +869,18 @@ async function main() {
     totals: { nodes: 3, agents: 3, active_agents: 1, seen_last_24h: 1 },
     capabilities: [], recent_activity: [], notes: ['快照已过期'],
   };
+  // —— 快照时间夹具 (2026-09-24): 「这份快照有多新」必须写在页面上 ——
+  //   ① FX_NO_TIME: 快照读到了, 但**没有** generated_at 字段 → 页面只能如实写「快照未标注时间」,
+  //      **绝不许**拿 Date.now() 顶替 (顶替 = 把不知道多久以前的快照说成刚生成的, 是伪造不是兜底)。
+  //   ② FX_ISO_TIME: generated_at 写成 ISO 字符串 (老写法) → 与毫秒数一样必须显示成**那个**时刻。
+  //   notes 各自一份: fxMark 会往 notes 里追自证标记, 共用同一个数组会把两份夹具的标记串到一起 (自证就废了)。
+  const ISO_GEN = T0 - 2 * 3600000;
+  const FX_NO_TIME = (() => {
+    const c = { ...FX_LIVE, notes: (FX_LIVE.notes || []).slice() };
+    delete c.generated_at;
+    return c;
+  })();
+  const FX_ISO_TIME = { ...FX_LIVE, notes: (FX_LIVE.notes || []).slice(), generated_at: new Date(ISO_GEN).toISOString() };
 
   // ——— 链上活动表的容错契约: 认不出的 kind / state / finality 一律原样显示, 空标识不画行 ———
   const EN_ONLY_TEXT = 'EN-only server text (no zh)';
@@ -1016,6 +1067,8 @@ async function main() {
   fxMark(FX_NO_TASKS, 'no-tasks');
   fxMark(FX_EXPIRED, 'expired');
   fxMark(FX_STALE_FLAG, 'stale-flag');
+  fxMark(FX_NO_TIME, 'no-time');
+  fxMark(FX_ISO_TIME, 'iso-time');
   fxMark(FX_NEWKINDS, 'newkinds');
   fxMark(FX_GROWN, 'grown');
   fxMark(FX_EN_ONLY, 'en-only');
@@ -1293,6 +1346,17 @@ async function main() {
   check('live: 快照时间 + 相对时间都在 (快照时间 YYYY-MM-DD HH:MM:SS)',
     /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(live.snap || '') && /\d+ (分钟前|小时前|刚刚)/.test(live.ago || ''),
     JSON.stringify({ snap: live.snap, ago: live.ago }));
+  // ★ 快照时间 (2026-09-24): 页面上那个时刻必须是**快照自己标的** generated_at, 不是任意/当前时间 ——
+  //   期望值从夹具的 generated_at (T0 - 3 分钟) 推导, 逐字对上才算数。
+  const LIVE_GEN = T0 - 3 * 60000;
+  check('★ live: 快照时间 = 快照 generated_at 的可读形式 (绝对时刻逐字对上, <time datetime> = 同一时刻的 ISO)',
+    live.snap === localAbs(LIVE_GEN) && live.snapIso === new Date(LIVE_GEN).toISOString(),
+    JSON.stringify({ got: live.snap, want: localAbs(LIVE_GEN), iso: live.snapIso, wantIso: new Date(LIVE_GEN).toISOString() }));
+  const liveAgoMin = agoMinutesOf(live.ago);
+  check('★ live: 相对时间由同一字段算出 (与 generated_at 相差 ≤1 分钟), 且状态徽章右边也挂着同一份年龄「(N 分钟前)」',
+    liveAgoMin !== null && Math.abs(liveAgoMin - relMinutes(LIVE_GEN)) <= 1 &&
+    String(live.age) === `(${liveAgoMin} 分钟前)` && live.ageShown === true,
+    JSON.stringify({ ago: live.ago, age: live.age, shown: live.ageShown, wantMin: relMinutes(LIVE_GEN) }));
   check('live: 服务端 notes 文字可见', live.notes.includes('隐私阈值'), live.notes);
   check('live: 表格每一格的任务标识都只 1 个文本节点 (textContent 造节点, 不拼 HTML)',
     LV.rows.every((r) => r.taskKids === 1), JSON.stringify(LV.rows.map((r) => r.taskKids)));
@@ -1315,6 +1379,11 @@ async function main() {
   const gwVisibleHtml = gwHtml.replace(/<!--[\s\S]*?-->/g, '');
   const idxHtml = await fetchText(`${BASE}/index.html`);
   const idxVisibleHtml = idxHtml.replace(/<!--[\s\S]*?-->/g, '');
+  check('★ 两页静态 HTML 就有快照年龄钩子 (data-pulse-age 各恰好 1 处, 与 data-pulse-time/-ago 同一行; 无 id 不撞)',
+    (gwHtml.match(/data-pulse-age/g) || []).length === 1 && (idxHtml.match(/data-pulse-age/g) || []).length === 1 &&
+    /<p class="pulse-state"[^>]*>[\s\S]*?data-pulse-age[\s\S]*?<\/p>/.test(gwHtml) &&
+    /<p class="pulse-state"[^>]*>[\s\S]*?data-pulse-age[\s\S]*?<\/p>/.test(idxHtml),
+    JSON.stringify({ gw: (gwHtml.match(/data-pulse-age/g) || []).length, idx: (idxHtml.match(/data-pulse-age/g) || []).length }));
   check('网关页可见 HTML 不再有那几段长文案 (口径整句 / 隐私整句 / 「链上数据源：」前缀 / 私有站整句)',
     killedHits(gwVisibleHtml).length === 0 && !/显式发布、公开可读的智能体私有站/.test(gwVisibleHtml),
     JSON.stringify(killedHits(gwVisibleHtml)));
@@ -1374,6 +1443,15 @@ async function main() {
     JSON.stringify(enSubs) === JSON.stringify(['Agent private sites']), JSON.stringify(enSubs));
   check('EN: 相对时间英文 (minutes ago / hours ago / just now)',
     /minutes ago|hours ago|just now/.test(String(en.ago)), String(en.ago));
+  // ★ EN: 徽章年龄也要跟着切英文, 单位与单复数都要对 (1 minute ago / N minutes ago / N hours ago)
+  const enAgoM = /\((\d+) (minute|minutes|hour|hours) ago\)/.exec(String(en.ago || ''));
+  const enAgeM = /\((\d+) (minute|minutes|hour|hours) ago\)/.exec(String(en.age || ''));
+  check('★ EN: 快照年龄在英文界面下也是英文, 单位/单复数正确, 徽章与 meta 是同一份值',
+    !!enAgoM && !!enAgeM && String(en.age) === String(en.ago) &&
+    enAgoM[2] === enAgeM[2] && (Number(enAgoM[1]) === 1 ? !/s$/.test(enAgoM[2]) : /s$/.test(enAgoM[2])) &&
+    (Number(enAgoM[1]) >= 60 ? /^hour/.test(enAgoM[2]) : /^minute/.test(enAgoM[2])) &&
+    !/[前刚刚]/.test(String(en.age) + String(en.ago)),
+    JSON.stringify({ ago: en.ago, age: en.age }));
   const enIpns = await evalJs(`(() => {
     const f = document.querySelector('#pulse [data-pulse-ipns-form]');
     const i = f.querySelector('[data-pulse-ipns-input]');
@@ -1418,6 +1496,41 @@ async function main() {
   check('相对时间刷新 (tick) 只改文字节点: 表格行与节点复用, 不重建',
     tickBefore.sameAgo === true && tickBefore.sameRow === true && tickBefore.rows === 8 && /前|刚刚/.test(tickBefore.ago),
     JSON.stringify(tickBefore));
+
+  // ★ 快照年龄必须随节拍/轮询自己刷新, 且**只改文字节点** (节点身份与结构一个都不许动) ——
+  //   用「快进 2 小时」把差值做成确定性的: 快进后相对时间必须真的变 (分钟档 → 小时档),
+  //   期望值用**同一套规则**从「(现在+2h) - generated_at」算出来 (不写死, 也不依赖跑得多快)。
+  const ageTick = await evalJs(`(() => {
+    const GEN = ${JSON.stringify(LIVE_GEN)};
+    const root = document.querySelector('#pulse');
+    const nAge = root.querySelector('[data-pulse-age]');
+    const nAgo = root.querySelector('[data-pulse-ago]');
+    const nState = root.querySelector('.pulse-state');
+    const nMeta = root.querySelector('.pulse-snapshot');
+    const nRow = root.querySelector('[data-pulse-activity-body] tr');
+    const kids = nState.childNodes.length;
+    const before = { age: nAge.textContent, ago: nAgo.textContent };
+    const realNow = Date.now;
+    Date.now = function () { return realNow() + 7200000; };          // 快进 2 小时 (只影响这一次 tick)
+    try { window.__bolloonPulse.tick(); } finally { Date.now = realNow; }
+    const mins = Math.round((realNow() + 7200000 - GEN) / 60000);
+    return {
+      before: before,
+      age: nAge.textContent,
+      ago: nAgo.textContent,
+      exp: mins < 60 ? '(' + mins + ' 分钟前)' : '(' + Math.round(mins / 60) + ' 小时前)',
+      ageSame: root.querySelector('[data-pulse-age]') === nAge,
+      agoSame: root.querySelector('[data-pulse-ago]') === nAgo,
+      stateSame: root.querySelector('.pulse-state') === nState,
+      metaSame: root.querySelector('.pulse-snapshot') === nMeta,
+      rowSame: root.querySelector('[data-pulse-activity-body] tr') === nRow,
+      kidsSame: root.querySelector('.pulse-state').childNodes.length === kids,
+    };
+  })()`);
+  check('★ 快照年龄随节拍刷新 (快进 2h → tick: 文本按同一规则变成小时档), 且**只改文字节点** (徽章/元信息/表格行的节点身份与结构一个都没动)',
+    ageTick.age === ageTick.exp && ageTick.ago === ageTick.exp && ageTick.age !== ageTick.before.age &&
+    ageTick.ageSame && ageTick.agoSame && ageTick.stateSame && ageTick.metaSame && ageTick.rowSame && ageTick.kidsSame,
+    JSON.stringify(ageTick));
 
   // prefers-reduced-motion (live 状态下先确认动画存在, 再确认 reduce 时关掉)
   const animOn = await evalJs(`getComputedStyle(document.querySelector('#pulse .pulse-dot')).animationName`);
@@ -1492,6 +1605,13 @@ async function main() {
   check('stale: 仍显示快照数字 (9); 该快照没有 confirmed_activity → 0 行 + 明说「本节点暂未观察到链上任务」(不是一片空白)',
     stale.nodes === '9' && stale.act.rowCount === 0 && stale.act.emptyShown === true && /暂未观察到链上任务/.test(stale.act.emptyText),
     JSON.stringify({ n: stale.nodes, rows: stale.act.rowCount, shown: stale.act.emptyShown, text: stale.act.emptyText }));
+  // ★ stale 时**也要**显示时间 (过期 ≠ 不必说它多旧; 反过来, 也不许拿当前时间冒充):
+  //   绝对时刻 = 该夹具的 generated_at (T0 - 1 小时), 相对时间 = 小时档, 徽章年龄同一份值。
+  check('★ stale: 过期快照仍照常显示自己的生成时间 (绝对 = generated_at 时刻 + 相对小时档 + 徽章年龄同一份; 不是空白, 也不是当前时间)',
+    stale.snap === localAbs(T0 - 3600000) && stale.snapIso === new Date(T0 - 3600000).toISOString() &&
+    /\(\d+ 小时前\)/.test(String(stale.ago)) && String(stale.age) === String(stale.ago) && stale.ageShown === true &&
+    !/未标注/.test(String(stale.snap) + String(stale.ago) + String(stale.age)),
+    JSON.stringify({ snap: stale.snap, ago: stale.ago, age: stale.age, state: stale.state }));
 
   // status=stale 单独一条路径
   const p3 = nextPaused(7000);
@@ -1503,6 +1623,57 @@ async function main() {
   await fxSelfProof('stale-flag', { what: 'FX_STALE_FLAG (status=stale)' });
   const stale2 = await evalJs(pulseProbe('#pulse'));
   check('stale: status="stale" 也被如实标为过期', stale2.state === 'stale' && stale2.visible.includes('快照已过期'), JSON.stringify({ s: stale2.state, v: stale2.visible }));
+
+  // ★★ 缺 generated_at (2026-09-24): 快照读到了, 但它没标时间 —— 页面**只能**如实说「快照未标注时间」。
+  //    这条断言的意义就是「绝不用 Date.now() 顶替」: 顶替的代码一注入, 这里立刻红 (见 docs/wiki/log.md 的变异验证)。
+  {
+    const pNoTime = nextPaused(7000);
+    await evalJs(`(() => { window.__bolloonPulse.refresh(); return 1; })()`);
+    let reqNoTime = null;
+    try { reqNoTime = await pNoTime; } catch { /* 交给自证判「夹具未生效」 */ }
+    fxPre('no-time', !!reqNoTime, 'refresh() 的取数请求 7s 内没被 CDP Fetch 拦住');
+    if (reqNoTime) await fxServe(reqNoTime, FX_NO_TIME, 'no-time');
+    await fxSelfProof('no-time', { what: 'FX_NO_TIME (缺 generated_at 字段)' });
+    const noTime = await evalJs(pulseProbe('#pulse'));
+    check('★ 缺 generated_at → 如实写「快照未标注时间」(时间格 + 徽章年龄都写), <time datetime> 留空不编假时刻',
+      /未标注/.test(String(noTime.snap)) && /未标注/.test(String(noTime.age)) && noTime.snapIso === '' &&
+      /未标注/.test(String(await evalJs(`(() => { const r = document.querySelector('#pulse'); const n = r.querySelector('[data-pulse-age]'); return n.textContent; })()`))),
+      JSON.stringify({ snap: noTime.snap, age: noTime.age, iso: noTime.snapIso }));
+    // 「不出现当前时间」: 当前时刻的 YYYY-MM-DD HH:MM 一个字符都不许出现在时间/年龄文本里,
+    // 而且不许出现「刚刚 / N 分钟前」这类只有拿 now() 顶替才会有的相对说法 (快照本身没给时间, 就没得算)。
+    const nowHm = localAbs(Date.now()).slice(0, 16);
+    const timeTexts = JSON.stringify({ snap: noTime.snap, ago: noTime.ago, age: noTime.age, iso: noTime.snapIso });
+    check('★ 缺 generated_at → 页面上不出现当前时间、也不给假的相对时间 (绝不用 now() 顶替)',
+      !timeTexts.includes(nowHm) && !/刚刚|just now/.test(String(noTime.ago) + String(noTime.age)) &&
+      !/\d+\s*(分钟前|小时前|天前)|minutes? ago|hours? ago/.test(String(noTime.ago) + String(noTime.age)) &&
+      noTime.nodes === '7' && noTime.state === 'live',                       // 页面其它部分照常 (证明夹具真被消费了)
+      JSON.stringify({ texts: timeTexts, now: nowHm, nodes: noTime.nodes, state: noTime.state }));
+    await evalJs(`document.querySelector('.lang-toggle [data-lang="en"]').click()`);
+    await sleep(300);
+    const noTimeEn = await evalJs(pulseProbe('#pulse'));
+    check('★ EN: 缺 generated_at → 「Snapshot time not labeled」(徽章与时间格都对), 仍不给假时间',
+      /Snapshot time not labeled/.test(String(noTimeEn.snap)) && /Snapshot time not labeled/.test(String(noTimeEn.age)) &&
+      !/\d+\s*(minute|minutes|hour|hours) ago/.test(String(noTimeEn.ago) + String(noTimeEn.age)),
+      JSON.stringify({ snap: noTimeEn.snap, age: noTimeEn.age, ago: noTimeEn.ago }));
+    await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);
+    await sleep(250);
+  }
+
+  // ★ generated_at 写成 ISO 字符串 (老写法) 也必须吃 —— 判成「未标注」就是漏了兼容解析
+  {
+    const pIso = nextPaused(7000);
+    await evalJs(`(() => { window.__bolloonPulse.refresh(); return 1; })()`);
+    let reqIso = null;
+    try { reqIso = await pIso; } catch { /* 交给自证判「夹具未生效」 */ }
+    fxPre('iso-time', !!reqIso, 'refresh() 的取数请求 7s 内没被 CDP Fetch 拦住');
+    if (reqIso) await fxServe(reqIso, FX_ISO_TIME, 'iso-time');
+    await fxSelfProof('iso-time', { what: 'FX_ISO_TIME (generated_at = ISO 字符串)' });
+    const isoT = await evalJs(pulseProbe('#pulse'));
+    check('★ generated_at 写成 ISO 字符串也照常显示成那一刻 (不判成「未标注」): 绝对时刻逐字 + <time datetime> 原样 ISO + 相对时间小时档',
+      isoT.snap === localAbs(ISO_GEN) && isoT.snapIso === new Date(ISO_GEN).toISOString() &&
+      /小时前/.test(String(isoT.age)) && !/未标注/.test(String(isoT.snap) + String(isoT.age)),
+      JSON.stringify({ snap: isoT.snap, want: localAbs(ISO_GEN), iso: isoT.snapIso, age: isoT.age }));
+  }
 
   // 接口失败 → unavailable, 且不阻断其它区域 (这条夹具 = 「我方把请求打失败」, 所以送达证记在 fxFailed)
   const p4 = nextPaused(7000);
@@ -2360,17 +2531,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=25 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=25 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=26 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=26 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=25');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=26');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=25/.test(html) || !/app\.js\?v=25/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=26/.test(html) || !/app\.js\?v=26/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=25 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=25 + app.js?v=25 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=26 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=26 + app.js?v=26 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):

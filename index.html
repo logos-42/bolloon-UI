@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="style.css?v=26">
 </head>
 <body data-page="product">
 
@@ -106,6 +106,13 @@
         <span class="pulse-state-text" data-state="live" data-zh="实时" data-en="Live">实时</span>
         <span class="pulse-state-text" data-state="stale" data-zh="快照已过期" data-en="Snapshot expired">快照已过期</span>
         <span class="pulse-state-text" data-state="unavailable" data-zh="快照暂时读不到" data-en="Snapshot unreadable right now">快照暂时读不到</span>
+        <!-- 快照年龄 (2026-09-24): 「(3 分钟前)」直接写在状态徽章右边 —— 只写「实时」两个字时,
+             读者分不清这份快照是 3 分钟前还是 2 小时前生成的。年龄与下面「快照」行同源:
+             app.js 里同一份 view.snapAt (唯一来源 = 快照字段 generated_at)。
+             aria-hidden: 这段文字每 20s 随轮询重写一次, 而这里是 role=status / aria-live=polite 的活区 ——
+             不藏起来的话屏幕阅读器每 20s 被打断念一次时间; 同样的相对时间在下面「快照」行随时可读 (那行不在活区里)。
+             缺 generated_at 时这里如实写「(快照未标注时间)」, 绝不用当前时间顶替。 -->
+        <span class="pulse-age" data-pulse-age aria-hidden="true"></span>
       </p>
       <p class="pulse-c-scope" data-pulse-scope data-zh="当前节点观察到" data-en="Observed by this node" hidden>当前节点观察到</p>
 
@@ -241,6 +248,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=25"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>

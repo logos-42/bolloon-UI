@@ -2,6 +2,7 @@
 
 | 日期 | 事件 | 内容 |
 |------|------|------|
+| 2026-09-24 | 快照生成时间显式上页面（绝对 + 相对 · 缺 `generated_at` 写「快照未标注时间」· 断言 320 → 330 只加不减 · 变异注入判红后恢复全绿 · v=26 · 本机 330/0/0 ×2） | leo 问「为什么 UI 网页没有实时更新这个记录?」—— 根因: 本站是**纯静态站 + 签名快照**架构 (无服务器), 页面读同源 `network-pulse.json`, 由 `refresh-pulse.sh` 定时导出 + 部署; 所以「这份快照有多新」唯一诚实的来源就是快照自己的字段。① **把新鲜度写到一眼可见处**: 状态徽章行 (`role=status`) 右边新增钩子 `data-pulse-age`, 内容 = 「(3 分钟前)」/「(3 minutes ago)」; 与既有的 `.pulse-snapshot` / `.pulse-c-meta` 行 (`data-pulse-time` + `data-pulse-ago`) **同一份** `view.snapAt` —— 网关页 `gateway.html` 与首页 `index.html` 各一处, 无 id、不撞。② **绝对 + 相对**: 时间格写本地 `YYYY-MM-DD HH:MM:SS`, 并补 `<time datetime>` = 同一时刻的 ISO (改动前这个属性一直是空串); 相对部分由既有的 20s 节拍 (`REL_TICK_MS`) 与 30s 轮询 (`POLL_MS`) 自己刷新。③ **唯一来源 = 快照字段 `generated_at`**: 原实现只吃毫秒数 (`num()`), 改为复用它旁边就有的两种兼容解析 `parseAt()` —— ISO 字符串 (老写法) 与毫秒数都吃。④ **缺字段 → 如实写「快照未标注时间」/「Snapshot time not labeled」**: 时间格与徽章年龄都写, `<time datetime>` 留空; **绝不用 `Date.now()` 顶替** (这条有断言守着, 见⑥; 另: 快照整份读不到时仍只留「—」—— 那是另一件真相, 状态徽章已写着「快照暂时读不到」, 不替没读到的快照下判断)。⑤ **`stale` 语义一字未动** (`fu != null && fu > 0 && fu <= Date.now()` → stale 原样), 且 stale 时**也**照常显示时间。⑥ **只改文字节点**: 新渲染全部走 `textContent` / 属性, 无 innerHTML、无节点重建; 徽章年龄标 `aria-hidden="true"` —— 它在 live region 里, 不藏起来屏幕阅读器每 20s 会被念一次, 而同值的相对时间在活区外的 meta 行随时可读; `role=status` / `aria-live=polite` 属性与改动前逐字相同。⑦ **缓存破坏 v=25 → v=26** (6 页 12 处; `app.js` 与 `style.css` 都改了)。⑧ **验收**: 本机 `node scripts/verify-site.mjs` **330 passed / 0 failed / 0 skipped ×2**(基线 320, 只加不减); `python3 scripts/pulse-privacy-check.py` 通过; `bash scripts/test-pulse-guard.sh` **29 通过 / 0 不符**; **变异验证**: 故意把「缺 `generated_at`」分支改成 `absTime(Date.now())` / `relTime(Date.now())` → 新增的 3 条断言**真判红** (`snap="2026-09-24 10:58:54"` vs 当前 `2026-09-24 10:58`, `age="(刚刚)"`), 恢复后复跑全绿。**未做**: 按约定**未 push、未部署** (部署与真域名验收由主线做, 避免两条链同时动线上)。 |
 | 2026-09-23 | 「待接单任务」脱敏上公开页（快照 `open_tasks[]` · 守卫精确化对照 19→29 · 断言 291→320 只加不减 · v=25 · 本机 320/0 · 真域名 320/0） | 主仓快照新增字段 `open_tasks[]`（**未认领且未过期**的公告；每行**只有白名单 7 键** capability / budget(原子) / currency / network / deadline / claimed / announcementId 前 8 位 —— 任务正文、正文摘要/预览、买方 DID 与公钥、认领者、签名、地址**一个都不导出**），UI 侧只做展示与断言。① **两页各一处极短区块**：网关页 `gateway.html` 在口径行后、首页 `index.html` 在 hero 紧凑栏 —— 钩子 `data-pulse-tasks` + `data-pulse-tasks-empty`，每 chip = `capability · 预算<原子值> <币种> · <network> · 截止 MM-DD（`<time datetime>` 带完整 ISO）· ann-xxxxxxxx`；标题旁短标记「预算 · 原子」（原子单位不替数据换算小数位）。首页紧凑版带 `data-pulse-tasks-max="1"`（只列**最近到期**的一条），被条数上限截掉的用 **「+N」如实计数**（不静默吞掉、不假装没有）。② **空态说真话**：`open_tasks: []` = 「本节点此刻没有待接单任务」→ 文案「暂未观察到」/「Empty = none observed」，**不显示假 0**，也**不写与事实相反的「尚未接入」**（断言里把「尚未接入」类文案列为**必须不出现**）。③ **数据未到不崩版面**：快照没有 `open_tasks` 键（老快照）或取数失败 → 整块隐藏/走 unavailable，不报错、不留空壳；夹具轮里两页均无 console 错。④ **隐私守卫精确化（不是放松）+ 对照测试**：`scripts/pulse-privacy-check.py` 新增 `open_tasks` 检查 —— 行**键集合白名单**（多一个键就拒）、`announcementId` 必须是**短 id 形状**且全文 id 出现即拒、`claimed: true` 拒（未认领才是本字段语义）、`capability/currency/network` 仅允许安全字符、`budget` 必须原子串、`deadline` 必须数值；`scripts/test-pulse-guard.sh` 对照用例 **19 → 29 条全通过**（真快照必须过 + 注入：正文塞进 capability、买方地址/DID/peerId/multiaddr/私钥形态塞进任一键、多塞 `instruction`/`buyerDid` 键、全文 announcementId、`claimed: true`、预算写成小数 —— 一律必须拒）。⑤ **`scripts/verify-site.mjs` 断言只加不减：291 → 320**（新一节 [13] + 1 条「7 页都真量到渲染后文案」）—— ⓪ 页面渲染后可见文本不得出现 `0x[0-9a-f]{40}` / `did:` / `did:key` / `/ip4/`·`/ip6/`·`/dns`·`/p2p/` multiaddr 形态；① 空态文案在场且**不是假 0**（有公告时空态不许出现；无公告时必须有「暂未观察到」而不是「0 条」）；② 有公告时 **capability 与预算逐字对上快照实际值**（期望值**从 `network-pulse.json` 推导**，不写死）；③ **不得出现任务正文样本串**（从快照行的 capability 之外构造反例，含主仓 board 文件里的正文关键词）；④ 两页都验（网关页全量 + 首页紧凑版 1 条 + 「+N」计数出现在被截断时）。⑥ **缓存破坏 v=24 → v=25**（6 页 12 处；`app.js`/`style.css` 都改了，不升版本老缓存会继续渲染旧 JS = 页面上什么都不会出现）+ 断言里的版本字面量同步。⑦ **部署 + 真域名验收**：`python3 scripts/deploy-pages.py` → CF Pages **`d8c14716.bolloon.pages.dev`**；`node scripts/verify-site.mjs https://bolloon.cn` → **320 passed / 0 failed / 0 skipped（EXIT=0）**；线上 `network-pulse.json` 的 `open_tasks` 与本地导出一致、页面钩子与 `?v=25` 已生效。⑧ **本轮抓到并修的真问题（两道既有门的环境竞态，非断言失败）**：真域名首跑与第二跑各崩一次 —— 既有检查在 `Page.navigate` 后**固定 sleep** 就量 `document.body`，真域名冷启动（308 跳转 + CDN + app.js）会 >700/900ms，量到的是**还没建好的文档**（`Cannot read properties of null`）。改法 = 等文档就绪（`waitUntil('document.readyState !== "loading" && !!document.body')`）再量，并把「真的量不到」**单列成一条会判红的检查**（空文档上「缺失类断言」恒真，不许当成通过）—— **加强**不是放宽；改完本地与真域名各复跑一遍均 **320/0/0**。**未做**：两仓按约定**未 push**（GitHub Pages 镜像不构建）；页面只展示、**没有公开的「点击认领」API**（认领仍在主仓 CLI `bolloon task claim`）；快照只投本机公告板（远端公告不进 `open_tasks`）。 |
 | 2026-09-23 | 站点文案精简（删长解释、留最短诚实标记 · v=24 · 本机 291/0 ×2） | leo 原话：「能不能把网页内容变干净一点，这些内容不用显示，简洁最好。」逐字点名 5 段不要显示：①「观察窗口内计数 · 不是全网精确总量。」② 口径行整句「3 行 / 1 个不同任务 · 网络：8453（Base 主网） · 上方 任务/已完成/已验证/签名 只数 24h 窗口内的脉冲事件，链上索引的 3 行（全量，不是 24h 窗口）是另一套口径 —— 不是数据丢了。」+ 网关页隐私整句「…数据来自公开只读接口 GET /api/public/network/progress 的 confirmed_activity：没有 DID、没有 peerId、没有 IP、没有钱包地址、没有任务正文；地址与哈希一律短写。」③「链上数据源：链上索引」④「智能体私有网站」下的整句说明。**处理原则 = 删长句、不删诚实性**：① 口径行改为「链上索引 · 全量 · 3 行 / 1 个不同任务 · 网络：8453（Base 主网）」+ 统计区就近短标记「观察窗口 24h」（`.pulse-caveat` 从页面底部**上移到小结行正下方**，两套口径各自带标记 ⇒ 不再是「0 个任务」与「N 行」并列而无解释）；② 数据源短标记按快照字段派生（chain-index → 「链上索引 · 全量」/ pulse-events → 「脉冲事件」/ none → 「本节点未接入链上数据源」；口径行已带标记时表下那行**留空不重复**，老快照没有口径行才回退到表下那行），`链上数据源：` 长前缀删除；③ 网关页隐私整句 + 私有站整句 + 首页口径注释句从**可见文案**删除，**设计意图整段搬进 HTML 注释**（注释不算可见文本，但断言要求注释还在）；④ 私有站空态改极短「空 = 未发布（不是没数据）」（中英同步，app.js 的 `emptySitesText()` 也同步）—— 空 ≠ 没数据 这条没被删、也没变成假 0。`scripts/verify-site.mjs` **只加不减：15 条旧断言改写 + 31 条新增（净 +16，275 → 291 项）**，新增的都是要求而不是放松：短标记**成对在场**（统计区「观察窗口」+ 表区「链上索引/全量」，少一个就是「并列而不解释」）、脉冲区文案**不写整句**（禁「。」「；」「——」+ 长度上限）、7 页可见文案不得再出现那几段长句/不得出现「全网总量 · 精确总量 · exact global total」类夸大措辞、私有站空态必须 ≤24 字且无假 0、`.pulse-sites-note` 元素不得回来、老快照退到数据源行也要带口径标记。缓存破坏 v=23 → **v=24**（6 页 12 处；app.js 改了，不升版本会让老缓存继续渲染旧长句）+ 版本断言同步。验收：`python3 -m http.server 8941` + `node scripts/verify-site.mjs http://127.0.0.1:8941` → **291 passed / 0 failed ×2（EXIT=0）**；`--dump-dom` 前后对比逐条留档（5 段长文案全部消失，标记全部还在）。**未做**：按约定**未 push**（父智能体 push + 部署）。 |
 | 2026-09-23 | 交易标签可点跳区块浏览器（**合约不上页面** · 本机链不编链接）+ 守卫精确化对照测试 + v=23（本机 275/0 ×2 · 真域名 275/0 ×2） | ① **两页共用同一套渲染**（先确认再改）：`app.js` 的 `view.rows` / `renderActivity()`（gateway 表格）与 `renderActivityTx()`（index 序栏「最新一笔链上交易」，钩子 `data-pulse-activity-tx`）读**同一份快照行**、同一套校验、同一套短写 —— 所以只改一处逻辑，但**断言两页都验**。② **交易标签可点**：行里 `explorer_tx`（`https://basescan.org/tx/0x64hex`）存在时渲染 `<a target="_blank" rel="noopener noreferrer">` + `textContent` 短写 `0x1234…abcd ↗`（沿用安装/下载那两处既有的 target/rel 写法，那两处**没动**）；没有该字段时保持纯文本 `<code>`。③ **合约不上页面**（同日按 leo 二次拍板收窄，是**删掉**前一版的东西）：删掉每行的「合约 ↗」链接与 `explorerContract`/`pickExplorer` 的 `/address/` 分支、`.pulse-contract-link` 样式；网络格只显示 `chain_id` 纯文本。快照行里的 `contract`（escrow 地址）**仍保留**（供索引/诊断），只是**不渲染**。④ **前端不信快照**：`pickTxLink(url, txHash, chainId)` 要求「域名必须是**这条 chain_id 自己的**浏览器（8453 basescan / 84532 sepolia.basescan / 1 etherscan / 11155111 sepolia.etherscan）+ 路径必须 `/tx/` + 内嵌 0x 必须**逐字等于本行** `tx_hash`」，任何一条不满足 → 空串 → 纯文本。**本机 31337 没有公网浏览器 ⇒ 永远不点**，绝不编 `href="#"` 死链。⑤ **`scripts/verify-site.mjs` 只加不减、分页验**（275 passed，基线 246）：[6e] 真快照网关页 —— 8453 行交易标签是 `<a>` 且 href 匹配 `^https://[a-z.]*basescan\.org/tx/0x[0-9a-f]{64}$` + `target=_blank` + rel 含 noopener + 链接文本一律短写；[6e★] 真快照**首页序栏**同一套断言 + 双语提示 + 「指向的正是最新那条公网链行」；新增「**合约不上页面**」4 条（真数据两页 + 夹具两页：活动区/序栏 0 个 `/address/0x40` 链接、每行无合约链接节点、`explorer_contract` 键不出现在真快照行里）；[6f] 网关页夹具 6 行逐行验（真链齐全 / 本机链 31337 无字段 / 只有哈希没合约 / 域名不在白名单 / 链接指向**别的**哈希 / 本机链行被硬塞合法 basescan 链接 → **一律不渲染成 `<a>`**）；[6g] 首页夹具同 6 行 + 「两页同一串短写」；[6h][6i] 本机链夹具两页：交易标签是纯文本、无 `href="#"` 死链、无 console 错。⑥ **守卫精确化（不是放松）+ 对照测试**：新 `scripts/pulse-privacy-check.py`（键名精确匹配 + 形状精确 + 交易链接必须指回本行 hash + `contract` 与 `~/.bolloon/chain/index.json` 地址交叉核对 + `/address/` 链接一律拒），`scripts/test-pulse-guard.sh` **19 例对照**：真快照/合法本机链快照**必须过**（2），17 种注入**必须拒** —— escrow 地址塞进 `address` 键、卖方 EOA 塞进普通键、买方 EOA 冒充 `tx_hash`、`explorer_tx` 指向非白名单域名、指向别的哈希、31337 行带 explorer、`explorer_contract` 键被塞回来、notes 里 `/address/` 链接、DID、multiaddr、peerID(12D3Koo…/Qm…)、IPNS(k51…)、`wallet` 键下 64 位裸 hex … → **19/0，退出码 0**；`refresh-pulse.sh` 部署前自动跑这套对照测试（尺子坏了就不许部署）。⑦ **缓存破坏 v=22 → v=23**（6 页 12 处，`skill.html` 自包含无外链）+ `verify-site.mjs` 版本断言同步到 v=23。⑧ **验收真数字**：`python3 -m http.server 8941` + `node scripts/verify-site.mjs http://127.0.0.1:8941` → **275 passed / 0 failed ×2**；`bash scripts/refresh-pulse.sh`（导出 → 对照测试 19/0 → 守卫通过 → 部署 CF Pages **`7bdc2962.bolloon.pages.dev`**）→ `node scripts/verify-site.mjs https://bolloon.cn` → **275 passed / 0 failed ×2**（含 [6e][6e★] 线上真快照那两条）。⑨ **如实记录（删了什么 / 修了什么）**：(a) 前一版按**旧规格**实现了「每行合约链接」（快照加 `explorer_contract`、数据层 4 字段）—— 本次规格变更后**删除渲染 + 数据层不再产出该字段 + 守卫把它列为拒绝项**，`contract` 仅留数据；主仓相应改动见其 `docs/wiki/log.md`；(b) 我自己加的一条断言过宽（要求首页序栏 `<a>` 数量 = 0）与序栏里既有的「完整链上活动见网关页」真链接冲突 → 改成精确断言（**不许有区块浏览器链接 + 不许死链**），是**精确化不是删断言**（若真出现 basescan/etherscan 链接或 `#` 死链仍会红）。**未做**：两仓按约定**未 push**（父智能体 push）；快照里 `chain_id=31337` 的行仍只在本机索引里（线上快照 3 行全是 8453）。 |
@@ -121,4 +122,63 @@
 **顺带 (待接单窗口加长)**: `task publish` 的 dedupe **只看内容不看 `--deadline`** —— 同内容重发返回同一条且**不改截止**。要换窗口只能**归档旧公告 + 重发**(公告是签过名的, 直接改 deadline 会破坏验签, 不能改)。已归档 24h 那条 (未认领, 无损害) 并以 30 天窗口重发: 同 id `ann-80c51faa3442da4b`, 新截止 **2026-10-24T02:05:26Z** (签名覆盖截止, 已重签)。
 
 **我自己的两次读解错 (如实记)**: ① 先以为是「待接单任务没渲染」→ 抓真 DOM 才发现 chip 一直在, 缺的是链上活动那一段; ② 报「未找到 chip!」是**我的正则写错** (chip 内含多个 span, 非贪婪匹配抓不到) —— 「我 grep 不到」≠「东西不存在」, 报结论前换一种抓法复核。
+
+---
+
+## [2026-09-24] feat(pulse) | 快照时间显式上页面 — 绝对 + 相对 · 缺字段如实写「未标注」· 绝不用 now() 顶替 (断言 320 → 330, 变异验证真判红)
+
+**leo 原话**: 「为什么 UI 网页没有实时更新这个记录?」
+
+**根因 (架构决定的, 不是 bug)**: 本站是**纯静态站 + 签名快照** —— 没有服务器; 页面读同源 `network-pulse.json`, 这份快照由 `refresh-pulse.sh` (链索引 sync → 导出 → 守卫 → 部署) **定时**生成。所以「这份记录为什么没变」有两种完全不同的真相, 页面必须让人分得清: ① **快照是新的, 但链上确实没有新事件**; ② **快照本身就旧了** (刷新链没跑 / 部署被跳过 / 缓存)。原来页面只写「实时 `live` / `快照已过期`」这类**状态词**, 看到 `live` 时读不出「3 分钟前」还是「2 小时前」—— 缺的正是这一句。
+
+**开工前先实测现状 (避免把旧账当新账)**: headless Chrome 抓本机渲染后的 DOM —— 时间行**一直在**, 已经是「快照 · 2026-09-24 10:48:23 (4 分钟前)」。所以本轮的真缺口不是「没有时间」, 而是四条:
+
+1. **新鲜度不在状态徽章上**: 「实时」两个字离时间行隔着 6 个数字 + 两个区块, 一眼扫过读不到年龄;
+2. **只吃毫秒数**: `view.snapAt = num(payload.generated_at)` —— 快照若写成 ISO 字符串 (老写法) 会静默变成 0 → 时间显示成「—」; 而 `parseAt()` (毫秒 / ISO 两种兼容解析) **就在同文件里**;
+3. **缺字段时显示「—」而不是说清真相**: 「快照没标时间」与「快照整份没读到」是两件事, 前者原来只是一条横杠;
+4. **`<time datetime>` 一直是空串**: 机器可读的那份时刻从来没写进去。
+
+**改了哪些文件与关键行**:
+
+* `app.js`
+  - 新增常量 `SNAP_TIME_UNKNOWN = { zh: '快照未标注时间', en: 'Snapshot time not labeled' }`;
+  - 新增钩子绑定 `snapAge: root.querySelector('[data-pulse-age]')`;
+  - `applyPayload()`: `view.snapAt = parseAt(payload.generated_at)` (**复用既有的两种兼容解析**, 原为 `num(...) || 0`);
+  - 新增 `snapTimeKind()` / `snapAgeText()` / `renderSnapTime()`: 三种真相 `marked` (有快照且标了时间) / `unmarked` (有快照但没标时间 → 「未标注」) / `none` (整份没读到 → 只留「—」, 状态徽章已说「快照暂时读不到」); 全部只写 `textContent` + `<time datetime>` 属性;
+  - `updateRelTimes()` 改为先调 `renderSnapTime()` (20s 节拍与 30s 轮询都走它) → **相对部分随轮询刷新, 且只改文字节点**;
+  - `redraw()` 也调 `renderSnapTime()` (语言切换时「未标注」文案跟着换);
+  - `clearData()` 一并清空新钩子;
+  - 顶部钩子清单与模块注释补 `data-pulse-age` + 「绝不用 Date.now() 顶替」这条纪律。
+* `index.html` / `gateway.html`: 状态徽章行 (`role="status"` / `aria-live="polite"`) 末尾各加 1 个 `<span class="pulse-age" data-pulse-age aria-hidden="true"></span>` + 说明注释 (**为什么 `aria-hidden`**: 这段文字每 20s 会重写一次, 不藏起来屏幕阅读器会每 20s 被念一次; 同值的相对时间在活区外的「快照」行随时可读 —— `role`/`aria-live` 属性本身逐字未动)。
+* `style.css`: `.pulse-age` (不跟随 live/stale 的 lime, 不随 `.pulse-state` 的 uppercase, 等宽数字) + `.pulse-age:empty { display: none }`。
+* 6 页缓存破坏 `?v=25 → ?v=26` (12 处)。
+* `scripts/verify-site.mjs`: 探针新增 `snapIso` / `age` / `ageShown` / `stateKids`; 新增期望值推导助手 `localAbs` / `relMinutes` / `agoMinutesOf`; 新增两个快照时间夹具 `FX_NO_TIME` (删掉 `generated_at`) / `FX_ISO_TIME` (ISO 字符串); 头部补 ㉓ 一节说明; **断言 320 → 330 (新增 10 条, 只加不减, 无一条被删改弱)**。
+
+**新增 10 条断言 (都是「要求」)**:
+
+1. ★ live: 快照时间 = `generated_at` 的可读形式 (绝对时刻**逐字对上** + `<time datetime>` = 同一时刻 ISO);
+2. ★ live: 相对时间与 `generated_at` 相差 ≤1 分钟, **且状态徽章右边挂着同一份年龄**;
+3. ★ 两页静态 HTML 就有 `data-pulse-age` 钩子 (各恰好 1 处, 且在 `role=status` 行内; 无 id);
+4. ★ EN: 徽章年龄与 meta 相对时间都英文, **单位/单复数正确** (1 minute / N minutes / N hours ago);
+5. ★ 快照年龄随节拍刷新 (**快进 2h → `tick()`**: 文本按同一规则变小时档), 且**只改文字节点** —— 徽章/元信息/表格行的节点身份与 `childNodes` 结构一个都没动;
+6. ★ stale: 过期快照**仍**显示自己的生成时间 (绝对 + 相对 + 徽章年龄同一份; 不是空白, 也不是当前时间);
+7. ★ 缺 `generated_at` → 如实写「快照未标注时间」(时间格 + 徽章都写), `<time datetime>` 留空;
+8. ★ 缺 `generated_at` → 页面**不出现当前时刻** (`YYYY-MM-DD HH:MM` 一个字符都不许有)、也不给假的相对时间;
+9. ★ EN: 缺 `generated_at` → 「Snapshot time not labeled」, 仍不给假时间;
+10. ★ `generated_at` 写成 ISO 字符串也照常显示成那一刻 (不判成「未标注」)。
+
+**变异验证 (必做, 我真跑了)**: 把「缺 `generated_at`」两个分支故意改成 `absTime(Date.now())` / `relTime(Date.now())` (正是本轮禁止的写法) →
+`=== 结果: 327 passed, 3 failed ===`, 失败原文:
+
+```
+❌ [页面错] ★ 缺 generated_at → 如实写「快照未标注时间」(时间格 + 徽章年龄都写), <time datetime> 留空不编假时刻 — {"snap":"2026-09-24 10:58:54","age":"(刚刚)","iso":""}
+❌ [页面错] ★ 缺 generated_at → 页面上不出现当前时间、也不给假的相对时间 (绝不用 now() 顶替) — {"texts":"{\"snap\":\"2026-09-24 10:58:54\",\"ago\":\"\",\"age\":\"(刚刚)\",\"iso\":\"\"}","now":"2026-09-24 10:58","nodes":"7","state":"live"}
+❌ [页面错] ★ EN: 缺 generated_at → 「Snapshot time not labeled」(徽章与时间格都对), 仍不给假时间 — {"snap":"2026-09-24 10:58:54","age":"(just now)","ago":""}
+```
+
+(`snap` 与断言里当场取的 `now` 同分钟 ⇒ 确实是拿当前时间顶了; 恢复后 `cp` 回原文件, `sha256` 与改动版一致, 复跑 **330 passed / 0 failed / 0 skipped**。)
+
+**三道门真输出**: `node scripts/verify-site.mjs http://127.0.0.1:8899` → **330 passed, 0 failed, 0 skipped (exit 0)** ×2 (基线 320); `python3 scripts/pulse-privacy-check.py` → 通过 (`status=live scope=verified signed=True rows=15 open_tasks=1`, `contract` 交叉核对通过, `open_tasks` 键白名单 7 个), exit 0; `bash scripts/test-pulse-guard.sh` → **合计: 29 通过, 0 不符**。本机渲染实测 (真快照): 首页 hero = 「● 实时 (13 分钟前)」+ 「快照 · 2026-09-24 10:48:23 (13 分钟前)」; 网关页 = 「● 实时 (14 分钟前) 网络观察快照 (多签名来源)」+ 「快照时间 · 2026-09-24 10:48:23 (14 分钟前)」; 390px 截图确认不裁切、不溢出。
+
+**未做 / 有保留 (如实)**: ① 按任务纪律 **未 push、未部署** —— 真域名验收 (CF Pages + `https://bolloon.cn`) 留给主线, 本轮全部是 `http://127.0.0.1:8899` 的本机结果; ② 「快照整份读不到」(unavailable) 时时间格仍显示「—」而**不是**「快照未标注时间」—— 这是有意的: 「未标注」是对**读到的**快照下的判断, 没读到就说没读到 (状态徽章已写明「快照暂时读不到」), 四种状态的既有断言未动; ③ `git` 只 add 本仓 `bolloon-UI` 的 7 个文件, `build-site/` 与 `network-pulse.json` 是 gitignore 的部署产物, 由主线 `refresh-pulse.sh` 重新生成。
 

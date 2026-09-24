@@ -363,7 +363,7 @@ var BOLLOON_IPNS = (function () {
 
    多实例: 页面上每个 [data-pulse] 根 = 一个独立实例, 各自取数 / 轮询 / 降级。
    区内节点一律靠 data-pulse-* 钩子查找 (不用 id, 不会撞):
-     data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-hint
+     data-pulse-scope · data-pulse-time · data-pulse-ago · data-pulse-age · data-pulse-hint
      data-pulse-total="nodes|agents|active|24h|tasks|tasks_completed|tasks_verified|signatures"
      data-pulse-activity-body · data-pulse-activity-empty · data-pulse-activity-source
      data-pulse-activity-totals                        (口径行: 口径短标记 + 同源行数/不同任务 + 网络归属)
@@ -397,6 +397,9 @@ var BOLLOON_IPNS = (function () {
      · 一条文案都没有 / 文案为空 → 该条不进列表 (宁可不显示一行, 也不留空白行 / 不臆造描述)。
    语言切换: 保留原始数据 (双语对象 / 原始字段), 只在渲染时取语言 → 切语言重画不串语言。
    数值与表格行变化靠下一轮轮询自动反映 (POLL_MS), 无需刷新页面。
+   快照自己标的生成时间 (2026-09-24): 绝对时刻 + 相对时间都写在页面上 (钩子 data-pulse-time /
+   data-pulse-ago / data-pulse-age), 唯一来源 = 快照字段 generated_at (毫秒数或 ISO 字符串);
+   读不到 → 如实写「快照未标注时间」, **绝不用当前时间顶替**。相对部分随轮询刷新 (只改文字节点)。
    可选根属性: data-pulse-feed-max="N" (本实例活动流条数上限, 默认 5)
    任何一份实例失败 (含启动即失败) 都不影响另一份或页面其它区域。
    ============================================================ */
@@ -449,6 +452,14 @@ var BOLLOON_IPNS = (function () {
     'pulse-events': { zh: '脉冲事件',        en: 'pulse events' },
     none:           { zh: '本节点未接入链上数据源', en: 'no on-chain data source on this node' }
   };
+
+  // —— 快照自己标的生成时间 (2026-09-24) ——
+  // 这份快照**有多新**必须写在页面上: 绝对时刻 (本地 YYYY-MM-DD HH:MM:SS) + 相对时间 (会随轮询刷新),
+  // 否则「实时」两个字分不清是 3 分钟前还是 2 小时前生成的。
+  // 时间的**唯一来源 = 快照字段 generated_at** (毫秒数或 ISO 字符串, 见 parseAt)。
+  // 读不到这个字段时只有一条路: 如实说「未标注」——
+  // **绝不用 Date.now() 顶替** (顶替 = 把 2 小时前的快照说成刚生成, 是伪造, 不是兜底)。
+  var SNAP_TIME_UNKNOWN = { zh: '快照未标注时间', en: 'Snapshot time not labeled' };
 
   // —— 小工具（全部只写 textContent / 属性, 不碰 innerHTML）——
   function lang() { return document.documentElement.lang === 'en' ? 'en' : 'zh'; }
@@ -600,6 +611,7 @@ var BOLLOON_IPNS = (function () {
       scope: root.querySelector('[data-pulse-scope]'),
       snapTime: root.querySelector('[data-pulse-time]'),
       snapAgo: root.querySelector('[data-pulse-ago]'),
+      snapAge: root.querySelector('[data-pulse-age]'),
       nodes: root.querySelector('[data-pulse-total="nodes"]'),
       agents: root.querySelector('[data-pulse-total="agents"]'),
       active: root.querySelector('[data-pulse-total="active"]'),
@@ -1017,8 +1029,45 @@ var BOLLOON_IPNS = (function () {
       return view.payload ? '暂未观察到' : '快照读不到，暂未观察到';
     }
 
+    // —— 快照生成时间 (唯一来源 = 快照字段 generated_at; 毫秒数 / ISO 字符串都吃, 见 parseAt) ——
+    // 三种真相分清楚, 不许混淆:
+    //   marked   快照读到了, 而且它自己标了时间  → 绝对时刻 + 相对时间 (相对部分随轮询刷新)
+    //   unmarked 快照读到了, 但它没标时间        → 「快照未标注时间」(如实说, 绝不拿 now() 顶)
+    //   none     这份快照整份没读到              → 只留占位「—」(不能说「未标注」: 那是对没读到的快照下判断;
+    //                                              状态徽章已经写着「快照暂时读不到」)
+    function snapTimeKind() {
+      if (!view.payload) return 'none';
+      return view.snapAt > 0 ? 'marked' : 'unmarked';
+    }
+    // 徽章右手的年龄短写 (「(3 分钟前)」/「(3 minutes ago)」): 与 meta 行**同一份** view.snapAt, 不另算一套;
+    // 缺时间时写「(快照未标注时间)」—— 括号与上面的相对时间同形, 一眼知道这是新鲜度标记
+    function snapAgeText() {
+      var kind = snapTimeKind();
+      if (kind === 'marked') return '(' + relTime(view.snapAt) + ')';
+      if (kind === 'unmarked') return '(' + SNAP_TIME_UNKNOWN[lang()] + ')';
+      return '';
+    }
+    // 全部只写 textContent / <time datetime> 属性 —— 不重建节点, 所以轮询刷新时节点身份不变
+    function renderSnapTime() {
+      var marked = snapTimeKind() === 'marked';
+      if (el.snapTime) {
+        if (marked) {
+          text(el.snapTime, absTime(view.snapAt));
+          var iso = isoOf(view.snapAt);
+          if (iso && el.snapTime.getAttribute && el.snapTime.getAttribute('datetime') !== iso) {
+            el.snapTime.setAttribute('datetime', iso);          // 机器可读的同一时刻 (缺失时不写假值)
+          }
+        } else {
+          text(el.snapTime, snapTimeKind() === 'unmarked' ? SNAP_TIME_UNKNOWN[lang()] : '—');
+          if (el.snapTime.removeAttribute) el.snapTime.removeAttribute('datetime');
+        }
+      }
+      if (el.snapAgo) text(el.snapAgo, marked ? '(' + relTime(view.snapAt) + ')' : '');
+      if (el.snapAge) text(el.snapAge, snapAgeText());
+    }
+
     function updateRelTimes() {
-      if (el.snapAgo) text(el.snapAgo, view.snapAt ? '(' + relTime(view.snapAt) + ')' : '');
+      renderSnapTime();                     // 绝对 + 相对 + 徽章年龄: 只改文字节点 (纯文本刷新, 无节点重建)
       if (!el.feed) return;
       var nodes = el.feed.querySelectorAll('time[data-at]');
       for (var i = 0; i < nodes.length; i++) text(nodes[i], relTime(Number(nodes[i].getAttribute('data-at'))));
@@ -1026,7 +1075,7 @@ var BOLLOON_IPNS = (function () {
 
     function redraw() {
       if (!view.payload) return;
-      renderScope(); renderActivity(); renderActivityTx(); renderFeed(); renderNotes(); renderSites(); renderTasks(); updateRelTimes();
+      renderScope(); renderActivity(); renderActivityTx(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderSnapTime(); updateRelTimes();
     }
 
     function clearData() {
@@ -1035,14 +1084,16 @@ var BOLLOON_IPNS = (function () {
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.signatures, null);
-      text(el.snapTime, '—'); text(el.snapAgo, '');
+      text(el.snapTime, '—'); text(el.snapAgo, ''); text(el.snapAge, '');
       renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderScope();
     }
 
     function applyPayload(payload, state, kind) {
       view.payload = payload;
       view.sourceKind = kind;
-      view.snapAt = num(payload.generated_at) || 0;
+      // 时间唯一来源 = 快照字段 generated_at: 毫秒数 / ISO 字符串都吃 (parseAt 是既有的两种兼容解析);
+      // 解析不出来就是 0 → 渲染时如实写「快照未标注时间」
+      view.snapAt = parseAt(payload.generated_at);
       view.scopeKey = payload.scope === 'verified' ? 'verified' : 'observed';
       view.scopeLabels = payload.scope_label || null;
       // 链上活动: 一行 = 一条已确认的链上任务/交易。task 与 tx 都空 → 这条不画
@@ -1146,7 +1197,7 @@ var BOLLOON_IPNS = (function () {
       setOptCount(el.tasksCompleted, t.tasks_completed);
       setOptCount(el.tasksVerified, t.tasks_verified);
       setOptCount(el.signatures, t.signatures);
-      text(el.snapTime, absTime(view.snapAt));
+      renderSnapTime();
       setState(state);
       renderScope(); renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderTasks(); updateRelTimes();
       if (!relTimer) relTimer = setInterval(function () { try { updateRelTimes(); } catch (e) {} }, REL_TICK_MS);
