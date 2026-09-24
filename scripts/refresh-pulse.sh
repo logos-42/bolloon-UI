@@ -16,8 +16,19 @@ BOLLOON_REPO="${BOLLOON_REPO:-/Users/apple/Downloads/bolloon}"
 UI_REPO="${UI_REPO:-/Users/apple/Downloads/bolloon-UI}"
 OUT="$UI_REPO/network-pulse.json"
 
-echo "[refresh-pulse] $(date '+%F %T') 导出本节点观察……"
+# 0) 先推进链上索引 —— 否则导出的是**陈旧索引**, 页面会把旧事件当成"最新"
+#    (2026-09-23 实测踩过: 索引停在昨日 51640685, 链上已发生 51686160 的交易, 页面永远 3 行旧事件)
+echo "[refresh-pulse] $(date '+%F %T') 重扫链上事件 (chain index sync)……"
 cd "$BOLLOON_REPO"
+SYNC_LOG="$(npx tsx src/cli-entry.ts chain index sync 2>&1 || true)"
+printf '%s\n' "$SYNC_LOG" | grep -vE 'no such file|compdef' | tail -6
+if printf '%s' "$SYNC_LOG" | grep -q 'INDEX_IDENTITY_CHANGED\|索引身份变了'; then
+  echo "[refresh-pulse] ✗ 链索引身份不匹配 (本机 chain.json 指向的链 ≠ 索引里那条链) → 中止: 绝不导出陈旧索引冒充最新" >&2
+  echo "  修法: 查 ~/.bolloon/chain.json 是否被本地测试/实验覆盖 (须指向真部署链); **别跑 sync 建议的 rebuild** (会丢弃真索引换成本地链)" >&2
+  exit 3
+fi
+
+echo "[refresh-pulse] 导出本节点观察……"
 npx tsx scripts/export-network-pulse.ts --out "$OUT"
 
 echo "[refresh-pulse] 快照已写入 $OUT ($(wc -c < "$OUT" | tr -d ' ') 字节)"

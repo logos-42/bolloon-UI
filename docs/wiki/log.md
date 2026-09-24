@@ -99,3 +99,26 @@
 - **缓存破坏 v=23 → v=24** (6 页 12 处; `app.js` 改了 —— 不升版本会让浏览器继续用缓存的旧 app.js 渲染旧长句) + `verify-site.mjs` 的版本断言同步到 v=24 (逐页 `?v=` 一致 + 6 页各带 `style.css?v=24`/`app.js?v=24`)。
 - **未做 (不掩饰)**: 按约定**未 push**(父智能体 push + 部署); 服务端 `notes`(签名快照里的 `口径不同, 不是数据丢失…` / `chain_id 归属…`) 是**快照数据原文**, 不在「本站文案」范围内, 本轮**未动**(要改得改快照生成侧, 属主仓)。
 
+## 2026-09-24 修复: 网页「链上活动」永远只有旧 3 行 (索引停摆 + 身份不匹配)
+
+**leo 原话**: 「在 bolloon-UI 网页端渲染的最新区块没有加载你说的这个任务，是什么情况，要解决一下」
+
+**现象与真因 (不是网页 bug)**: 网页链上活动段的数据源是本机链索引 `~/.bolloon/chain/index.json`, 它停在 `lastSyncedBlock=51640685` (2026-09-22), 而链上已发生到 `51686160` (昨晚 round3 create/proof/release + 2×dispute/refund) —— 差约 4.6 万个块。
+
+- **真因①**: `~/.bolloon/chain.json` 被本地 anvil 口径覆盖 (`chainId=31337 / escrow=0xe7f1725e… / rpcUrl=127.0.0.1:8545`) → `bolloon chain index sync` 判定 **`INDEX_IDENTITY_CHANGED`** 拒绝扫描 (没写盘, 数据没坏; 这是好行为)。
+- **真因②**: `refresh-pulse.sh` 只做「导出 → 部署」, **不推进链上索引** → 索引不前进, 页面「有变化才发布」这条链永远发布陈旧索引, 而徽章却显示「实时」。
+- **危险建议 (未采纳)**: sync 自己建议 `bolloon chain index rebuild` —— 那会**丢弃主网索引、改用当前(本地)身份重建**, 等于把真链数据换成空。**绝不可照做。**
+
+**修法 (四步)**:
+
+1. `~/.bolloon/chain.json` 恢复主网口径 (旧值备份 `~/.bolloon/chain.json.localhost-bak`): chainId 8453 · Base USDC `0x833589fC…` · AgentEscrow `0x4e689F98…f7aE` · rpcUrl mainnet.base.org · decimals 6。权威来源 = `contracts/deployments/base.json`。
+2. `refresh-pulse.sh` 加**第 0 步**: 先 `chain index sync`; 检出 `索引身份变了 / INDEX_IDENTITY_CHANGED` → **中止 (exit 3)**, 绝不导出陈旧索引冒充最新, 并打印修法提示 (含「别跑 sync 建议的 rebuild」)。
+3. 重扫: `bolloon chain index sync` → 扫 `51640686 → 51713045` (37 页 / 72360 块 / 25.4s), **新增 9 条 (去重 0)**, 索引 **3 → 12 事件**。
+4. 重导出 + 部署 (加固后的 `refresh-pulse.sh` 全链): 快照 `status=live scope=verified signed=true rows=12 open_tasks=1`; `activity_totals rows:12 · tasks:4 · tasks_completed:2 · tasks_settled:4 · finalized:12`; 部署 `https://3077a4d8.bolloon.pages.dev`。
+
+**验收 (真跑)**: 守卫对照 `29 通过 / 0 不符`; 隐私检查通过 (含 `open_tasks` 白名单 7 键核验); 真域名 `node scripts/verify-site.mjs https://bolloon.cn` → **320 passed / 0 failed / 0 skipped**; 真域名 DOM 里 **basescan 交易链接 = 12 个** (原 3 个), 最新 `51686160 trade_settled`。
+
+**顺带 (待接单窗口加长)**: `task publish` 的 dedupe **只看内容不看 `--deadline`** —— 同内容重发返回同一条且**不改截止**。要换窗口只能**归档旧公告 + 重发**(公告是签过名的, 直接改 deadline 会破坏验签, 不能改)。已归档 24h 那条 (未认领, 无损害) 并以 30 天窗口重发: 同 id `ann-80c51faa3442da4b`, 新截止 **2026-10-24T02:05:26Z** (签名覆盖截止, 已重签)。
+
+**我自己的两次读解错 (如实记)**: ① 先以为是「待接单任务没渲染」→ 抓真 DOM 才发现 chip 一直在, 缺的是链上活动那一段; ② 报「未找到 chip!」是**我的正则写错** (chip 内含多个 span, 非贪婪匹配抓不到) —— 「我 grep 不到」≠「东西不存在」, 报结论前换一种抓法复核。
+
