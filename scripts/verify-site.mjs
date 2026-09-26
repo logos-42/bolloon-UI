@@ -866,6 +866,29 @@ async function main() {
   check('正文含「预算 = 正整数原子单位」纪律 + 0.4.33 发行版边界表',
     netDoc.includes('正整数原子单位') && netDoc.includes('0.4.33') && netDoc.includes('被 M1 自由文本路径吞掉'),
     '对外契约缺纪律/边界');
+  // 2026-09-26: 发行版边界表改成**两档** —— 左边是 0.4.33 的实测历史 (坑要留着), 右边是"当前发行版"
+  //   且必须是**派生值** (派生方式 = 主仓 package.json 的 version, 与 npm dist-tags.latest 同一个数)。
+  //   为什么加这组断言: 上一版只钉了 0.4.33 一个数字, 于是 0.5.0 发出来之后这张表**过期了也没人知道** ——
+  //   门只认那个死数字, 反而在保护过期内容。现在: 历史那一栏必须在, 派生说明必须在,
+  //   且**兄弟仓在本地时**「当前发行版」要与 package.json 逐字对上 (线上/CI 没有兄弟仓 → 显式跳过, 不假装验过)。
+  check('边界表保留 0.4.33 那一栏 (实测历史: 旧发行版会把 announce/trail/post/group 吞成 M1 任务正文)',
+    netDoc.includes('在 `0.4.33` 上') && netDoc.includes('被 M1 自由文本路径吞掉'), '历史那一栏被抹掉了');
+  check('边界表写明「当前发行版」是**派生值** + 派生命令 (不许手抄第二个死数字)',
+    netDoc.includes('派生值') && netDoc.includes('npm view @bolloon/bolloon-agent version')
+      && netDoc.includes('bolloon --version json'), '缺派生说明/派生命令');
+  const MAIN_PKG = (() => {
+    for (const rel of ['../bolloon/package.json', '../../bolloon/package.json']) {
+      try { return JSON.parse(fs.readFileSync(path.resolve(process.cwd(), rel), 'utf8')); } catch { /* 试下一个 */ }
+    }
+    return null;
+  })();
+  if (MAIN_PKG && typeof MAIN_PKG.version === 'string') {
+    check(`边界表「当前发行版」逐字 = 主仓 package.json 的 version (派生源 ${MAIN_PKG.version})`,
+      netDoc.includes(MAIN_PKG.version), `文档里找不到 ${MAIN_PKG.version}`);
+  } else {
+    skip('边界表「当前发行版」↔ 主仓 package.json 逐字对表 (派生源对表)',
+      '本机没有兄弟仓 ../bolloon —— 线上/CI 常态 (派生说明与历史栏已另行断言)');
+  }
   check('正文写明本仓同源门 (task-subcommands / skill-cli-parity)',
     netDoc.includes('task-subcommands.test.ts') && netDoc.includes('skill-cli-parity.test.ts'), '缺门自述');
 
