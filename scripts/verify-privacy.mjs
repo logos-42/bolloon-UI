@@ -129,17 +129,26 @@ async function main() {
   const title = await evalJs(`document.title`);
   check(`标题 = ${title}`, /隐私政策/.test(title), title);
   const zhText = await evalJs(`(document.querySelector('.doc-h2 span')||{}).textContent || ''`);
-  const langOk = await evalJs(`(function(){
-    var btns = document.querySelectorAll('.lang-toggle [data-lang]');
-    for (var i=0;i<btns.length;i++) if (btns[i].getAttribute('data-lang')==='en') { btns[i].click(); return true; }
-    return false;
+  // 语言切换: 让**页内自己等** —— 反复点 EN 直到 html lang 变 en **且** h2 正文真换了.
+  // 旧写法「门外点一次 → 等 400ms → 读」会假红(点下去时 app.js 可能还没把监听绑上, 真 Chrome 里
+  // 4s 后再点就正常), 而那条「正文变英文」的判据还是个坏 XOR —— 没切也照样绿. 现在两端都钉死.
+  const probe = await evalJs(`(function(){
+    var t0 = Date.now(), zh = (document.querySelector('.doc-h2 span')||{}).textContent || '', clicked = false;
+    return new Promise(function(resolve){
+      var iv = setInterval(function(){
+        var b = document.querySelectorAll('.lang-toggle [data-lang]');
+        for (var i=0;i<b.length;i++) if (b[i].getAttribute('data-lang')==='en') { b[i].click(); clicked = true; break; }
+        var lang = document.documentElement.lang;
+        var h2 = (document.querySelector('.doc-h2 span')||{}).textContent || '';
+        if (lang === 'en' && h2 && h2 !== zh) { clearInterval(iv); resolve({ok:true, clicked:clicked, lang:lang, h2:h2, zh:zh, ms:Date.now()-t0}); return; }
+        if (Date.now() - t0 > 4000) { clearInterval(iv); resolve({ok:false, clicked:clicked, lang:lang, h2:h2, zh:zh, ms:Date.now()-t0}); }
+      }, 250);
+    });
   })()`);
-  await sleep(400);
-  const enText = await evalJs(`(document.querySelector('.doc-h2 span')||{}).textContent || ''`);
-  const langAttr = await evalJs(`document.documentElement.lang`);
-  check('切到 EN 后正文变英文', langOk && /^1\.|^2\.|^3\./.test(enText.trim()) !== /^一|^二|^三/.test(enText),
-    `zh="${zhText.slice(0, 12)}" en="${enText.slice(0, 12)}" lang=${langAttr}`);
-  check('html lang 已切换', langAttr === 'en', langAttr);
+  check('切到 EN 后正文真的变英文 (与中文原文不同 + 数字编号)',
+    !!probe && probe.ok === true && probe.h2 !== probe.zh && /^\d/.test(probe.h2.trim()),
+    JSON.stringify(probe));
+  check('html lang 已切换', !!probe && probe.lang === 'en', probe ? `${probe.lang} (页内等 ${probe.ms}ms)` : 'null');
   check('隐私政策页无 JS 报错', consoleErrors.length === 0, consoleErrors.join(' | '));
 
   // [3] 每页页脚都有隐私政策链接 + 可见备案号(号已下, 占位注释必须已展开)
