@@ -49,7 +49,7 @@ const REQUIRED = [
   ['让智能体操作手机 (仅直装版 / 默认关闭) 披露', '仅官网直装版本包含'],
   ['无统计 SDK 声明', '不集成任何广告、行为统计或崩溃上报 SDK'],
   ['数据出境', '取决于你的选择'],
-  ['备案号占位锚点(待填)', '备案完成后在页脚公示'],
+  ['备案号公示 (工信部号段)', '浙ICP备2026081254号-1'],  // 2026-09-28 下号: 占位已展开为可见备案号
 ];
 
 async function main() {
@@ -142,14 +142,19 @@ async function main() {
   check('html lang 已切换', langAttr === 'en', langAttr);
   check('隐私政策页无 JS 报错', consoleErrors.length === 0, consoleErrors.join(' | '));
 
-  // [3] 每页页脚都有隐私政策链接 + 备案号占位锚点
-  console.log('\n[3] 5 页页脚 (隐私政策链接 + 备案号锚点)');
+  // [3] 每页页脚都有隐私政策链接 + 可见备案号(号已下, 占位注释必须已展开)
+  console.log('\n[3] 5 页页脚 (隐私政策链接 + 可见备案号)');
   for (const p of PAGES) {
     const raw = await (await fetch(`${BASE}/${p}`)).text();
     const linkOk = /<footer class="foot">[\s\S]*?href="privacy\.html"/.test(raw);
-    const anchorOk = raw.includes('备案完成后在页脚公示');
+    // 2026-09-28 下号后新契约: 页脚必须**可见**公示备案号(链工信部 + 号段形状), 且占位注释不得残留
+    const beianVisible = /href="https:\/\/beian\.miit\.gov\.cn\/"[^>]*>浙ICP备\d+号-\d+</.test(raw);
+    const placeholderLeft = raw.includes('备案完成后在页脚公示');
     check(`${p} 页脚含 privacy.html 链接`, linkOk);
-    check(`${p} 含备案号占位锚点`, anchorOk);
+    check(`${p} 页脚公示可见备案号 (链工信部 + 号段形状)`, beianVisible,
+      beianVisible ? '浙ICP备…号-N' : '未找到可见备案号锚点');
+    check(`${p} 不再保留备案号占位注释`, !placeholderLeft,
+      placeholderLeft ? '注释仍在(号已下, 占位必须展开)' : '已展开');
   }
 
   // [4] 站内链接全可达 (断链检查)
