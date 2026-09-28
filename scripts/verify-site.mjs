@@ -2253,7 +2253,7 @@ async function main() {
     realObj ? `rows=${(realObj.confirmed_activity || []).length}` : '读不到 / 不是 JSON');
   await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
   // 真快照是真网络请求 (CDN 更慢) → 等「真渲染出 N 行」再断言, 不用固定 sleep 量中间态
-  const real = await waitStable(pulseProbe('#pulse'), (v) => v && v.act && v.act.rowCount === (realObj ? Math.min(realObj.confirmed_activity.length, 60) : -1), { tries: 80, interval: 150 });
+  const real = await waitStable(pulseProbe('#pulse'), (v) => v && v.act && v.act.rowCount === (realObj ? Math.min(realObj.confirmed_activity.length, 60) : -1), { tries: 250, interval: 200 });   // 真网络: CDN 冷启动实测 7~10s 才 hydrate ⇒ 12s 会读到 loading 态一片假红
   const expRows = realObj ? Math.min(realObj.confirmed_activity.length, 60) : -1;   // 前端表格上限 60
   check('真快照真渲染: 表格行数 = min(快照行数, 60)',
     real.state === 'live' && expRows > 0 && real.act.rowCount === expRows,
@@ -2308,9 +2308,28 @@ async function main() {
     !!realFields && realFields.tasks_verified.source === 'none' &&
     real.tasksVerified === null && real.tasksHidden.verified === null,
     JSON.stringify({ field: realFields && realFields.tasks_verified, dom: real.tasksVerified, hidden: real.tasksHidden.verified }));
-  check('★ 真快照: 「钱包签名」要么是审计账真值 (数字), 要么如实「未接入」—— 绝不许在无源时裸写 0',
-    !!realFields && (/^\d+$/.test(String(real.signatures)) ? real.signatures !== '0' : real.signatures === '未接入'),
-    JSON.stringify({ field: realFields && realFields.signatures, dom: real.signatures }));
+  // 「钱包签名」这一格的口径(2026-09-28 改精确):
+  //   有真源(signature-audit / chain-index / pulse-events) ⇒ 是数字就收,**真 0 也收** ——
+  //     前提是**旁边贴着自己的口径标记**(0 是"窗口内 0 条"这个量出来的结论, 不是默认值);
+  //   无源(none / 缺字段) ⇒ 必须如实「未接入」, 裸 0 一律判红.
+  //   (旧判据写的是「数字且 != 0」—— 把「审计账 24h 内真的 0 条」这个诚实结果也判红了;
+  //    实测本机账 11 行、最后一笔在 4 天前 ⇒ 0 是真值, 页面也确实带了 24h 签名审计 标记.)
+  const SIG_REAL_SOURCES = new Set(['signature-audit', 'chain-index', 'pulse-events']);
+  const sigField = realFields && realFields.signatures;
+  const sigSrc = sigField && sigField.source;
+  const sigDom = String(real.signatures);
+  const sigTag = String(((real.scopeTags || {}).signatures || {}).text || '');
+  const sigRule = (dom, src, tag) =>
+    (/^\d+$/.test(dom) && SIG_REAL_SOURCES.has(src) && String(tag).length > 0) ||
+    (src === 'none' && dom === '未接入');
+  check('★ 真快照: 「钱包签名」= 有真源则是数字(含真 0, 但必须带自己的口径标记); 无源则如实「未接入」—— 裸 0 判红',
+    sigRule(sigDom, sigSrc, sigTag),
+    JSON.stringify({ field: sigField, dom: sigDom, tag: sigTag }));
+  check('★ 上一条规则自证判别力 (裸 0 · 有源无标记 · 无源却印数字 三种都必须判红)',
+    !sigRule('0', 'none', '') && !sigRule('0', 'signature-audit', '') &&
+    !sigRule('5', undefined, '24h 签名审计') && !sigRule('0', 'none', '未接入') &&
+    sigRule('0', 'signature-audit', '24h 签名审计') && sigRule('未接入', 'none', '未接入') &&
+    sigRule('7', 'chain-index', '链上索引'), '规则自身没区分力');
 
   // (b) 变异验证: 拿**真快照**改一个数 → 页面必然自相矛盾 → 门必须判红 (真判红, 不是"理论上会红")
   shouldIntercept = (p) => p.request.url.includes('network-pulse-verify-contra');
@@ -2443,7 +2462,7 @@ async function main() {
     (await evalJs(`(() => { const t = document.querySelector('#pulse').innerText; return !/0x[0-9a-fA-F]{40}/.test(t) && !/[0-9a-fA-F]{64}/.test(t); })()`)) === true,
     JSON.stringify(gwPubRows.map((r) => r.txLink && r.txLink.text)));
   await cdp('Page.navigate', { url: `${BASE}/index.html` });
-  const realIdxPulse = await waitStable(pulseProbe(IDX_PULSE_ROOT), (v) => !!(v && v.txLine && v.txLine.tag === 'a'), { tries: 80, interval: 150 });
+  const realIdxPulse = await waitStable(pulseProbe(IDX_PULSE_ROOT), (v) => !!(v && v.txLine && v.txLine.tag === 'a'), { tries: 250, interval: 200 });
   check('真快照 · 首页快照区: 「最新链上交易」**确实**是 <a> (basescan/tx/0x64hex, target=_blank, rel 含 noopener, 文本短写)',
     !!realIdxPulse.txLine && realIdxPulse.txLine.tag === 'a' &&
     /^https:\/\/[a-z.]*basescan\.org\/tx\/0x[0-9a-f]{64}$/.test(realIdxPulse.txLine.href || '') &&
@@ -4033,7 +4052,7 @@ async function main() {
   await cdp('Page.navigate', { url: `${BASE}/gateway.html` });
   await waitUntil(`document.readyState === 'complete' && window.__bolloonPulses && window.__bolloonPulses.length > 0`);
   const actRef = await waitStable(pulseProbe('#pulse'),
-    (v) => v && v.state === 'live' && v.act && v.act.rowCount > 0 && !!v.act.box);
+    (v) => v && v.state === 'live' && v.act && v.act.rowCount > 0 && !!v.act.box, { tries: 250, interval: 200 });
   fxOff();
   let actSnap = null;
   try { actSnap = JSON.parse(await fetchText(`${BASE}/network-pulse.json`)); } catch { actSnap = null; }
