@@ -737,7 +737,7 @@ async function main() {
   check('版本 1.4.0 (逐字)', skillHtml.includes('>1.4.0<'));
   // 版本号必须逐字断言 + 与线上 .md 的 frontmatter 对得上 —— 只匹配「1.x.y 形状」会把
   // 「本机改了、线上没部署」漏过去 (2026-09-22 实测: 线上 skill.html 长期停在 1.0.1)。
-  const SKILL_EXPECT = { 'bolloon-gateway-join': '1.4.0', 'bolloon-network': '1.3.0' };
+  const SKILL_EXPECT = { 'bolloon-gateway-join': '1.4.0', 'bolloon-network': '1.3.0', efficode: '1.0.0' };
   const mdVersionOf = (md) => {
     const fm = /^---\n([\s\S]*?)\n---/.exec(md);
     if (!fm) return '(无 frontmatter)';
@@ -746,7 +746,7 @@ async function main() {
   };
   const mdVersions = {};
   for (const slug of Object.keys(SKILL_EXPECT)) mdVersions[slug] = mdVersionOf(await fetchText(`${BASE}/${slug}.md`));
-  check('线上 .md frontmatter 的 version 就是期望值 (两份 skill 都逐字对上)',
+  check('线上 .md frontmatter 的 version 就是期望值 (三份 skill 都逐字对上)',
     Object.keys(SKILL_EXPECT).every((s) => mdVersions[s] === SKILL_EXPECT[s]), JSON.stringify(mdVersions));
   check('含「0.1 三条执行路径」', skillHtml.includes('0.1 三条执行路径'));
   check('含手机端路径 A′ (本机内核执行)', skillHtml.includes('路径 A′') && skillHtml.includes('bolloon_gateway_join'));
@@ -773,7 +773,7 @@ async function main() {
   check('每行都有 read 钩子 + 复制按钮 + 直达 .md 链接',
     (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
     (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
-    (skillHtml.match(/data-copy-skill="/g) || []).length === 2 &&
+    (skillHtml.match(/data-copy-skill="/g) || []).length === 3 &&
     // 2026-09-28 二次改口径: 人点的那条路 = **站内查看页**(/view?f=<名字>.md, fetch 取原文渲染)
     // —— 浏览器对 fetch 永远不会当成下载, 与 MIME/缓存状态无关; 且不再需要 ?raw=N 那种查询串绕缓存.
     // 原文地址(.md)必须**仍然印在页上**(agent 复制用), 两条都在才算合格.
@@ -792,22 +792,25 @@ async function main() {
     direct: tr.cells[4].querySelector('a').getAttribute('href'),
     copy: !!tr.querySelector('[data-copy-skill]') })))()`);
   check('索引区 read 命令按实际访问源生成 (read <BASE>/<name>.md), 文本节点只 1 个',
-    Array.isArray(idxRows) && idxRows.length === 2 && idxRows.every((r) => r.read === `read ${BASE}/${r.slug}.md` && r.kids === 1),
+    Array.isArray(idxRows) && idxRows.length === 3 && idxRows.every((r) => r.read === `read ${BASE}/${r.slug}.md` && r.kids === 1),
     JSON.stringify(idxRows && idxRows.map((r) => r.read)));
   check('索引区名称/version/直达链接/复制按钮逐行都对 (bolloon-network 逐字 = 1.3.0)',
-    idxRows.length === 2 &&
+    idxRows.length === 3 &&
     idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.4.0' &&
     // 直达链接口径(2026-09-28 起): 人点名字 = 站内查看页 /view?f=<slug>.md —— 用 fetch 渲染,
       // 与 MIME/缓存状态无关, 永远不会变成下载; 原文地址(给 agent)在 read 命令里, 两者都要在
     idxRows[0].direct === '/view?f=bolloon-gateway-join.md' && idxRows[0].copy === true &&
     idxRows[1].name === 'bolloon-network' && idxRows[1].version === '1.3.0' &&
-    idxRows[1].direct === '/view?f=bolloon-network.md' && idxRows[1].copy === true,
+    idxRows[1].direct === '/view?f=bolloon-network.md' && idxRows[1].copy === true &&
+    idxRows[2].name === 'efficode' && idxRows[2].version === '1.0.0' &&
+    idxRows[2].direct === '/view?f=efficode.md' && idxRows[2].copy === true,
     JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])));
   check('索引区 version 与线上 .md frontmatter 逐字一致 (只改一边必失败)',
     idxRows.every((r) => r.version === mdVersions[r.slug]),
     JSON.stringify({ rows: idxRows.map((r) => [r.slug, r.version]), md: mdVersions }));
   const idxCount = await evalJs(`(document.querySelector('[data-skills-count]')||{}).textContent||''`);
-  check('索引区标注「共 2 份 · 索引里列的就是全部」', /共 2 份/.test(idxCount), idxCount);
+  check('索引区标注「共 3 份 · 索引里列的就是全部」(份数随真行数派生, 不写死)',
+    /共 3 份/.test(idxCount), idxCount);
   await evalJs(`(() => { window.__copyBtn = document.querySelector('[data-copy-skill="bolloon-network"]'); window.__copyBtn.click(); return 1; })()`);
   await sleep(400);   // 剪贴板写入是异步的, 等它 settle 再读按钮文案
   const idxCopy = await evalJs(`window.__copyBtn.textContent`);
@@ -859,7 +862,7 @@ async function main() {
   {
     const host = (() => { try { return new URL(BASE).hostname; } catch { return ''; } })();
     const isLocal = ['127.0.0.1', 'localhost', '0.0.0.0', '::1'].includes(host);
-    for (const slug of ['bolloon-gateway-join', 'bolloon-network']) {
+    for (const slug of ['bolloon-gateway-join', 'bolloon-network', 'efficode']) {
       const res = await fetch(`${BASE}/${slug}.md`);
       const ct = (res.headers.get('content-type') || '').toLowerCase();
       if (isLocal) {
@@ -875,7 +878,7 @@ async function main() {
       }
     }
     // 站内查看页: 人点的那条路 —— 用 fetch 取原文渲染, 与 MIME/缓存状态无关, 永远不会变成下载
-    for (const slug of ['bolloon-gateway-join', 'bolloon-network']) {
+    for (const slug of ['bolloon-gateway-join', 'bolloon-network', 'efficode']) {
       const res = await fetch(`${BASE}/view?f=${slug}.md`);
       const html = await res.text();
       if (isLocal) {
@@ -902,6 +905,29 @@ async function main() {
     netDoc.includes('\nstatus: active\n') && netDoc.includes('\ntier: capability\n') &&
     netDoc.includes('\nprotocol: bolloon-task/1\n') && netDoc.includes('capabilities:\n  - network.join') &&
     netDoc.includes('plannedCapabilities:') && netDoc.includes('paymentModes:') && netDoc.includes('hardRules:'));
+  {
+    // efficode 对外文档: 钉住"真测数字 + 没做到的"这两类内容 —— 数字是这套文档的价值所在,
+    // 被改软(删掉负结论/抹掉未实现清单)就是骗读者, 门必须红.
+    const eff = await fetchText(`${BASE}/efficode.md`);
+    const must = [
+      ['20B 载荷 → 111B 包(短消息被包头吃回去)', '111B'],
+      ['开销/载荷 4.55x', '4.55x'],
+      ['载荷放大 5.55x', '5.55x'],
+      ['信息密度实测上限 14.15x', '14.15x'],
+      ['真发 JSON 帧省 92.9%', '92.9%'],
+      ['真随机 1KB 是负收益 (lz77 +13.0%)', '+13.0%'],
+      ['身份写两遍白花 46B (已量化的设计缺陷候选)', '46B'],
+      ['签名/密钥交换未实现', 'EFFICODE_VERSION'],
+      ['未实现清单里的声波模式', 'EFFICODE_MODE_NOT_IMPLEMENTED'],
+      ['唯一事实源指向主仓 wiki', 'docs/wiki/efficode.md'],
+      ['frontmatter 有 name/version', 'name: efficode'],
+    ];
+    const missing = must.filter(([, t]) => !eff.includes(t)).map(([d]) => d);
+    check('efficode 对外文档: 真测数字 + 未实现边界 + 事实源指针 一个都不缺 (改软即红)',
+      missing.length === 0, missing.length ? `缺: ${missing.join(' / ')}` : '全在');
+    check('efficode 文档不许把未做的写成已做',
+      !/签名验证\s*[:：]\s*已实现|已支持签名|已实现声波|兼容度\s*100%\s*[（(]?已测/.test(eff));
+  }
   check('正文首尾都在 (没被截断/没被渲染成 HTML): 标题 + §⑥ 支付规范 + 附: 清单',
     netDoc.includes('# bolloon-network — 外部 Agent 接入 Skill') && netDoc.includes('## ⑥ 支付规范') &&
     netDoc.includes('## 附: 本 Skill 的 `(planned)` 清单'));
