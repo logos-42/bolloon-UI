@@ -794,9 +794,10 @@ async function main() {
   check('索引区名称/version/直达链接/复制按钮逐行都对 (bolloon-network 逐字 = 1.3.0)',
     idxRows.length === 2 &&
     idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.4.0' &&
-    idxRows[0].direct === 'bolloon-gateway-join.md' && idxRows[0].copy === true &&
+    // 直达链接 2026-09-28 改口径: 绝对正式域 + ?raw=N(绕开浏览器里缓存住的旧 MIME) + 新标签
+    idxRows[0].direct === 'https://bolloon.cn/bolloon-gateway-join.md?raw=1' && idxRows[0].copy === true &&
     idxRows[1].name === 'bolloon-network' && idxRows[1].version === '1.3.0' &&
-    idxRows[1].direct === 'bolloon-network.md' && idxRows[1].copy === true,
+    idxRows[1].direct === 'https://bolloon.cn/bolloon-network.md?raw=1' && idxRows[1].copy === true,
     JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])));
   check('索引区 version 与线上 .md frontmatter 逐字一致 (只改一边必失败)',
     idxRows.every((r) => r.version === mdVersions[r.slug]),

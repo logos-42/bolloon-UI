@@ -3,3 +3,14 @@
 /*.md
   Content-Type: text/plain; charset=utf-8
   X-Content-Type-Options: nosniff
+
+# ② 页面本身永远回源校验 —— 免得"旧页面吃到旧行为"(例如 raw 链接还是老的相对路径,
+#    于是站上明明改好了, 读者点下去还是旧行为)。
+/*.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
+
+# ③ 快照必须不缓存(前端 30s 轮询要拿新口径)
+/network-pulse.json
+  Cache-Control: no-cache, must-revalidate
