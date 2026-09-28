@@ -794,10 +794,11 @@ async function main() {
   check('索引区名称/version/直达链接/复制按钮逐行都对 (bolloon-network 逐字 = 1.3.0)',
     idxRows.length === 2 &&
     idxRows[0].name === 'bolloon-gateway-join' && idxRows[0].version === '1.4.0' &&
-    // 直达链接 2026-09-28 改口径: 绝对正式域 + ?raw=N(绕开浏览器里缓存住的旧 MIME) + 新标签
-    idxRows[0].direct === 'https://bolloon.cn/bolloon-gateway-join.md?raw=1' && idxRows[0].copy === true &&
+    // 直达链接口径(2026-09-28 起): 人点名字 = 站内查看页 /view?f=<slug>.md —— 用 fetch 渲染,
+      // 与 MIME/缓存状态无关, 永远不会变成下载; 原文地址(给 agent)在 read 命令里, 两者都要在
+    idxRows[0].direct === '/view?f=bolloon-gateway-join.md' && idxRows[0].copy === true &&
     idxRows[1].name === 'bolloon-network' && idxRows[1].version === '1.3.0' &&
-    idxRows[1].direct === 'https://bolloon.cn/bolloon-network.md?raw=1' && idxRows[1].copy === true,
+    idxRows[1].direct === '/view?f=bolloon-network.md' && idxRows[1].copy === true,
     JSON.stringify(idxRows.map((r) => [r.name, r.version, r.direct, r.copy])));
   check('索引区 version 与线上 .md frontmatter 逐字一致 (只改一边必失败)',
     idxRows.every((r) => r.version === mdVersions[r.slug]),
@@ -863,7 +864,32 @@ async function main() {
       } else {
         check(`${slug}.md 点 raw 浏览器内联可看 (不是变下载)`, /^text\/plain/.test(ct),
           ct ? `${ct}${/octet-stream|markdown|html/.test(ct) ? ' ⇒ 浏览器会下载/串成页面' : ''}` : '(无 content-type ⇒ 会下载)');
+        // 只改 MIME 治不好"曾经被缓存成下载"的 URL: 浏览器拿旧副本去协商, 文件没变 ⇒ 304 ⇒ 继续用旧 MIME.
+        // 必须 no-store(且服务端别再发 ETag), 让浏览器根本没有旧副本可用.
+        const cc = (res.headers.get('cache-control') || '').toLowerCase();
+        check(`${slug}.md 不许被浏览器留下旧副本 (cache-control: no-store)`, /no-store/.test(cc),
+          cc || '(无 cache-control ⇒ 旧 MIME 会被 304 钉住 ⇒ 点了还是下载)');
       }
+    }
+    // 站内查看页: 人点的那条路 —— 用 fetch 取原文渲染, 与 MIME/缓存状态无关, 永远不会变成下载
+    for (const slug of ['bolloon-gateway-join', 'bolloon-network']) {
+      const res = await fetch(`${BASE}/view?f=${slug}.md`);
+      const html = await res.text();
+      if (isLocal) {
+        skip(`站内查看页 /view?f=${slug}.md 可用`, '本机 http.server 不走 view 路由, 只验线上/CI');
+      } else {
+        check(`站内查看页 /view?f=${slug}.md 可用 (人点名字走这条)`,
+          res.status === 200 && /id="body"/.test(html) && /fetch\(/.test(html),
+          `HTTP ${res.status} · ${html.length} 字节 · ${html.includes('id="body"') ? '有正文容器' : '缺正文容器'}`);
+      }
+    }
+    if (!isLocal) {
+      // 阴性对照: 站上不存在的文档与页面必须**如实 404**(CF Pages 曾对任何缺失路径回 200 + 首页 = 假"配好了")
+      const ghostDoc = await fetch(`${BASE}/nope-not-a-real-doc.md`);
+      check('不存在的 .md 必须 404 (不许假 200 让人以为"配好了")', ghostDoc.status === 404,
+        `HTTP ${ghostDoc.status} · ${(await ghostDoc.text()).slice(0, 60).replace(/\s+/g, ' ')}`);
+      const ghostPage = await fetch(`${BASE}/nope-not-a-real-page-xyz`);
+      check('不存在的页面必须 404', ghostPage.status === 404, `HTTP ${ghostPage.status}`);
     }
   }
   check('首行就是 frontmatter 起始 (---)，没有前缀空行', netDoc.startsWith('---\n'), JSON.stringify(netDoc.slice(0, 16)));
@@ -3432,7 +3458,21 @@ async function main() {
   check(`首页「加入网络」键盘焦点环可见 (outline ${focusRing.style} ${focusRing.width} ${focusRing.color})`,
     focusRing.style === 'solid' && focusRing.width === '2px' && /196,\s*214,\s*64/.test(focusRing.color), JSON.stringify(focusRing));
 
-  const ctaEn = await evalJs(`(() => { document.querySelector('.lang-toggle [data-lang="en"]').click(); const j = document.querySelector('a.join-network-cta'); return { text: j.textContent.trim(), kids: j.childNodes.length, href: j.getAttribute('href') }; })()`);
+  // 切 EN 后动态区重画是**异步**的(`applyLang` 派发 bolloon:lang 后才重画文字节点) ——
+  // 旧写法「点完在同一个表达式里立刻读」会读到中文原文而假红. 这里让页内自等(反复点 + 轮询最多 4s).
+  const ctaEn = await evalJs(`(function(){
+    var t0 = Date.now();
+    var read = function(){ var a = document.querySelector('a.join-network-cta');
+      return a ? { text: a.textContent.trim(), kids: a.childNodes.length, href: a.getAttribute('href') } : null; };
+    return new Promise(function(resolve){
+      var iv = setInterval(function(){
+        var b = document.querySelector('.lang-toggle [data-lang="en"]'); if (b) b.click();
+        var cur = read();
+        if (cur && cur.text === 'Join the network') { clearInterval(iv); resolve(cur); return; }
+        if (Date.now() - t0 > 4000) { clearInterval(iv); resolve(cur); }
+      }, 250);
+    });
+  })()`);
   check('首页「加入网络」切 EN 后 = Join the network (仍是同一个 gateway.html 链接)',
     ctaEn.text === 'Join the network' && ctaEn.kids === 1 && ctaEn.href === 'gateway.html', JSON.stringify(ctaEn));
   await evalJs(`document.querySelector('.lang-toggle [data-lang="zh"]').click()`);

@@ -1,7 +1,12 @@
 # CF Pages: 让 .md 在浏览器里内联可看(纯文本), 而不是被下载
-# raw 链接点下去应当直接看到文档内容 —— 这是给读者与外部 agent 的原始文档入口
+# 两条一起才够(踩过):
+#   ① Content-Type: 决定"内联显示"还是"下载";
+#   ② Cache-Control: no-store —— 曾经发过 octet-stream 的那条 URL, 浏览器把旧 MIME 连同 ETag
+#      缓存在本地; 之后哪怕服务端改了类型, 协商也会回 304 → 浏览器继续用**旧 MIME** ⇒ 永远下载。
+#      no-store 让浏览器根本不留旧副本, 一定回源拿新的 text/plain。
 /*.md
   Content-Type: text/plain; charset=utf-8
+  Cache-Control: no-store
   X-Content-Type-Options: nosniff
 
 # ② 页面本身永远回源校验 —— 免得"旧页面吃到旧行为"(例如 raw 链接还是老的相对路径,
