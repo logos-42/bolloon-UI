@@ -844,6 +844,23 @@ async function main() {
   // ⑤′ /bolloon-network.md 线上正文 (bolloon 主仓 skills/bolloon-network/SKILL.md 的原样镜像)
   console.log('\n[5b] /bolloon-network.md 线上正文 (主仓 SKILL.md 镜像)');
   const netDoc = await fetchText(`${BASE}/bolloon-network.md`);
+  // raw 链接必须「点开就能看」: .md 的 content-type 决定浏览器是**内联显示**还是**直接下载**.
+  // 本机 http.server 给人 text/markdown · 备案主机曾给人 application/octet-stream ⇒ 两者都会变下载,
+  // 读者点 skill.html 上的 raw 就打不开文档(2026-09-28 leo 报的就是这个).
+  {
+    const host = (() => { try { return new URL(BASE).hostname; } catch { return ''; } })();
+    const isLocal = ['127.0.0.1', 'localhost', '0.0.0.0', '::1'].includes(host);
+    for (const slug of ['bolloon-gateway-join', 'bolloon-network']) {
+      const res = await fetch(`${BASE}/${slug}.md`);
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      if (isLocal) {
+        skip(`${slug}.md 点 raw 浏览器内联可看 (不是变下载)`, '本机 http.server 无 MIME 配置, 只验线上/CI');
+      } else {
+        check(`${slug}.md 点 raw 浏览器内联可看 (不是变下载)`, /^text\/plain/.test(ct),
+          ct ? `${ct}${/octet-stream|markdown|html/.test(ct) ? ' ⇒ 浏览器会下载/串成页面' : ''}` : '(无 content-type ⇒ 会下载)');
+      }
+    }
+  }
   check('首行就是 frontmatter 起始 (---)，没有前缀空行', netDoc.startsWith('---\n'), JSON.stringify(netDoc.slice(0, 16)));
   check('frontmatter 头三行原样 + version 逐字 = 1.3.0 (不是「1.x.y 形状」匹配)',
     /^---\nname: bolloon-network\nversion: 1\.3\.0\ndescription: /.test(netDoc), JSON.stringify(netDoc.slice(0, 80)));

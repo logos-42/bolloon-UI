@@ -1,0 +1,5 @@
+# CF Pages: 让 .md 在浏览器里内联可看(纯文本), 而不是被下载
+# raw 链接点下去应当直接看到文档内容 —— 这是给读者与外部 agent 的原始文档入口
+/*.md
+  Content-Type: text/plain; charset=utf-8
+  X-Content-Type-Options: nosniff
