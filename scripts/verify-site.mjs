@@ -711,9 +711,10 @@ async function main() {
   for (const p of PAGES) {
     await cdp('Page.navigate', { url: `${BASE}/${p}` });
     await sleep(1200);
-    // 等 JS 把徽章填上 (最多 8s)
+    // 等 JS 把徽章填上 (最多 20s —— 实测 CF Pages 冷启动取 npm 要 ~9s, 旧预算 8s 会判成假红;
+    // 真 Chrome 复核: 两通道徽章最终都填成 npm 的最新版)
     let shown = '';
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 40; i++) {
       shown = String(await evalJs(`document.getElementById('version') && document.getElementById('version').textContent.trim()`));
       if (/^\d+\.\d+\.\d+/.test(shown)) break;
       await sleep(500);
@@ -974,6 +975,13 @@ async function main() {
       check(`本地 ${MAIN_PKG.version} vs 已发布 ${npmLatest}: ${drift ? '不一致 ⇒ 文档必须如实标出待发布版' : '一致'}`,
         !drift || netDoc.includes(MAIN_PKG.version),
         drift ? `文档没提本地待发布的 ${MAIN_PKG.version}` : '一致, 无需标注');
+      // 反面断言(堵住「版本号印上去了、但谁已发布谁待发布写反了」这个洞):
+      // 现况行必须与真实对表 —— 已发布那版不许被写成「未发布」.
+      const i = netDoc.indexOf('**现况');
+      const nowSeg = i < 0 ? '' : netDoc.slice(i, i + 220);
+      check(`文档「现况」行与真实对表 (已发布 ${npmLatest}${drift ? ` · 本地 ${MAIN_PKG.version} 待发布` : ' · 本地一致 ⇒ 不许再写「未发布」'})`,
+        nowSeg.includes(npmLatest) && (!drift || !/未发布/.test(nowSeg)),
+        nowSeg ? `现况行: ${nowSeg.replace(/\s+/g, ' ').slice(0, 130)}` : '文档里没有「现况」行(缺如实标注)');
     } else {
       check(`边界表「当前发行版」逐字 = 主仓 package.json 的 version (npm 不可达, 退回派生源 ${MAIN_PKG.version})`,
         netDoc.includes(MAIN_PKG.version), `文档里找不到 ${MAIN_PKG.version}`);
