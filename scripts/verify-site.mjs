@@ -774,7 +774,11 @@ async function main() {
     (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
     (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
     (skillHtml.match(/data-copy-skill="/g) || []).length === 2 &&
-    skillHtml.includes('href="bolloon-gateway-join.md"') && skillHtml.includes('href="bolloon-network.md"'));
+    // raw 链接 2026-09-28 改口径: 之前是**相对** .md ⇒ ① 在历史部署 URL 上点它还是旧 MIME(会下载)
+    // ② 浏览器里存过的旧响应也不会被换掉. 现在必须是**绝对正式域 + 版本串 + 新标签**.
+    !/href="bolloon-(gateway-join|network)\.md"/.test(skillHtml) &&
+    /href="https:\/\/bolloon\.cn\/bolloon-gateway-join\.md\?raw=\d+" target="_blank" rel="noopener"/.test(skillHtml) &&
+    /href="https:\/\/bolloon\.cn\/bolloon-network\.md\?raw=\d+" target="_blank" rel="noopener"/.test(skillHtml));
   await cdp('Page.navigate', { url: `${BASE}/skill.html` });
   await sleep(900);
   const idxRows = await evalJs(`(() => Array.from(document.querySelectorAll('[data-skills-index] tbody tr')).map((tr) => ({
