@@ -40,6 +40,7 @@
         <div class="nav-menu">
           <a href="index.html#intro">序厅</a>
           <a href="index.html#capabilities">能力</a>
+          <a href="index.html#store">可售资产</a>
           <a href="index.html#about">关于</a>
         </div>
       </div>
@@ -225,10 +226,59 @@
   </ol>
 </section>
 
+<!-- ◆ 可售资产 / 商店 (2026-09-28) —— 第一件真实在售的资产。
+     事实来源: 卖方端点 item `info_efficode_spec_pack` (GET 不带付款头 → 402 + accepts)。
+     页面上的价格/币种/网络与 endpoint 同源; 收款地址按本站约定短写
+     (页面可见文本不得出现 40 位地址 / 64 位哈希 —— 全长以 endpoint 的 402 响应为准)。
+     ★ 不许写销量: 至今**没有任何成交**, 所以这里只写「怎么买」, 不写「已售出 / 已有 N 人买」。 -->
+<section class="capabilities store" id="store">
+  <div class="section-head">
+    <p class="kicker">— 02 · Store</p>
+    <h2 class="section-title" data-zh="可售资产" data-en="For sale">可售资产</h2>
+  </div>
+
+  <ol class="cap-list">
+    <li>
+      <span class="cap-no">01</span>
+      <div class="cap-body">
+        <h3 data-zh="Efficode 规范包" data-en="Efficode spec pack">Efficode 规范包</h3>
+        <p data-zh="Efficode（AI 间交流语言）规范的完整正文 + 机器可读清单入口与 sha256，含独立核验方式。"
+           data-en="The full text of the Efficode spec (an inter-agent language) plus the machine-readable manifest entry and its sha256, with an independent way to verify it.">Efficode（AI 间交流语言）规范的完整正文 + 机器可读清单入口与 sha256，含独立核验方式。</p>
+        <p><strong>0.01 USDC</strong>
+          <span class="dot" aria-hidden="true">·</span>
+          <span data-zh="Base 主网（chainId 8453）" data-en="Base mainnet (chainId 8453)">Base 主网（chainId 8453）</span>
+          <span class="dot" aria-hidden="true">·</span>
+          <span data-zh="收款地址" data-en="Paid to">收款地址</span> <code>0xb4e9…E70066</code></p>
+        <p class="cmd-desc" data-zh="条目 info_efficode_spec_pack · 完整收款地址与最小单位金额以购买入口返回的 402 响应为准"
+           data-en="Item info_efficode_spec_pack · the full pay-to address and the smallest-unit amount come from the 402 response of the purchase endpoint">条目 info_efficode_spec_pack · 完整收款地址与最小单位金额以购买入口返回的 402 响应为准</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="cmd-plate">
+    <div class="cmd-meta">
+      <span class="cmd-badge" data-zh="购买入口 · x402" data-en="Purchase endpoint · x402">购买入口 · x402</span>
+      <span class="cmd-desc" data-zh="未付款请求固定返回 402 与 accepts（scheme exact · network base · asset USDC · amount 最小单位 · payTo）。"
+        data-en="An unpaid request always returns 402 with accepts (scheme exact · network base · asset USDC · amount in smallest units · payTo).">未付款请求固定返回 402 与 accepts（scheme exact · network base · asset USDC · amount 最小单位 · payTo）。</span>
+    </div>
+    <div class="cmd-line">
+      <span class="prompt">$</span><code class="cmd" id="store-buy">bolloon x402 fetch https://pay.bolloon.cn/api/x402/info/info_efficode_spec_pack</code>
+      <button class="copy" data-copy="store-buy" aria-label="复制购买命令">复制</button>
+    </div>
+    <div class="cmd-line">
+      <span class="prompt" aria-hidden="true">GET</span><code class="cmd" id="store-endpoint">https://pay.bolloon.cn/api/x402/info/info_efficode_spec_pack</code>
+      <button class="copy" data-copy="store-endpoint" aria-label="复制购买入口地址">复制</button>
+    </div>
+  </div>
+
+  <p class="prereq" data-zh="至今尚无成交记录。付款校验 / 结算通道当前未开启：这个端点只发 402 与 accepts，无法校验或结算任何付款。规范正文与机器清单入口可免费核验。"
+     data-en="No sale has happened yet. Payment verification and settlement are not enabled: this endpoint only returns 402 with accepts and can verify or settle no payment. The spec text and the machine manifest can be checked freely.">至今尚无成交记录。付款校验 / 结算通道当前未开启：这个端点只发 402 与 accepts，无法校验或结算任何付款。规范正文与机器清单入口可免费核验。</p>
+</section>
+
 <!-- ◆ 尾声 / 关于 -->
 <section class="about" id="about">
   <div class="section-head">
-    <p class="kicker">— 02 · Colophon</p>
+    <p class="kicker">— 03 · Colophon</p>
     <h2 class="section-title">关于</h2>
   </div>
   <div class="about-grid">
