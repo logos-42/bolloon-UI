@@ -774,11 +774,14 @@ async function main() {
     (skillHtml.match(/data-skill-read="bolloon-gateway-join"/g) || []).length === 1 &&
     (skillHtml.match(/data-skill-read="bolloon-network"/g) || []).length === 1 &&
     (skillHtml.match(/data-copy-skill="/g) || []).length === 2 &&
-    // raw 链接 2026-09-28 改口径: 之前是**相对** .md ⇒ ① 在历史部署 URL 上点它还是旧 MIME(会下载)
-    // ② 浏览器里存过的旧响应也不会被换掉. 现在必须是**绝对正式域 + 版本串 + 新标签**.
+    // 2026-09-28 二次改口径: 人点的那条路 = **站内查看页**(/view?f=<名字>.md, fetch 取原文渲染)
+    // —— 浏览器对 fetch 永远不会当成下载, 与 MIME/缓存状态无关; 且不再需要 ?raw=N 那种查询串绕缓存.
+    // 原文地址(.md)必须**仍然印在页上**(agent 复制用), 两条都在才算合格.
     !/href="bolloon-(gateway-join|network)\.md"/.test(skillHtml) &&
-    /href="https:\/\/bolloon\.cn\/bolloon-gateway-join\.md\?raw=\d+" target="_blank" rel="noopener"/.test(skillHtml) &&
-    /href="https:\/\/bolloon\.cn\/bolloon-network\.md\?raw=\d+" target="_blank" rel="noopener"/.test(skillHtml));
+    /href="\/view\?f=bolloon-gateway-join\.md" target="_blank" rel="noopener"/.test(skillHtml) &&
+    /href="\/view\?f=bolloon-network\.md" target="_blank" rel="noopener"/.test(skillHtml) &&
+    skillHtml.includes('https://bolloon.cn/bolloon-gateway-join.md') &&
+    skillHtml.includes('https://bolloon.cn/bolloon-network.md'));
   await cdp('Page.navigate', { url: `${BASE}/skill.html` });
   await sleep(900);
   const idxRows = await evalJs(`(() => Array.from(document.querySelectorAll('[data-skills-index] tbody tr')).map((tr) => ({
@@ -931,8 +934,24 @@ async function main() {
     return null;
   })();
   if (MAIN_PKG && typeof MAIN_PKG.version === 'string') {
-    check(`边界表「当前发行版」逐字 = 主仓 package.json 的 version (派生源 ${MAIN_PKG.version})`,
-      netDoc.includes(MAIN_PKG.version), `文档里找不到 ${MAIN_PKG.version}`);
+    // 新口径(2026-09-28): 「当前发行版」= **npm 上真发布的那一版**(读者真装得到的), 不是本地版本号 ——
+    // 本地被推进到下一版但还没发布时(实测见过 package.json 0.5.2 / npm latest 0.5.1), 文档必须
+    // **同时**带上两者(已发布为准 + 待发布如实标), 只印本地数是骗读者, 不提是藏差异.
+    const npmLatest = await (async () => {
+      try { return JSON.parse(await fetchText('https://registry.npmjs.org/@bolloon%2Fbolloon-agent/latest')).version; }
+      catch { return null; }
+    })();
+    if (npmLatest) {
+      check(`边界表「当前发行版」逐字 = npm 已发布版本 (dist-tags.latest = ${npmLatest})`,
+        netDoc.includes(npmLatest), `文档里找不到 ${npmLatest}`);
+      const drift = npmLatest !== MAIN_PKG.version;
+      check(`本地 ${MAIN_PKG.version} vs 已发布 ${npmLatest}: ${drift ? '不一致 ⇒ 文档必须如实标出待发布版' : '一致'}`,
+        !drift || netDoc.includes(MAIN_PKG.version),
+        drift ? `文档没提本地待发布的 ${MAIN_PKG.version}` : '一致, 无需标注');
+    } else {
+      check(`边界表「当前发行版」逐字 = 主仓 package.json 的 version (npm 不可达, 退回派生源 ${MAIN_PKG.version})`,
+        netDoc.includes(MAIN_PKG.version), `文档里找不到 ${MAIN_PKG.version}`);
+    }
   } else {
     skip('边界表「当前发行版」↔ 主仓 package.json 逐字对表 (派生源对表)',
       '本机没有兄弟仓 ../bolloon —— 线上/CI 常态 (派生说明与历史栏已另行断言)');
