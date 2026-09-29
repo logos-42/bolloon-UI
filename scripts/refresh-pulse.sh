@@ -28,6 +28,25 @@ if printf '%s' "$SYNC_LOG" | grep -q 'INDEX_IDENTITY_CHANGED\|索引身份变了
   exit 3
 fi
 
+# 0.5) 关注地址集内的 USDC 转账索引 (2026-09-29) —— 「所有交互」的另一半:
+#      旧索引只扫 AgentEscrow 合约日志 ⇒ 走**直付**的收款 (买方自己发 USDC 到 payTo) 链上没有任何
+#      escrow 事件, 单看合约日志根本看不见。这一步把 token (USDC) 上 to/from ∈ 关注地址集的 Transfer
+#      扫进 ~/.bolloon/chain/transfers.json (增量 + 每次回扫最后 32 块; eth_getLogs 单页 ≤2000 块 ——
+#      mainnet.base.org 实测超过 2000 就 413)。失败**不静默**: 转账索引读不到 → 快照里那几格写「未接入」。
+echo "[refresh-pulse] $(date '+%F %T') 重扫关注地址集内的 USDC 转账 (chain transfers sync)……"
+TRANSFER_LOG="$(npx tsx scripts/sync-transfers.ts 2>&1 || true)"
+printf '%s\n' "$TRANSFER_LOG" | grep -vE 'no such file|compdef' | tail -3
+if ! printf '%s' "$TRANSFER_LOG" | grep -q '^\[transfers\] index='; then
+  echo "  ⚠ 转账索引这次没同步成功 —— 快照里「链上转入 / 其中经 x402 流程」会如实写「未接入」(不拿 0 冒充)"
+fi
+
+# 0.6) 卖方端点只读汇总 (x402 台账交叉核) —— 链上**没有** x402 事件, 「经 x402 流程」只能靠
+#      拿台账里的 txHash 与链上扫到的收款对账。端点/密钥不可达 → 缓存写成 available:false,
+#      快照里那一格写「未知 + 原因」(★ 绝不写 0: 0 的意思是"一笔都没有", 那是另一句话)。
+echo "[refresh-pulse] $(date '+%F %T') 读卖方端点只读汇总 (x402 ledger)……"
+SELLER_LOG="$(npx tsx scripts/x402-seller-summary.ts 2>&1 || true)"
+printf '%s\n' "$SELLER_LOG" | grep -E '^\[seller-summary\]' | tail -2
+
 echo "[refresh-pulse] 导出本节点观察……"
 npx tsx scripts/export-network-pulse.ts --out "$OUT"
 
@@ -35,11 +54,15 @@ echo "[refresh-pulse] 快照已写入 $OUT ($(wc -c < "$OUT" | tr -d ' ') 字节
 
 # 省配额: 观察数据没变就不部署 (CF Pages Free 只有 500 次部署/月)
 # 比较**去掉时间字段**的部分 —— 时间在变, 但"观察内容"没变时不该花掉一次部署。
+# ★ 2026-09-29: index_scope / x402_ledger 也一并剥掉 —— 它们的头/尾块与取数时刻**每次同步都在变**
+#   (last_scanned_block 每轮前进, 就算一条新事件都没有), 不剥掉就会每 30 分钟烧掉一次部署额度。
+#   剥掉不等于撒谎: 部署出去的那份快照自己带 generated_at (页面在顶部显示快照时间), 页面上所有
+#   数字与「落后多少块」都写明是**导出时刻**的值 —— 读者看到的是一个有明确时刻的快照, 不是"现在"。
 if [ -f "$OUT.prev" ]; then
   strip() { python3 -c "
 import json,sys
 d=json.load(open('$1'))
-for k in ('generated_at','fresh_until','published_at','signature','freshness_window_ms','freshness_semantics'):
+for k in ('generated_at','fresh_until','published_at','signature','freshness_window_ms','freshness_semantics','index_scope','x402_ledger'):
     d.pop(k,None)
 print(json.dumps(d,sort_keys=True))
 "; }

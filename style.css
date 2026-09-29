@@ -560,6 +560,24 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 /* 每个计数旁的口径短标记 (2026-09-24): 就地说明这个数**从哪来** —— 链上索引·全量 / 24h 脉冲 /
    24h 签名审计 / 未接入。比标签更小更淡 (是旁注, 不是主角), 但必须与数字同屏可读 (不进 notes、不藏 title 里)。 */
 .pulse-scope-tag { font-family: var(--mono); font-style: normal; font-size: 9px; letter-spacing: 0.6px; color: var(--ink-3); opacity: 0.72; white-space: nowrap; }
+/* —— 2026-09-29: 链上交互区新增的两样东西 —— */
+/* ① 小结行里「链上转入」那格的合计金额 (跟随数字的字重, 但不抢主数字) */
+.pulse-amount { font-family: var(--mono); font-style: normal; font-size: 11px; letter-spacing: 0.4px; color: var(--ink-3); }
+.pulse-amount:empty { display: none; }
+/* ② 一行口径句 (覆盖什么 · 起止块 · 落后多少块): 与口径行同一套视觉, 只是更靠上、紧贴计数行 */
+.pulse-chain-line { border-left: 2px solid var(--lime-deep); padding-left: 12px; margin: 2px 0 14px; font-family: var(--mono); font-size: 11.5px; line-height: 1.7; color: var(--ink-3); max-width: 62em; }
+.pulse-chain-line[hidden] { display: none; }
+/* ③ 表里新增的两列: 类型 (任务/付款) 与 金额 (付款行 = USDC; 任务行没有就 —) */
+.pulse-td-type, .pulse-td-amount { white-space: nowrap; }
+.pulse-td-amount { font-family: var(--mono); font-size: 11.5px; }
+.pulse-td-amount[data-empty] { color: var(--ink-3); opacity: 0.6; }
+/* 行内文字一律不换行: 表体行高是全站校准过的基准 (十五行 = 一屏), 换行会把基准撑破 */
+.pulse-td-state, .pulse-td-kind { white-space: nowrap; }
+.pulse-state-word, .pulse-kind-word { white-space: nowrap; }
+.pulse-type-word { font-family: var(--mono); font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
+.pulse-type-word[data-type="payment"] { color: var(--lime-deep); }
+
+
 .pulse-scope-tag:empty { display: none; }
 .pulse-scope-tag[title] { cursor: help; }
 
@@ -627,7 +645,10 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
    未知/认不出的最终性用虚线徽标 —— 不假装它是三档之一。 */
 /* 链上活动表的**高度上限 = 十五行** (2026-09-24 leo:「可以按十五行的高度来设计吗」):
    --pulse-activity-h 取「现在这份 15 行的真高度」的实测值 —— 1440px = 30.69(caption) + 41.19(表头) + 15×52.84(行)
-   = 865.03px; 窄屏 (≤640px) 行高变 77.38 → 1233px. 两个数都由真浏览器量出来, 不是拍的.
+   = 865.03px (真浏览器量出来的, 不是拍的; 15×52.8767 才是那个字面量的精确来源)。
+   ★ 2026-09-29: 整表改「一格一行」(见下面 .pulse-table th/td 的 white-space) 之后, **窄屏行高不再
+   与桌面不同** ⇒ 原来那条 ≤640px 的 1233px 覆盖 (窄屏换行时行高 77.38) 已删除: 字面量只剩这一处,
+   窄屏与桌面同为 865.03px (实测窄屏 caption+表头+15×52.84 = 864.48, 与桌面逐像素一致)。
    ≤ 15 行: 这一层贴着内容高 (5 行就是 5 行的高度, 不留空档); > 15 行: 封顶后**框内滚动** —— 整页不被拉长.
    表头 sticky + 不透明底: 滚到下面时列名还在, 行不会从它底下透出来. */
 .pulse-table-wrap { --pulse-activity-h: 865.03px; margin: 0 0 clamp(18px, 2.6vh, 28px); }
@@ -637,7 +658,12 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   caption-side: top; text-align: left; padding: 0 0 12px;
   font-family: var(--mono); font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-3);
 }
-.pulse-table th, .pulse-table td { text-align: left; padding: 11px 16px 11px 0; vertical-align: baseline; border-bottom: 1px solid var(--hairline); }
+/* ★ 2026-09-29: 表格一格一行 (整表 white-space: nowrap) —— 行高是全站校准过的基准
+   (十五行 = 一屏, --pulse-activity-h 就是按「十五行 × 这个行高」量出来的), 任何一格换行都会把
+   每行撑高 ~25px ⇒ 「一页 = 一屏」当场破功 (2026-09-29 加「类型 / 金额」两列时实测踩过: 77.38px/行,
+   而基准行高是 52.84px)。整表本来就在 .pulse-table-scroll 里横向滚 (min-width 880),
+   所以「不换行」不损失可读性: 窄屏只是横向多滚一点, 列宽不被压扁。 */
+.pulse-table th, .pulse-table td { text-align: left; padding: 11px 16px 11px 0; vertical-align: baseline; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
 .pulse-table thead th {
   font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: 1.2px;
   text-transform: uppercase; color: var(--ink-3); border-bottom-color: var(--line);
@@ -778,10 +804,11 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
   }
   .pulse-summary li:last-child { border-bottom: none; padding-bottom: 0; }
   .pulse-summary b { font-size: 1.5rem; }
-  /* 链上活动表: 窄屏整表横向滚动 (由 .pulse-table-scroll 承接), 列宽不被压扁;
-     行高在窄屏变高 (52.84 → 77.38) → 十五行的上限跟着变 (这是实测值, 不是拍的) */
+  /* 链上活动表: 窄屏整表横向滚动 (由 .pulse-table-scroll 承接), 列宽不被压扁。
+     ★ 2026-09-29: 这里原来还有一条 `--pulse-activity-h: 1233px` 的窄屏覆盖 (那时窄屏一格换行 →
+     行高 77.38px)。整表改成「一格一行」后窄屏行高与桌面一致 ⇒ 覆盖删掉, 十五行的上限就是同一个
+     865.03px (实测窄屏 caption 30.69 + 表头 41.19 + 15×52.84 = 864.48, 与桌面逐像素一致)。 */
   .pulse-table { min-width: 720px; }
-  .pulse-table-wrap { --pulse-activity-h: 1233px; }
   .pulse-feed li { flex-direction: column; gap: 2px; }
   .pulse-feed-time { flex: none; }
   /* 智能体私有站: 列表纵向, 粘贴框纵向 (输入框 + 按钮各占整行, 不横向溢出) */

@@ -444,14 +444,31 @@ var BOLLOON_IPNS = (function () {
     refunded: { zh: '已退款', en: 'refunded' },
     expired:  { zh: '已过期', en: 'expired' },
     disputed: { zh: '争议中', en: 'disputed' },
+    paid:     { zh: '链上收款', en: 'received' },
     unknown:  { zh: '未知',   en: 'unknown' }
+  };
+  // —— 2026-09-29 两类行 (leo:「付款与任务同一个展示区, 不许分两块」) ——
+  //   类型列: escrow 合约事件 = 任务; 关注地址集内的 USDC Transfer = 付款。
+  var TYPE_WORD = {
+    task:    { zh: '任务', en: 'task' },
+    payment: { zh: '付款', en: 'payment' }
+  };
+  //   付款行的**状态列写分类** (链上事实决定的三种, 见 src/agents/chain/transfer-classify.ts):
+  //     钱从 escrow 合约回来 = 退款/释放 (不是收入); 自己钱包转进来 = 转入(非销售); 其余 = 外部付款。
+  //   措辞刻意短 (2026-09-29): 表体那一行的高度是全站校准过的 (十五行高度上限 865px),
+  //   状态列写长了会换行 ⇒ 每行 +25px ⇒ 「一页 = 一屏」当场破功 (实测踩过: 77.38px/行)。
+  var CLASS_WORD = {
+    escrow_settlement: { zh: '退款/释放', en: 'refund/release' },
+    self_transfer:     { zh: '转入(非销售)', en: 'incoming' },
+    external_payment:  { zh: '外部付款',   en: 'external payment' }
   };
   var EVENT_WORD = {
     task_created:   { zh: '任务创建', en: 'task created' },
     task_accepted:  { zh: '任务接下', en: 'task accepted' },
     task_completed: { zh: '任务完成', en: 'task completed' },
     trade_settled:  { zh: '交易结算', en: 'trade settled' },
-    trade_verified: { zh: '交易验真', en: 'trade verified' }
+    trade_verified: { zh: '交易验真', en: 'trade verified' },
+    payment_in:     { zh: '链上转入', en: 'USDC in' }
   };
   var FINALITY_WORD = {
     observed:  { zh: '已观察',     en: 'observed' },
@@ -671,6 +688,14 @@ var BOLLOON_IPNS = (function () {
       tasksCompleted: root.querySelector('[data-pulse-total="tasks_completed"]'),
       tasksVerified: root.querySelector('[data-pulse-total="tasks_verified"]'),
       tasksSettled: root.querySelector('[data-pulse-total="tasks_settled"]'),
+      // ★ 2026-09-29: 退款/争议单列 + 链上转入 (+ 其中经 x402) —— 旧的「节点/智能体/钱包签名」
+      //   在页面上已整排下线, 这里也就不再查它们的钩子 (查不到 → null → 渲染时跳过, 不报错)。
+      tasksRefunded: root.querySelector('[data-pulse-total="tasks_refunded"]'),
+      tasksDisputed: root.querySelector('[data-pulse-total="tasks_disputed"]'),
+      paymentsIn: root.querySelector('[data-pulse-total="payments_in"]'),
+      paymentsX402: root.querySelector('[data-pulse-total="payments_in_x402"]'),
+      paymentTotal: root.querySelector('[data-pulse-payment-total]'),
+      chainLine: root.querySelector('[data-pulse-chain-line]'),
       signatures: root.querySelector('[data-pulse-total="signatures"]'),
       // 顶部计数旁的口径短标记 (i.pulse-scope-tag[data-pulse-scope-tag=...]; 快照没给口径就留空)
       scopeTags: (function () {
@@ -707,6 +732,7 @@ var BOLLOON_IPNS = (function () {
     var view = {
       state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '', actRest: 0,
       actTotals: null, chainScope: null, totalsScope: null, totalsFields: null, rawFeed: [], notes: [], sites: [], tasks: [],
+      transferTotals: null, x402Ledger: null, indexScope: null,
       tasksPage: 0, tasksCols: false, actPage: 0,
       scopeKey: 'observed', scopeLabels: null, sourceKind: null,
     };
@@ -799,6 +825,15 @@ var BOLLOON_IPNS = (function () {
         var tr = document.createElement('tr');
         tr.className = 'pulse-row';
         tr.setAttribute('data-ref', r.refKind);
+        // ★ 类型列 (2026-09-29 leo:「表里有『类型』列 —— 任务(escrow 事件) 与 付款(USDC Transfer→地址集),
+        //   同一张表、同一套排序」): 判据 = 快照的 kind —— payment_in = 付款, 其余已确认事件 = 任务。
+        //   认不出的 kind 归「任务」并在事件列原样显示 kind (不猜、不吞、不报错)。
+        var isPayment = r.kind === 'payment_in';
+        var tdType = document.createElement('td');
+        tdType.className = 'pulse-td-type';
+        var typeWord = textNode('span', 'pulse-type-word', word(TYPE_WORD, isPayment ? 'payment' : 'task', '任务', 'task'));
+        typeWord.setAttribute('data-type', isPayment ? 'payment' : 'task');
+        tdType.appendChild(typeWord);
 
         // ① 任务 (一律短写: 快照给全长也只显示头尾) + 交易标签 (可点则点, 不可点则纯文本)
         var tdTask = document.createElement('td');
@@ -813,17 +848,41 @@ var BOLLOON_IPNS = (function () {
           }
         }
 
-        // ② 状态 (中/英单词)
+        // ② 状态
+        //    · 任务行 = escrow 结局 (已释放 / 已退款 / 争议中 / 进行中 …);
+        //    · 付款行 (2026-09-29) = **链上分类** (escrow 退款/释放 · 转入(非销售) · 外部付款)
+        //      + 经 x402 流程标记 (只有快照给了 x402=true 才标; 快照没给 = 口径未知, 不加"不是"字样)。
         var tdState = document.createElement('td');
-        var st = textNode('span', 'pulse-state-word', word(STATE_WORD, r.state, '未知', 'unknown'));
-        st.setAttribute('data-state', r.state || 'unknown');
-        tdState.appendChild(st);
+        if (isPayment) {
+          var cw = word(CLASS_WORD, r.cls, '未知', 'unknown');
+          var stp = textNode('span', 'pulse-state-word', r.x402 === true ? cw + (lang() === 'en' ? ' · x402' : ' · x402') : cw);
+          stp.setAttribute('data-state', r.state || 'paid');
+          stp.setAttribute('data-class', r.cls || 'unknown');
+          if (r.x402 === true) stp.setAttribute('data-x402', 'true');
+          else if (r.x402 === false) stp.setAttribute('data-x402', 'false');
+          tdState.appendChild(stp);
+        } else {
+          var st = textNode('span', 'pulse-state-word', word(STATE_WORD, r.state, '未知', 'unknown'));
+          st.setAttribute('data-state', r.state || 'unknown');
+          tdState.appendChild(st);
+        }
 
         // ③ 事件 (kind 枚举 → 中/英; 认不出的 kind 原样显示, 不猜)
         var tdKind = document.createElement('td');
         var kd = textNode('span', 'pulse-kind-word', word(EVENT_WORD, r.kind, '未知', 'unknown'));
         kd.setAttribute('data-kind', r.kind || 'unknown');
         tdKind.appendChild(kd);
+
+        // ③′ 金额 (2026-09-29: 付款行 = USDC 数值; 任务行 = 该任务 escrow 金额, **索引里没有就留空**
+        //     —— 不估、不折算、不拿别的字段顶替; 币种符号也照快照给的, 认不出就只写数字)
+        var tdAmt = document.createElement('td');
+        tdAmt.className = 'pulse-td-amount';
+        if (r.amount) {
+          tdAmt.textContent = r.amount + (r.currency ? ' ' + r.currency : '');
+        } else {
+          tdAmt.textContent = '—';
+          tdAmt.setAttribute('data-empty', 'true');       // 「这一行没有金额」≠ 0
+        }
 
         // ④ 网络 = 快照给的 chain_id (只显示这个数字, 不替它编网络名, 也不放合约地址/链接)
         var tdNet = document.createElement('td');
@@ -857,7 +916,8 @@ var BOLLOON_IPNS = (function () {
           tdTime.textContent = '—';
         }
 
-        tr.appendChild(tdTask); tr.appendChild(tdState); tr.appendChild(tdKind);
+        tr.appendChild(tdType); tr.appendChild(tdTask); tr.appendChild(tdState); tr.appendChild(tdKind);
+        tr.appendChild(tdAmt);
         tr.appendChild(tdNet); tr.appendChild(tdBlock); tr.appendChild(tdFin); tr.appendChild(tdTime);
         el.actBody.appendChild(tr);
       }
@@ -951,6 +1011,76 @@ var BOLLOON_IPNS = (function () {
       return en
         ? 'This node has not observed any on-chain task yet.'
         : '本节点暂未观察到链上任务。';
+    }
+
+    /**
+     * 链上一行口径句 (data-pulse-chain-line, 2026-09-29) —— leo:「顶部计数合并到同一区, 一行说清:
+     * 链上收款 N 笔(总 X USDC) · 其中经 x402 流程 M 笔 · 任务 T 个(已完成 A / 已退款 B / 争议中 C);
+     * 口径与索引起止块 + 落后块数照旧写在同区」。
+     *
+     * 纪律 (与其它区域同一套):
+     *   · 所有数字**只读快照字段** (totals / transfer_totals / x402_ledger / index_scope), 前端不自己数;
+     *   · 不写「收入 / 营收 / 成交额」这类词 —— 4 笔转入里含退款与自有转入, 那样写就是误导
+     *     (措辞: 「链上转入 … (含退款/自有转入, 逐行可核验)」);
+     *   · 台账取不到 ⇒ 「其中经 x402 流程」写**未知 + 原因**, 不写 0; 起止块/落后块数缺哪块就不说哪块;
+     *   · 一句都拼不出来 (老快照没有这些字段) → 整句隐藏, 不留空白行。
+     */
+    function renderChainLine() {
+      if (!el.chainLine) return;
+      var en = lang() === 'en';
+      var t = view.totals || {};
+      var tt = view.transferTotals;
+      var xl = view.x402Ledger;
+      var isc = view.indexScope;
+      var parts = [];
+      // ① 链上转入 (笔数 + 合计金额 + 口径括注)
+      if (tt && tt.configured === true && num(tt.inbound) != null) {
+        var amt = (typeof tt.inbound_display === 'string' && tt.inbound_display) ? tt.inbound_display + ' ' + (tt.token_symbol || '') : '';
+        parts.push(en
+          ? 'chain receipts ' + tt.inbound + (amt ? ' (total ' + amt + ')' : '') + ' — refunds and self top-ups included, every row verifiable'
+          : '链上转入 ' + tt.inbound + ' 笔' + (amt ? '（合计 ' + amt + '）' : '') + '（含退款/自有转入，逐行可核验）');
+      }
+      // ② 其中经 x402 流程 (台账交叉核; 取不到 → 未知 + 原因)
+      var x402v = num(t.payments_in_x402);
+      if (x402v != null) {
+        parts.push(en ? 'via x402 flow: ' + x402v : '其中经 x402 流程 ' + x402v + ' 笔');
+      } else if (tt && tt.configured === true) {
+        var why = xl && typeof xl.reason === 'string' ? xl.reason : '';
+        parts.push(en
+          ? 'via x402 flow: unknown' + (why ? ' (' + why + ')' : '')
+          : '其中经 x402 流程：未知' + (why ? '（' + why + '）' : '（卖方端点台账取不到）'));
+      }
+      // ③ 任务 T 个 (已完成 A / 已退款 B / 争议中 C) —— 全部链上口径
+      if (num(t.tasks) != null) {
+        var sub = [];
+        if (num(t.tasks_completed) != null) sub.push((en ? 'completed ' : '已完成 ') + t.tasks_completed);
+        if (num(t.tasks_refunded) != null) sub.push((en ? 'refunded ' : '已退款 ') + t.tasks_refunded);
+        if (num(t.tasks_disputed) != null) sub.push((en ? 'disputed ' : '争议中 ') + t.tasks_disputed);
+        if (num(t.tasks_settled) != null) sub.push((en ? 'released ' : '已释放 ') + t.tasks_settled);
+        parts.push((en ? 'tasks: ' + t.tasks : '任务 ' + t.tasks + ' 个') + (sub.length ? (en ? ' (' + sub.join(' / ') + ')' : '（' + sub.join(' / ') + '）') : ''));
+      }
+      // ④ 覆盖口径 + 起止块 + 落后多少块 (链上索引自己说的)
+      if (isc) {
+        var cov = pickBi(isc.coverage);
+        if (cov) parts.push(cov);
+        var fb = num(isc.from_block);
+        var lb = num(isc.last_scanned_block);
+        if (fb != null && lb != null) {
+          var range = en ? 'index range ' + fb + ' → ' + lb : '索引起止 ' + fb + ' → ' + lb;
+          var lag = num(isc.lag_blocks);
+          var live = num(isc.head_block_live);
+          if (lag != null && live != null) range += en ? ' · ' + lag + ' blocks behind head ' + live + ' (read at export time)' : ' · 落后真链 head ' + live + ' ' + lag + ' 块（读于导出时刻）';
+          else range += en ? ' · live head not read → lag unknown' : ' · 真链 head 未读到 → 落后块数未知';
+          parts.push(range);
+        }
+      }
+      if (!parts.length) {
+        text(el.chainLine, '');
+        if (el.chainLine.setAttribute) el.chainLine.setAttribute('hidden', '');
+        return;
+      }
+      text(el.chainLine, parts.join(' · '));
+      if (el.chainLine.removeAttribute) el.chainLine.removeAttribute('hidden');
     }
 
     /**
@@ -1334,15 +1464,21 @@ var BOLLOON_IPNS = (function () {
     function clearData() {
       view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.tasks = []; view.sourceKind = null;
       view.actTotals = null; view.chainScope = null; view.totalsScope = null; view.totalsFields = null;
+      view.transferTotals = null; view.x402Ledger = null; view.indexScope = null;
       view.tasksPage = 0;    // 快照读不到 → 页码归零 (分栏偏好是读者的选择, 保留)
       view.actPage = 0;      // 同上: 活动表页码归零 (没有行可翻时不留着一个越界的页码)
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.tasksSettled, null);
+      // 2026-09-29: 新增的链上计数 + 合计金额 + 口径句一起清 (读不到快照时不留上一份的旧数)
+      setOptCount(el.tasksRefunded, null); setOptCount(el.tasksDisputed, null);
+      setOptCount(el.paymentsIn, null); setOptCount(el.paymentsX402, null);
+      if (el.paymentTotal) text(el.paymentTotal, '');
+      if (el.chainLine) { text(el.chainLine, ''); if (el.chainLine.setAttribute) el.chainLine.setAttribute('hidden', ''); }
       setOptCount(el.signatures, null);
       renderScopeTags();
       text(el.snapTime, '—'); text(el.snapAgo, ''); text(el.snapAge, '');
-      renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderScope();
+      renderActivity(); renderActivityTx(); renderActivityTotals(); renderChainLine(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderScope();
     }
 
     function applyPayload(payload, state, kind) {
@@ -1377,6 +1513,12 @@ var BOLLOON_IPNS = (function () {
             finality: typeof r.finality === 'string' ? r.finality.trim() : '',
             at: parseAt(r.at),
             txHash: txHash,
+            // ★ 2026-09-29 付款行 (kind='payment_in'): 分类 / 金额 / 经不经 x402 —— 全部只读快照给的字段,
+            //   前端不推断 (x402 只有 true/false/缺 三种: **缺 = 口径未知**, 不显示成"不是 x402")
+            cls: typeof r.class === 'string' ? r.class.trim() : '',
+            amount: typeof r.amount_display === 'string' ? r.amount_display.trim() : '',
+            currency: typeof r.currency === 'string' ? r.currency.trim() : '',
+            x402: (r.x402 === true) ? true : (r.x402 === false ? false : null),
             // 交易链接只在「这条链有浏览器 + 形状对 + 指的就是这一行的那笔交易」时才成立 (否则空串 → 纯文本)
             explorerTx: pickTxLink(r.explorer_tx, txHash, num(r.chain_id))
           };
@@ -1398,6 +1540,14 @@ var BOLLOON_IPNS = (function () {
       view.chainScope = (cis && typeof cis === 'object') ? cis : null;
       var ts = payload.totals_scope;
       view.totalsScope = (ts && typeof ts === 'object') ? ts : null;
+      // ★ 2026-09-29: 链上转入分桶 / x402 台账取数状态 / 覆盖口径 (起止块 · 落后多少块)
+      //   —— 三块都只读快照; 缺哪块就不说哪块 (老快照没有 → null → 那一句不出现)
+      var tt = payload.transfer_totals;
+      view.transferTotals = (tt && typeof tt === 'object') ? tt : null;
+      var xl = payload.x402_ledger;
+      view.x402Ledger = (xl && typeof xl === 'object') ? xl : null;
+      var isc = payload.index_scope;
+      view.indexScope = (isc && typeof isc === 'object') ? isc : null;
       // ★ 逐字段口径 (2026-09-24): 快照没给 (老快照) → null → 页面不写任何口径标记、也不编
       view.totalsFields = (ts && typeof ts === 'object' && ts.fields && typeof ts.fields === 'object') ? ts.fields : null;
       // 活动流: 与 kind 无关 —— 只认服务端 text {zh,en} (新 kind 直用后端文案, 前端不再造一套)。
@@ -1462,8 +1612,21 @@ var BOLLOON_IPNS = (function () {
       setFieldCount(el.tasks, t.tasks, fieldScopeOf(tf, 'tasks'));
       setFieldCount(el.tasksCompleted, t.tasks_completed, fieldScopeOf(tf, 'tasks_completed'));
       setFieldCount(el.tasksSettled, t.tasks_settled, fieldScopeOf(tf, 'tasks_settled'));
+      // ★ 2026-09-29: 退款/争议**各占一格** (旧口径把它们算进「已结算」, 于是出现「已结算 > 已完成」);
+      //   链上转入 (+ 其中经 x402) 也只读快照字段: 拿不到就写「未接入 / 未知」, 绝不写 0。
+      setFieldCount(el.tasksRefunded, t.tasks_refunded, fieldScopeOf(tf, 'tasks_refunded'));
+      setFieldCount(el.tasksDisputed, t.tasks_disputed, fieldScopeOf(tf, 'tasks_disputed'));
+      setFieldCount(el.paymentsIn, t.payments_in, fieldScopeOf(tf, 'payments_in'));
+      setFieldCount(el.paymentsX402, t.payments_in_x402, fieldScopeOf(tf, 'payments_in_x402'));
+      // 链上转入下面那格小字 = 合计金额 (快照折算好的字符串; 没有就不写, 不编 0)
+      if (el.paymentTotal) {
+        text(el.paymentTotal, typeof t.payments_in_total_usdc === 'string' && t.payments_in_total_usdc
+          ? (lang() === 'en' ? 'total ' + t.payments_in_total_usdc + ' ' + (t.payments_in_currency || '') : '合计 ' + t.payments_in_total_usdc + ' ' + (t.payments_in_currency || ''))
+          : '');
+      }
       setFieldCount(el.tasksVerified, t.tasks_verified, fieldScopeOf(tf, 'tasks_verified'));
       setFieldCount(el.signatures, t.signatures, fieldScopeOf(tf, 'signatures'));
+      renderChainLine();
       renderScopeTags();
       renderSnapTime();
       setState(state);

@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=33">
+<link rel="stylesheet" href="style.css?v=34">
 </head>
 <body data-page="gateway">
 
@@ -147,20 +147,43 @@
          每个数旁边贴**它自己的**口径短标记 (i.pulse-scope-tag, 由快照 totals_scope.fields[*].short
          填入; 明细进 title) —— 「任务/已完成/已结算」= 链上索引全量同源值 (与下面那张表同源,
          表里几个任务这里就是几个, 从根上不许并排打架); 「钱包签名」= 本机签名审计账真值。 -->
+  <!-- 小结行 (2026-09-29 改口径: **只报链上交互**, 本机非链上指标整排下线):
+       报 任务 / 已完成 / 已释放(结算) / 已退款 / 争议中 / 链上转入 / 其中经 x402 七个链上计数。
+       ★ leo 2026-09-29:「我要记录的是链上数据, 不是本机数据」⇒ 「节点 / 智能体 / 钱包签名」这三个
+         本机 24h 指标**从计数区移除** (它们是 0, 摆在链上数字旁边就是误导; 本节点在线状态另说,
+         这里一律不显示)。数据源未改: 快照 totals.nodes/agents/signatures 仍在 (别的消费方还用),
+         只是这一屏不列它们。
+       ★ leo 2026-09-29:「退款不得算成已结算」⇒ 「已释放」只算 ReleasedV2 (钱真从合约出给卖方);
+         退款/争议**各占一格** (旧口径把四类并成一个「已结算 5」, 而「已完成」是 3 ⇒ 出现
+         「已结算 5 > 已完成 3」这种读不通的假读数)。
+       ★ 拿不到的聚合计数仍整行隐藏 (不拿 0 或 — 冒充数据); 真 0 照常显示 0。
+       ★ 「已验证」槽 2026-09-24 已整体下线 (链上索引没有第四类事件可报) —— 门上钉着不许回来。
+       快照契约没改: totals.tasks_verified 仍为 null · totals_scope.fields.tasks_verified 仍在。
+       ★ 每个数旁边贴**它自己的**口径短标记 (i.pulse-scope-tag, 由快照 totals_scope.fields[*].short
+       填入; 明细进 title)。 -->
   <ul class="pulse-summary">
-    <li><b data-pulse-total="nodes">—</b><span data-zh="节点" data-en="nodes">节点</span><i class="pulse-scope-tag" data-pulse-scope-tag="nodes"></i></li>
-    <li><b data-pulse-total="agents">—</b><span data-zh="智能体" data-en="agents">智能体</span><i class="pulse-scope-tag" data-pulse-scope-tag="agents"></i></li>
     <li><b data-pulse-total="tasks">—</b><span data-zh="任务" data-en="tasks">任务</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks"></i></li>
     <li><b data-pulse-total="tasks_completed">—</b><span data-zh="已完成" data-en="completed">已完成</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks_completed"></i></li>
-    <li><b data-pulse-total="tasks_settled">—</b><span data-zh="已结算" data-en="settled">已结算</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks_settled"></i></li>
-    <li><b data-pulse-total="signatures">—</b><span data-zh="钱包签名" data-en="wallet signatures">钱包签名</span><i class="pulse-scope-tag" data-pulse-scope-tag="signatures"></i></li>
+    <li><b data-pulse-total="tasks_settled">—</b><span data-zh="已释放给卖方" data-en="released to seller">已释放给卖方</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks_settled"></i></li>
+    <li><b data-pulse-total="tasks_refunded">—</b><span data-zh="已退款" data-en="refunded">已退款</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks_refunded"></i></li>
+    <li><b data-pulse-total="tasks_disputed">—</b><span data-zh="争议中" data-en="disputed">争议中</span><i class="pulse-scope-tag" data-pulse-scope-tag="tasks_disputed"></i></li>
+    <li><b data-pulse-total="payments_in">—</b><span data-zh="链上转入" data-en="receipts">链上转入</span><i class="pulse-amount" data-pulse-payment-total></i><i class="pulse-scope-tag" data-pulse-scope-tag="payments_in"></i></li>
+    <li><b data-pulse-total="payments_in_x402">—</b><span data-zh="其中经 x402 流程" data-en="via x402 flow">其中经 x402 流程</span><i class="pulse-scope-tag" data-pulse-scope-tag="payments_in_x402"></i></li>
   </ul>
 
-  <!-- 作用域短标记 (2026-09-23 精简 / 2026-09-24 细到每个数): 这行说的是**整块统计区**的观察窗口;
-       每个数各自的来源改由上面每项自带的 pulse-scope-tag 就近标注 (链上索引·全量 / 24h 脉冲 /
-       24h 签名审计) —— 不写整句、不用否定句兜底、也不改口径措辞。
-       链上索引口径那一侧还有表格下方那行 (「链上索引 · 全量」)。 -->
-  <p class="pulse-caveat" data-zh="观察窗口 24h" data-en="24h observation window">观察窗口 24h</p>
+  <!-- ★ 一行的口径句 (2026-09-29 leo:「顶部计数合并到同一区, 一行说清 … 口径与索引起止块 + 落后块数
+       照旧写在同区」): 由 app.js 用快照字段拼 (数字全部取快照, 前端不自己数), 内容 =
+       链上转入 N 笔 · 合计 X USDC · 其中经 x402 流程 M 笔(或「未知 + 原因」) · 任务 T 个
+       (已完成 A / 已退款 B / 争议中 C) · 本索引覆盖什么 + 起止块 + 落后多少块。
+       一句话里既有数又有口径 —— 这是这一区**唯一**允许出现的解释文案 (不写「收入/成交额」这种词)。 -->
+  <p class="pulse-chain-line" data-pulse-chain-line hidden></p>
+
+  <!-- 作用域短标记 (2026-09-23 立 / 2026-09-24 细到每个数 / 2026-09-29 改口径):
+       统计区现在**只有链上交互** (本机 24h 指标已整排下线) ⇒ 这一行不再是「观察窗口 24h」,
+       而是这一区的**链上口径**: 「链上索引 · 全量 · 逐行可核验」。每个数各自的来源仍由上面每项
+       自带的 pulse-scope-tag 就近标注 (链上索引·全量 / 经 x402 台账 / 未接入);
+       完整覆盖口径 (覆盖什么 · 起止块 · 落后多少块) 由上面那行口径句 data-pulse-chain-line 承担。 -->
+  <p class="pulse-caveat" data-zh="链上索引 · 全量 · 逐行可核验" data-en="chain index · whole · every row verifiable">链上索引 · 全量 · 逐行可核验</p>
 
   <!-- 待接单任务 (2026-09-23 / 2026-09-24): 快照 open_tasks[] = 本节点公告板上**未认领且未过期**的公告。
        ★ 2026-09-24 (leo:「可以把待接的单放在交易结算表格前面，任何看到重要的任务，人会有反应」):
@@ -192,13 +215,15 @@
     </p>
   </div>
 
-  <!-- 链上活动表 (**位于待接单任务区块下面**; 结算 = 历史, 顺序见上面那条注释): 一行 = 快照 confirmed_activity 里的一条; 列 = 任务|状态|事件|网络|区块|确认数/最终性|时间。
+  <!-- 链上活动表 (**位于待接单任务区块下面**; 结算 = 历史, 顺序见上面那条注释): 一行 = 快照 confirmed_activity 里的一条;
+       列 = 类型|任务/交易|状态|事件|金额|网络|区块|确认数/最终性|时间 (2026-09-29 加「类型 / 金额」两列: 任务事件与
+       地址集内 USDC 转账同一张表、同一套排序)。
        空表不留给空白 ——「没观察到」与「快照读不到」是两种真相, 各有各的话。
        每一格都由 app.js 用 textContent 造 (不用 innerHTML), 任务与交易标识一律短写。
 
        ★ 2026-09-24 (leo:「链上索引 · 全量 · 15 行 … 可以按十五行的高度来设计吗」): 表体外面加一层
-       .pulse-table-scroll —— **上限 = 十五行的高度** (--pulse-activity-h, 1440px 实测 865px / 窄屏 1233px,
-       都取「现在这份 15 行的真高度」). 行数 ≤ 15 时这一层贴着内容高 (不留空档, 5 行就是 5 行的高度);
+       .pulse-table-scroll —— **上限 = 十五行的高度** (--pulse-activity-h, 实测 865.03px = caption 30.69 +
+       表头 41.19 + 15×52.88). 行数 ≤ 15 时这一层贴着内容高 (不留空档, 5 行就是 5 行的高度);
        行数 > 15 (链上活动只会越攒越多) 时**封顶在十五行**, 多出来的在这一层里滚 —— 整页高度不再被表拉长.
        表头 position:sticky (拿不透明底撑住) 所以滚到下面时列名还在.
        口径行 (本表下方那两行: 行数/不同任务 + 合计口径) 仍留在**框外**下方 —— 它们是「这批行算什么」的诚实标记,
@@ -206,12 +231,14 @@
   <div class="pulse-table-wrap">
     <div class="pulse-table-scroll" data-pulse-activity-scroll>
       <table class="pulse-table" data-pulse-activity>
-        <caption class="pulse-table-cap" data-zh="已确认的链上任务与交易（本节点观察到）" data-en="Confirmed on-chain tasks and trades (observed by this node)">已确认的链上任务与交易（本节点观察到）</caption>
+        <caption class="pulse-table-cap" data-zh="已确认的链上交互（任务事件 + 地址集内 USDC 转账 · 逐行可核验）" data-en="Confirmed on-chain interactions (task events + USDC transfers in the watched address set · every row verifiable)">已确认的链上交互（任务事件 + 地址集内 USDC 转账 · 逐行可核验）</caption>
         <thead>
           <tr>
-            <th scope="col" data-zh="任务" data-en="Task">任务</th>
+            <th scope="col" data-zh="类型" data-en="Type">类型</th>
+            <th scope="col" data-zh="任务 / 交易" data-en="Task / tx">任务 / 交易</th>
             <th scope="col" data-zh="状态" data-en="State">状态</th>
             <th scope="col" data-zh="事件" data-en="Event">事件</th>
+            <th scope="col" data-zh="金额" data-en="Amount">金额</th>
             <th scope="col" data-zh="网络" data-en="Network">网络</th>
             <th scope="col" data-zh="区块" data-en="Block">区块</th>
             <th scope="col" data-zh="确认数 / 最终性" data-en="Confirmations / finality">确认数 / 最终性</th>
@@ -385,6 +412,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=33"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>

@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=33">
+<link rel="stylesheet" href="style.css?v=34">
 </head>
 <body data-page="product">
 
@@ -118,14 +118,20 @@
       <p class="pulse-c-scope" data-pulse-scope data-zh="当前节点观察到" data-en="Observed by this node" hidden>当前节点观察到</p>
 
       <ul class="pulse-c-totals">
-        <li><b data-pulse-total="nodes">—</b><span data-zh="节点" data-en="nodes">节点</span></li>
-        <li><b data-pulse-total="agents">—</b><span data-zh="agents" data-en="agents">agents</span></li>
-        <li><b data-pulse-total="active">—</b><span data-zh="活跃 agent" data-en="active agents">活跃 agent</span></li>
-        <li><b data-pulse-total="24h">—</b><span data-zh="24 小时内出现" data-en="seen in 24h">24 小时内出现</span></li>
         <li><b data-pulse-total="tasks">—</b><span data-zh="任务" data-en="tasks">任务</span></li>
         <li><b data-pulse-total="tasks_completed">—</b><span data-zh="已完成" data-en="completed">已完成</span></li>
+        <li><b data-pulse-total="tasks_settled">—</b><span data-zh="已释放" data-en="released">已释放</span></li>
+        <li><b data-pulse-total="tasks_refunded">—</b><span data-zh="已退款" data-en="refunded">已退款</span></li>
+        <li><b data-pulse-total="tasks_disputed">—</b><span data-zh="争议中" data-en="disputed">争议中</span></li>
+        <li><b data-pulse-total="payments_in">—</b><span data-zh="链上转入" data-en="receipts">链上转入</span></li>
       </ul>
-      <!-- 这里刻意只放 6 项 (不放「已验证」「钱包签名」)。
+      <!-- 这里刻意只放 6 项。
+           ★ 2026-09-29 (leo:「我要记录的是链上数据, 不是本机数据」/「退款不得算成已结算」):
+             这 6 项**全部改成链上口径** —— 任务 / 已完成 / 已释放(只算 ReleasedV2) / 已退款 / 争议中 /
+             链上转入; 原来的「节点 / agents / 活跃 agent / 24 小时内出现」(本机 24h 脉冲, 全为 0)
+             从首页计数区**整排下线** (0 摆在链上数字旁边就是误导)。6 项布局不变 (仍是一行)。
+             每个数的口径由同屏那条口径行 (pulse-c-totals-line: 链上索引 · 全量 · N 行 / M 个不同任务)
+             承担; 网关页则**每项都带**就近口径标记 (链上索引·全量 / 经 x402 台账 / 未接入)。
            实测: 1440px 下 6 项正好 1 行 (容器 620px), 第 7 项必然换行 →
            序厅从「一行数字」变「两行孤行数字墙」, 违背紧凑版一眼扫过的设计。
            签名这类精细活动账目由网关页那张链上活动表承接 (下面那条链接)。
@@ -157,7 +163,7 @@
       <ul class="pulse-feed" data-pulse-feed></ul>
       <p class="pulse-empty" data-pulse-feed-empty data-zh="暂无公开活动" data-en="No public activity yet">暂无公开活动</p>
 
-      <p class="pulse-caveat" data-zh="观察窗口 24h" data-en="24h observation window">观察窗口 24h</p>
+      <p class="pulse-caveat" data-zh="链上索引 · 全量 · 逐行可核验" data-en="chain index · whole · every row verifiable">链上索引 · 全量 · 逐行可核验</p>
       <!-- 作用域标记 (2026-09-22 立 · 2026-09-23 精简): 小结行那四个数 (任务/已完成/已验证/签名) 是
            24h 脉冲事件口径 —— 就近只留这一行极短标记, 不写整句、不否定句兜底 (「不是全网…」这类
            长解释已删)。链上索引口径 (行数/不同任务/网络) 由快照的 activity_totals + chain_id_scope
@@ -309,6 +315,6 @@
   <span class="foot-right">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=33"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>
