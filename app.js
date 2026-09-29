@@ -602,6 +602,12 @@ var BOLLOON_IPNS = (function () {
   //     (不编 href="#", 也不接受别人塞进来的链接)。
   var EXPLORER_BY_CHAIN = { 8453: 'basescan.org', 84532: 'sepolia.basescan.org', 1: 'etherscan.io', 11155111: 'sepolia.etherscan.io' };
   var TXHASH_RE = /^0x[0-9a-f]{64}$/;
+  /**
+   * ★ 2026-09-29 付款方智能体身份短写的形状 (与主仓 `PAYER_NAME_SHORT_RE` / `PAYER_DID_SHORT_RE` 同规则)。
+   * 页面拿到的只可能是短写; 形状不对就**当作没有这个名字** (宁可少显示一行信息, 也不把可疑串画上去)。
+   */
+  var PAYER_NAME_RE = /^[A-Za-z0-9._\-\u4e00-\u9fff]{1,24}$/;
+  var PAYER_DID_RE = /^[1-9A-HJ-NP-Za-km-z]{4,16}$/;
   function pickTxLink(url, txHash, chainId) {
     if (typeof url !== 'string' || !txHash) return '';
     var host = EXPLORER_BY_CHAIN[chainId];                              // 认不出的链 (含本机 31337) → 没有链接
@@ -861,6 +867,21 @@ var BOLLOON_IPNS = (function () {
           if (r.x402 === true) stp.setAttribute('data-x402', 'true');
           else if (r.x402 === false) stp.setAttribute('data-x402', 'false');
           tdState.appendChild(stp);
+          // ★ 2026-09-29 付款方智能体名 (付款行专属) —— **链下登记**(地址↔DID 双侧签名声明),
+          //   不是链上事实, 所以就地标成「链下登记」而不是混进链上字段里;
+          //   名字与 DID 短写都是 ≤24 字符的短写 (页面不许出现完整 DID/地址, 由站点门守)。
+          //   快照没给 / 形状不过关 ⇒ 这个 span 根本不生成 (不显示空名、不猜)。
+          if (r.payer && r.payer.name) {
+            var pw = textNode('span', 'pulse-payer-word',
+              (lang() === 'en' ? ' · payer ' : ' · 付款方 ') + r.payer.name);
+            pw.setAttribute('data-payer', r.payer.name);
+            pw.setAttribute('data-payer-did', r.payer.did);
+            pw.setAttribute('data-payer-source', 'off-chain-signed');
+            pw.title = (lang() === 'en'
+              ? 'Off-chain registration (address↔DID statement signed by both keys; verifiable offline) — not an on-chain fact'
+              : '链下登记(地址↔DID 双侧签名的声明, 可离线验签) —— 不是链上事实');
+            tdState.appendChild(pw);
+          }
         } else {
           var st = textNode('span', 'pulse-state-word', word(STATE_WORD, r.state, '未知', 'unknown'));
           st.setAttribute('data-state', r.state || 'unknown');
@@ -1077,6 +1098,29 @@ var BOLLOON_IPNS = (function () {
           if (lag != null && live != null) range += en ? ' · ' + lag + ' blocks behind head ' + live + ' (read at export time)' : ' · 落后真链 head ' + live + ' ' + lag + ' 块（读于导出时刻）';
           else range += en ? ' · live head not read → lag unknown' : ' · 真链 head 未读到 → 落后块数未知';
           parts.push(range);
+        }
+      }
+      // ⑤ ★ 2026-09-29 付款方身份 (**链下登记**, 不是链上事实) —— 只报「几行带已验签的付款方身份」。
+      //   为什么必须就近标「链下登记」: 这一句和上面四段 (链上转入/任务/索引起止) 同处一行,
+      //   不标就会被读成链上事实 (它是本机绑定库在加载时重验后的**短写名字**)。
+      //   0 行也要说清是哪种 0 (库空 / 有库但本轮没匹配上 / 库读不到 —— 后者带 reason)。
+      var ps = view.payerScope;
+      if (ps) {
+        var piN = num(ps.rows_with_identity);
+        var piV = num(ps.verified);
+        if (piN != null && piN > 0) {
+          parts.push(en
+            ? 'payer identity: ' + piN + ' row(s) from off-chain registration (verifiable offline)'
+            : '付款方身份 ' + piN + ' 行（链下登记·可离线验签）');
+        } else if (piV != null && piV > 0) {
+          parts.push(en
+            ? 'payer identity: 0 rows matched (' + piV + ' verified registration(s) on this node)'
+            : '付款方身份 0 行匹配（本机登记库有 ' + piV + ' 条已验签）');
+        } else {
+          var why = typeof ps.reason === 'string' && ps.reason ? '（' + ps.reason.slice(0, 80) + '）' : '';
+          parts.push(en
+            ? 'payer identity: none — no verified registration on this node' + (why ? ' (' + why + ')' : '')
+            : '付款方身份：本机没有已验签的登记' + why);
         }
       }
       if (!parts.length) {
@@ -1499,7 +1543,24 @@ var BOLLOON_IPNS = (function () {
       // 2026-09-23 追加: tx_hash / explorer_tx (链上索引行才有;
       //   本机 31337 没有公网浏览器 → 快照里就没有 explorer_tx → 交易标签保持纯文本, 不编死链)。
       //   `contract` (escrow 合约地址) 只存在于快照数据里, **页面不读它、不渲染它** —— 合约不上页面。
-      var actAll = (Array.isArray(payload.confirmed_activity) ? payload.confirmed_activity : [])
+      /**
+       * ★ 2026-09-29 付款方智能体身份 (`payer_identity`) —— **链下登记**, 不是链上事实。
+       * 只读快照给的短写, 且**前端自己再卡一遍形状**: 未验签 (verified!==true) / 协议名或来源不对 /
+       * 短写里出现 0x 或 did: / 名字超 24 字 —— 一律当作"没有", 行里就不出这个名字。
+       * 页面绝不用快照里的原文去拼字符串 (它只可能是这两个短写字段)。
+       */
+      function payerOf(v) {
+        if (!v || typeof v !== 'object') return null;
+        if (v.verified !== true) return null;
+        if (v.method !== 'diap-address-binding/1' || v.source !== 'off-chain-signed') return null;
+        var name = typeof v.name_short === 'string' ? v.name_short.trim() : '';
+        var did = typeof v.did_short === 'string' ? v.did_short.trim() : '';
+        if (!PAYER_NAME_RE.test(name) || !PAYER_DID_RE.test(did)) return null;
+        if (/0x/i.test(name) || /did:/i.test(name) || /0x/i.test(did) || /did:/i.test(did)) return null;
+        return { name: name, did: did };
+      }
+
+    var actAll = (Array.isArray(payload.confirmed_activity) ? payload.confirmed_activity : [])
         .map(function (r) {
           if (!r || typeof r !== 'object') return null;
           var task = typeof r.task === 'string' ? r.task.trim() : '';
@@ -1524,6 +1585,8 @@ var BOLLOON_IPNS = (function () {
             amount: typeof r.amount_display === 'string' ? r.amount_display.trim() : '',
             currency: typeof r.currency === 'string' ? r.currency.trim() : '',
             x402: (r.x402 === true) ? true : (r.x402 === false ? false : null),
+            // ★ 2026-09-29 付款方智能体身份 (链下登记短写; 形状不过关 = null → 行里不出名字)
+            payer: payerOf(r.payer_identity),
             // 交易链接只在「这条链有浏览器 + 形状对 + 指的就是这一行的那笔交易」时才成立 (否则空串 → 纯文本)
             explorerTx: pickTxLink(r.explorer_tx, txHash, num(r.chain_id))
           };
@@ -1553,6 +1616,9 @@ var BOLLOON_IPNS = (function () {
       view.x402Ledger = (xl && typeof xl === 'object') ? xl : null;
       var isc = payload.index_scope;
       view.indexScope = (isc && typeof isc === 'object') ? isc : null;
+      // ★ 2026-09-29 付款方身份的**取数口径** (链下登记): 只读快照; 缺 (老快照) → null → 那句话不出现
+      var pis = payload.payer_identity_scope;
+      view.payerScope = (pis && typeof pis === 'object') ? pis : null;
       // ★ 逐字段口径 (2026-09-24): 快照没给 (老快照) → null → 页面不写任何口径标记、也不编
       view.totalsFields = (ts && typeof ts === 'object' && ts.fields && typeof ts.fields === 'object') ? ts.fields : null;
       // 活动流: 与 kind 无关 —— 只认服务端 text {zh,en} (新 kind 直用后端文案, 前端不再造一套)。

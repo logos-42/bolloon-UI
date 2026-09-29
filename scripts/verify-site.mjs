@@ -40,7 +40,7 @@
  *      并带阴性对照 (把这一格塞回页面 → 必红, 见 docs/wiki/log.md)。
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=34 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=35 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -2364,6 +2364,43 @@ async function main() {
     clWant.length >= 3 && clWant.every((s) => cl.includes(s)),
     JSON.stringify({ line: cl.slice(0, 220), want: clWant }));
 
+  // ★ 2026-09-29 第四段: 付款方智能体名 (`payer_identity`) —— **链下登记**短写。
+  //   验的是三件事 (快照给了就**必须**显示, 但不许显示超过快照给的东西):
+  //     ① 快照里有 N 行带身份 ⇒ 页面上真有 `.pulse-payer-word` (渲染窗页 1, 至少 1 个);
+  //     ② 页面上出现的名字**只能**取自快照给的那几个 `name_short` (页面不许自己拼/换名);
+  //     ③ 只出短写: 无 `did:` / 无 0x40; 每个名字带 `data-payer-source=off-chain-signed` (就地标「链下登记」)。
+  const rpiRows = (realObj && Array.isArray(realObj.confirmed_activity))
+    ? realObj.confirmed_activity.filter((r) => r && r.payer_identity)
+    : [];
+  const rpiNames = Array.from(new Set(rpiRows.map((r) => String(r.payer_identity.name_short))));
+  const rpiScope = (realObj && realObj.payer_identity_scope) || null;
+  if (rpiRows.length === 0) {
+    skip('真快照 · 付款方智能体名 (链下登记短写): 页面真渲染 + 只出短写', `本机快照这一轮没有任何已验签的付款方身份 (payer_identity_scope=${rpiScope ? `verified=${rpiScope.verified} reason=${String(rpiScope.reason).slice(0, 60)}` : '缺'}) → 这一条不适用`);
+  } else {
+    const piDom = await evalJs(`(() => {
+      const els = Array.from(document.querySelectorAll('#pulse .pulse-payer-word'));
+      return { n: els.length, texts: els.map((e) => e.textContent),
+        dids: els.map((e) => e.getAttribute('data-payer-did') || ''),
+        attrs: els.map((e) => e.getAttribute('data-payer') || ''),
+        srcs: els.map((e) => e.getAttribute('data-payer-source') || '') };
+    })()`);
+    check(`★ 真快照: 付款行的**付款方智能体名**真渲染出来 (快照 ${rpiRows.length} 行带已验签身份 → 页面上 ${(piDom && piDom.n) || 0} 个 .pulse-payer-word)`,
+      !!piDom && piDom.n >= 1 && piDom.dids.length === piDom.n && piDom.attrs.length === piDom.n,
+      JSON.stringify(piDom));
+    check(`★ 真快照: 页面上的付款方名**只取自快照**那 ${rpiNames.length} 个短写 (不自己拼名/不换名) —— 实测 ${JSON.stringify((piDom && piDom.attrs) || [])}`,
+      !!piDom && piDom.attrs.length >= 1 && piDom.attrs.every((a) => rpiNames.includes(String(a).replace(/^ · (付款方 |payer )/, ''))),
+      JSON.stringify({ snapshot: rpiNames, dom: piDom && piDom.attrs }));
+    check('★ 真快照: 付款方名**只出短写** —— 无 `did:` 前缀 / 无 40 位地址, 且每个名字就地带 data-payer-source=off-chain-signed (链下登记)',
+      !!piDom && piDom.attrs.length >= 1 &&
+      piDom.attrs.every((t) => !/did:/i.test(t) && !/0x[0-9a-fA-F]{40}/.test(t)) &&
+      piDom.srcs.every((s) => s === 'off-chain-signed') &&
+      piDom.dids.every((d) => !/did:/i.test(d) && !/^0x/i.test(d)),
+      JSON.stringify(piDom));
+    check(`★ 真快照: 链上口径句就地标了「链下登记」(不与链上事实混为一类表述) —— 实测句: ${JSON.stringify(cl.slice(-120))}`,
+      cl.includes('链下登记') && cl.includes('付款方身份'),
+      JSON.stringify({ line: cl.slice(0, 260) }));
+  }
+
   // ⑥‴★★★ 同一概念不变量门 (2026-09-24 leo:「数量怎么对不上, 尤其是后面的任务和钱包」):
   //   验收对象 = **页面真渲染出来的字**: 顶部「任务/已完成/已结算」与同屏表格里的同概念数必须相等。
   //   两半都要有: (a) 真快照上门必须**干净** + 数字确实是链上索引同源值;
@@ -3274,17 +3311,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=34 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=34 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=35 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=35 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=34');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=35');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=34/.test(html) || !/app\.js\?v=34/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=35/.test(html) || !/app\.js\?v=35/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=34 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=34 + app.js?v=34 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=35 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=35 + app.js?v=35 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):

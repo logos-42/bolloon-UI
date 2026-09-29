@@ -684,6 +684,8 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .pulse-c-tx { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); }
 .pulse-c-tx .pulse-c-tx-link { color: var(--lime); text-decoration: none; border-bottom: 1px dotted currentColor; }
 .pulse-state-word, .pulse-kind-word { font-size: 0.95rem; color: var(--ink-2); }
+/* ★ 2026-09-29 付款方智能体名 (链下登记短写): 与链上字段同排, 但用弱色 + 点线底标出「不是链上事实」 */
+.pulse-payer-word { color: var(--ink-2); border-bottom: 1px dotted var(--lime-deep); white-space: nowrap; }
 .pulse-td-net, .pulse-td-block, .pulse-td-time { font-family: var(--mono); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
 .pulse-td-time time { font-family: var(--mono); }
 .pulse-td-fin { white-space: nowrap; }

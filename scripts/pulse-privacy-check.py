@@ -37,6 +37,31 @@ claimed/announcementId)。这一块的尺子**只加不减**:
   · 老快照没有 `open_tasks` → **不拒**, 只打一行 note (尺子收紧的是「有新字段时它长什么样」,
     不是「必须有新字段」)
 
+## 2026-09-29 第三批精确化: `payer_identity` (付款方智能体的**链下登记**短写)
+
+快照第一次出现「**智能体名**」这种文字字段 —— 它长在付款行上
+(`confirmed_activity[].payer_identity`), 来源是**链下登记**(`diap-address-binding/1`: 同一份声明正文
+被 DID 私钥与地址私钥**分别**签名, 可离线验签), **不是链上事实**。
+
+这一批同样**只收紧不放松** —— 改之前这个字段**根本没被解释**(它只能靠通用形态尺子勉强过关,
+语义上一个字都没核: 写 `verified: false`、换成别的协议名、塞个空名字, 全都能过去)。
+改之后它被**单独**核五件事, 而且口子只开在**一个位置**:
+
+  · 出现位置: **只许** `confirmed_activity[i].payer_identity` (键出现在别处 —— 顶层 / notes /
+    别的行类型 —— 一律拒);
+  · 键集**恰好** 5 个: `name_short` / `did_short` / `verified` / `method` / `source` (多一个就拒);
+  · 取值: `verified` 必须**恰好是 True** (未验签的一律拒 —— 硬闸) · `method` 恰好
+    `diap-address-binding/1` · `source` 恰好 `off-chain-signed`;
+  · 形状: `name_short` ≤24 字符且只许 `[A-Za-z0-9._-]` + 中文字, **不许**出现 `0x` / `did:` / `/` /
+    空白; `did_short` 是 4~16 位 base58btc 字符, **绝不许带 `did:` 前缀**(完整 DID 仍然全站禁止);
+  · 只许长在 `kind == 'payment_in'` 的行上 (别的行没有"付款方"这一说)。
+  · 顶层 `payer_identity_scope` (有则核对): `label` 必须中英双语 · `method`/`source` 与行内同值 ·
+    计数必须是整数 —— 它里面**不许**出现地址或 DID 原文 (照旧由通用形态尺子扫)。
+
+**为什么这不算放宽**: EOA / 完整 DID / 取件 token / 凭据原文的规则**一字未改**;
+`SHAPES`(裸 0x40/0x64/DID/multiaddr/peerID/IPNS) 仍然在**所有位置**生效 —— 包括 `payer_identity`
+里的每个值; 新增的六条判据**全部**是"不满足就拒"。老快照没有这个字段 → **不拒**, 只打一行 note。
+
 用法:
     python3 scripts/pulse-privacy-check.py [快照路径] [--quiet]
 退出码: 0 = 通过; 2 = 拒绝 (发现私有字段/形态); 1 = 用法或读取错误
@@ -64,6 +89,21 @@ BROWSER_BY_CHAIN = {8453: "basescan.org", 84532: "sepolia.basescan.org", 1: "eth
 OPEN_TASK_KEYS = {"capability", "budget", "currency", "network", "deadline", "claimed", "announcementId"}
 # 公开页只出 announcementId 的**前 8 位** (`ann-` + 4 位字母数字, 因为 id 形如 ann-<16 位 hex>)
 OPEN_TASK_ID_SHORT = re.compile(r"^ann-[A-Za-z0-9]{4}$")
+
+# —— 付款方智能体身份 (payer_identity, 2026-09-29): **唯一**一处允许「文字名字」的位置 ——
+# 与主仓 `src/agents/network-pulse.ts` 的 PayerIdentityShort / PAYER_IDENTITY_METHOD / PAYER_IDENTITY_SOURCE
+# 逐字一致; 主仓侧还有一道同族门 `payerIdentityIssues` (导出前自检), 这里是部署前最后一道。
+PAYER_IDENTITY_KEYS = {"name_short", "did_short", "verified", "method", "source"}
+PAYER_IDENTITY_PATH = re.compile(r"^\.confirmed_activity\[\d+\]\.payer_identity$")
+PAYER_IDENTITY_METHOD = "diap-address-binding/1"
+PAYER_IDENTITY_SOURCE = "off-chain-signed"
+# 名字短写: ≤24 字符, 只许字母/数字/点/下划线/短横 + 中文字 (不许 0x / did: / 斜杠 / 空白)
+PAYER_NAME_SHORT = re.compile(r"^[A-Za-z0-9._\-\u4e00-\u9fff]{1,24}$")
+# DID 短写: base58btc 字符 4~16 位 (**不带 `did:` 前缀** —— 完整 DID 仍然全站禁止)
+PAYER_DID_SHORT = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{4,16}$")
+# 顶层口径块 (有则核对形状; 里面的地址/DID 原文照旧由 SHAPES 抓)
+PAYER_SCOPE_KEYS = {"loaded", "verified", "rejected", "rejected_reasons", "rows_with_identity",
+                    "reason", "label", "note", "method", "source"}
 
 HEX40 = re.compile(r"^0x[0-9a-f]{40}$")
 HEX64 = re.compile(r"^0x[0-9a-f]{64}$")
@@ -208,6 +248,97 @@ def check(snap: dict, index_addresses: set[str] | None) -> tuple[list[str], list
                 if k in row and row[k] is not None and not isinstance(row[k], str):
                     hits.append(f"{rid}.{k} 只许字符串或 null, 实得 {row[k]!r}")
         notes.append(f"open_tasks 行结构核对通过 ({len(open_tasks)} 行, 键白名单 {len(OPEN_TASK_KEYS)} 个)")
+
+    # —— payer_identity (2026-09-29 第三批): **唯一**允许「智能体名短写」的位置, 逐条焊死 ——
+    # ① 全局位置普查: 这个键名只许出现在 confirmed_activity[i] 里 (顶层/notes/别处 → 拒)
+    seen_paths: list[str] = []
+
+    def find_key(o, path=""):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if str(k) == "payer_identity":
+                    seen_paths.append(f"{path}.{k}")
+                find_key(v, f"{path}.{k}")
+        elif isinstance(o, list):
+            for i, v in enumerate(o):
+                find_key(v, f"{path}[{i}]")
+
+    find_key(snap)
+    for p in seen_paths:
+        if not PAYER_IDENTITY_PATH.match(p):
+            hits.append(f"payer_identity 出现在不允许的位置: {p} (只许长在 confirmed_activity[i] 付款行上)")
+    rows_ = snap.get("confirmed_activity")
+    pi_rows = 0
+    for i, row in enumerate(rows_ if isinstance(rows_, list) else []):
+        if not isinstance(row, dict) or "payer_identity" not in row:
+            continue
+        pi_rows += 1
+        rid = f"confirmed_activity[{i}].payer_identity"
+        pid = row.get("payer_identity")
+        if not isinstance(pid, dict):
+            hits.append(f"{rid} 必须是对象")
+            continue
+        extra = sorted(set(pid.keys()) - PAYER_IDENTITY_KEYS)
+        if extra:
+            hits.append(f"{rid} 出现白名单外的键: {extra} (只许 {sorted(PAYER_IDENTITY_KEYS)})")
+        missing = sorted(PAYER_IDENTITY_KEYS - set(pid.keys()))
+        if missing:
+            hits.append(f"{rid} 缺必需键: {missing}")
+        if pid.get("verified") is not True:
+            hits.append(f"{rid}.verified={pid.get('verified')!r} —— **只有已验签的绑定**才许出行 (硬闸)")
+        if pid.get("method") != PAYER_IDENTITY_METHOD:
+            hits.append(f"{rid}.method={pid.get('method')!r} ≠ {PAYER_IDENTITY_METHOD}")
+        if pid.get("source") != PAYER_IDENTITY_SOURCE:
+            hits.append(f"{rid}.source={pid.get('source')!r} ≠ {PAYER_IDENTITY_SOURCE}")
+        nm = pid.get("name_short")
+        if not isinstance(nm, str) or not PAYER_NAME_SHORT.match(nm):
+            hits.append(f"{rid}.name_short 形状非法 (≤24 字符, 只许 [A-Za-z0-9._-] + 中文字): {nm!r}")
+        else:
+            for bad in ("0x", "did:", "/", " "):
+                if bad.lower() in nm.lower():
+                    hits.append(f"{rid}.name_short 含 {bad!r} —— 短写里不许出现 (地址/DID/路径形态)")
+        ds = pid.get("did_short")
+        if not isinstance(ds, str) or not PAYER_DID_SHORT.match(ds):
+            hits.append(f"{rid}.did_short 形状非法 (4~16 位 base58btc, **不带 did: 前缀**): {ds!r}")
+        if str(row.get("kind") or "") != "payment_in":
+            hits.append(f"{rid} 长在 kind={row.get('kind')!r} 的行上 —— 只有付款行才有「付款方」")
+
+    # ② 顶层口径块 (有则核对; 无则 note —— 老快照没有这个字段是合法的)
+    scope_ = snap.get("payer_identity_scope", None)
+    if scope_ is None:
+        if pi_rows:
+            hits.append(f"有 {pi_rows} 行带 payer_identity 却没有 payer_identity_scope —— 口径不能缺")
+        else:
+            notes.append("快照没有 payer_identity 字段 (老快照或本机没绑定库) —— 不拒, 仅提示")
+    elif not isinstance(scope_, dict):
+        hits.append("payer_identity_scope 必须是对象 (没有就给 null, 不写别的形状)")
+    else:
+        extra = sorted(set(scope_.keys()) - PAYER_SCOPE_KEYS)
+        if extra:
+            hits.append(f"payer_identity_scope 出现白名单外的键: {extra}")
+        if scope_.get("method") != PAYER_IDENTITY_METHOD or scope_.get("source") != PAYER_IDENTITY_SOURCE:
+            hits.append("payer_identity_scope.method/source 必须与行内同值 "
+                        f"({PAYER_IDENTITY_METHOD} / {PAYER_IDENTITY_SOURCE})")
+        lbl = scope_.get("label")
+        if not isinstance(lbl, dict) or not lbl.get("zh") or not lbl.get("en"):
+            hits.append("payer_identity_scope.label 必须中英双语 (口径句不能只写一种语言)")
+        for k in ("loaded", "verified", "rejected", "rows_with_identity"):
+            v = scope_.get(k)
+            if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+                hits.append(f"payer_identity_scope.{k} 必须是非负整数, 实得 {v!r}")
+        if isinstance(scope_.get("rows_with_identity"), int) and scope_.get("rows_with_identity") != pi_rows:
+            hits.append(f"payer_identity_scope.rows_with_identity={scope_.get('rows_with_identity')} "
+                        f"≠ 行里真数出来的 {pi_rows} (同一批行必须相等)")
+        if scope_.get("verified") == 0 and pi_rows:
+            hits.append("payer_identity_scope.verified=0 却行里有身份 —— 自相矛盾")
+        rej = scope_.get("rejected_reasons")
+        if rej is not None:
+            if not isinstance(rej, list):
+                hits.append("payer_identity_scope.rejected_reasons 必须是数组")
+            elif isinstance(scope_.get("rejected"), int) and scope_.get("rejected") != len(rej):
+                hits.append(f"payer_identity_scope.rejected={scope_.get('rejected')} ≠ rejected_reasons 条数={len(rej)}")
+        notes.append(f"payer_identity 核对通过 ({pi_rows} 行带已验签短写; 键白名单 {len(PAYER_IDENTITY_KEYS)} 个)")
+
     return hits, notes
 
 
@@ -233,8 +364,10 @@ def main() -> int:
     if not args.quiet:
         open_tasks = snap.get("open_tasks", None)
         ot = "字段缺失(老快照)" if open_tasks is None else (f"{len(open_tasks)} 行" if isinstance(open_tasks, list) else "非数组!")
+        pi_rows = len([r for r in rows if isinstance(r, dict) and r.get("payer_identity")])
         print(f"[pulse-privacy] 通过: status={snap.get('status')} scope={snap.get('scope')} "
               f"signed={bool(snap.get('signature'))} rows={len(rows)} open_tasks={ot} "
+              f"payer_identity={pi_rows} 行(链下登记短写) "
               f"chain_ids={[r.get('chain_id') for r in rows if isinstance(r, dict)][:4]}")
         for n in notes:
             print(f"[pulse-privacy]   {n}")
