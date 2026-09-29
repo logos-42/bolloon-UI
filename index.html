@@ -230,7 +230,9 @@
      事实来源: 卖方端点 item `info_efficode_spec_pack` (GET 不带付款头 → 402 + accepts)。
      页面上的价格/币种/网络与 endpoint 同源; 收款地址按本站约定短写
      (页面可见文本不得出现 40 位地址 / 64 位哈希 —— 全长以 endpoint 的 402 响应为准)。
-     ★ 不许写销量: 至今**没有任何成交**, 所以这里只写「怎么买」, 不写「已售出 / 已有 N 人买」。 -->
+     ★ 本区块**只讲「这是什么 / 多少钱 / 怎么买 + 诚实边界」**:
+       不写销量、不列成交记录、不写「已售出 N 笔 / 已有 N 人买」—— 付款与链上交互的
+       统一展示区由另一条线负责; 这里出现任何销量数字都算越界。 -->
 <section class="capabilities store" id="store">
   <div class="section-head">
     <p class="kicker">— 02 · Store</p>
@@ -271,8 +273,8 @@
     </div>
   </div>
 
-  <p class="prereq" data-zh="至今尚无成交记录。付款校验 / 结算通道当前未开启：这个端点只发 402 与 accepts，无法校验或结算任何付款。规范正文与机器清单入口可免费核验。"
-     data-en="No sale has happened yet. Payment verification and settlement are not enabled: this endpoint only returns 402 with accepts and can verify or settle no payment. The spec text and the machine manifest can be checked freely.">至今尚无成交记录。付款校验 / 结算通道当前未开启：这个端点只发 402 与 accepts，无法校验或结算任何付款。规范正文与机器清单入口可免费核验。</p>
+  <p class="prereq" data-zh="诚实边界：卖方端点按 x402 报价收款，未付款请求固定返回 402 与 accepts；付款经链上核验后由卖方本机签名交付信封，买方可用卖方公钥离线验签。规范正文与机器清单入口可免费核验。"
+     data-en="Honest boundary: the seller endpoint quotes over x402 — an unpaid request always returns 402 with accepts; after on-chain verification the seller signs the delivery envelope on its own machine, and the buyer can verify it offline with the seller's public key. The spec text and the machine manifest can be checked freely.">诚实边界：卖方端点按 x402 报价收款，未付款请求固定返回 402 与 accepts；付款经链上核验后由卖方本机签名交付信封，买方可用卖方公钥离线验签。规范正文与机器清单入口可免费核验。</p>
 </section>
 
 <!-- ◆ 尾声 / 关于 -->
