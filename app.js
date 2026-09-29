@@ -701,7 +701,6 @@ var BOLLOON_IPNS = (function () {
       paymentsIn: root.querySelector('[data-pulse-total="payments_in"]'),
       paymentsX402: root.querySelector('[data-pulse-total="payments_in_x402"]'),
       paymentTotal: root.querySelector('[data-pulse-payment-total]'),
-      chainLine: root.querySelector('[data-pulse-chain-line]'),
       signatures: root.querySelector('[data-pulse-total="signatures"]'),
       // 顶部计数旁的口径短标记 (i.pulse-scope-tag[data-pulse-scope-tag=...]; 快照没给口径就留空)
       scopeTags: (function () {
@@ -738,7 +737,9 @@ var BOLLOON_IPNS = (function () {
     var view = {
       state: 'loading', payload: null, snapAt: 0, rows: [], actSource: '', actRest: 0,
       actTotals: null, chainScope: null, totalsScope: null, totalsFields: null, rawFeed: [], notes: [], sites: [], tasks: [],
-      transferTotals: null, x402Ledger: null, indexScope: null,
+      // (2026-09-29: 原来这里还有 transferTotals / x402Ledger / indexScope / payerScope —— 它们只有
+      //  那条已撤下的可见口径句在消费 ⇒ 一并撤掉, 不留死字段。快照里那几个字段**一个都没删**
+      //  (机器面仍可核), 只是页面不再读它们。)
       tasksPage: 0, tasksCols: false, actPage: 0,
       scopeKey: 'observed', scopeLabels: null, sourceKind: null,
     };
@@ -1032,104 +1033,6 @@ var BOLLOON_IPNS = (function () {
       return en
         ? 'This node has not observed any on-chain task yet.'
         : '本节点暂未观察到链上任务。';
-    }
-
-    /**
-     * 链上一行口径句 (data-pulse-chain-line, 2026-09-29) —— leo:「顶部计数合并到同一区, 一行说清:
-     * 链上收款 N 笔(总 X USDC) · 其中经 x402 流程 M 笔 · 任务 T 个(已完成 A / 已退款 B / 争议中 C);
-     * 口径与索引起止块 + 落后块数照旧写在同区」。
-     *
-     * 纪律 (与其它区域同一套):
-     *   · 所有数字**只读快照字段** (totals / transfer_totals / x402_ledger / index_scope), 前端不自己数;
-     *   · 不写「收入 / 营收 / 成交额」这类词 —— 4 笔转入里含退款与自有转入, 那样写就是误导
-     *     (措辞: 「链上转入 … (含退款/自有转入, 逐行可核验)」);
-     *   · 台账取不到 ⇒ 「其中经 x402 流程」写**未知 + 原因**, 不写 0; 起止块/落后块数缺哪块就不说哪块;
-     *   · 一句都拼不出来 (老快照没有这些字段) → 整句隐藏, 不留空白行。
-     */
-    function renderChainLine() {
-      if (!el.chainLine) return;
-      var en = lang() === 'en';
-      // ★ 2026-09-29 修 (线上真 bug, 门当场判红): 这里原来读 `var t = view.totals` —— `view` 字面量里
-      //   **根本没有 `totals` 这个键**, 也没人在别处赋值 ⇒ `t` 恒为 `{}` ⇒ 这句话里的
-      //   「其中经 x402 流程 M 笔」**永远走「未知 + 原因」分支**、「任务 T 个 (已完成…/已退款…/争议中…)」
-      //   **整段消失** —— 而同一份快照明明给了 `payments_in_x402` / `tasks` (计数格里那两个数也真显示出来了,
-      //   因为那条路径读的是 `payload.totals`)。快照是唯一来源 ⇒ 这里也读快照 (view.payload 就是它)。
-      var t = (view.payload && view.payload.totals) || {};
-      var tt = view.transferTotals;
-      var xl = view.x402Ledger;
-      var isc = view.indexScope;
-      var parts = [];
-      // ① 链上转入 (笔数 + 合计金额 + 口径括注)
-      if (tt && tt.configured === true && num(tt.inbound) != null) {
-        var amt = (typeof tt.inbound_display === 'string' && tt.inbound_display) ? tt.inbound_display + ' ' + (tt.token_symbol || '') : '';
-        parts.push(en
-          ? 'chain receipts ' + tt.inbound + (amt ? ' (total ' + amt + ')' : '') + ' — refunds and self top-ups included, every row verifiable'
-          : '链上转入 ' + tt.inbound + ' 笔' + (amt ? '（合计 ' + amt + '）' : '') + '（含退款/自有转入，逐行可核验）');
-      }
-      // ② 其中经 x402 流程 (台账交叉核; 取不到 → 未知 + 原因)
-      var x402v = num(t.payments_in_x402);
-      if (x402v != null) {
-        parts.push(en ? 'via x402 flow: ' + x402v : '其中经 x402 流程 ' + x402v + ' 笔');
-      } else if (tt && tt.configured === true) {
-        var why = xl && typeof xl.reason === 'string' ? xl.reason : '';
-        parts.push(en
-          ? 'via x402 flow: unknown' + (why ? ' (' + why + ')' : '')
-          : '其中经 x402 流程：未知' + (why ? '（' + why + '）' : '（卖方端点台账取不到）'));
-      }
-      // ③ 任务 T 个 (已完成 A / 已退款 B / 争议中 C) —— 全部链上口径
-      if (num(t.tasks) != null) {
-        var sub = [];
-        if (num(t.tasks_completed) != null) sub.push((en ? 'completed ' : '已完成 ') + t.tasks_completed);
-        if (num(t.tasks_refunded) != null) sub.push((en ? 'refunded ' : '已退款 ') + t.tasks_refunded);
-        if (num(t.tasks_disputed) != null) sub.push((en ? 'disputed ' : '争议中 ') + t.tasks_disputed);
-        if (num(t.tasks_settled) != null) sub.push((en ? 'released ' : '已释放 ') + t.tasks_settled);
-        parts.push((en ? 'tasks: ' + t.tasks : '任务 ' + t.tasks + ' 个') + (sub.length ? (en ? ' (' + sub.join(' / ') + ')' : '（' + sub.join(' / ') + '）') : ''));
-      }
-      // ④ 覆盖口径 + 起止块 + 落后多少块 (链上索引自己说的)
-      if (isc) {
-        var cov = pickBi(isc.coverage);
-        if (cov) parts.push(cov);
-        var fb = num(isc.from_block);
-        var lb = num(isc.last_scanned_block);
-        if (fb != null && lb != null) {
-          var range = en ? 'index range ' + fb + ' → ' + lb : '索引起止 ' + fb + ' → ' + lb;
-          var lag = num(isc.lag_blocks);
-          var live = num(isc.head_block_live);
-          if (lag != null && live != null) range += en ? ' · ' + lag + ' blocks behind head ' + live + ' (read at export time)' : ' · 落后真链 head ' + live + ' ' + lag + ' 块（读于导出时刻）';
-          else range += en ? ' · live head not read → lag unknown' : ' · 真链 head 未读到 → 落后块数未知';
-          parts.push(range);
-        }
-      }
-      // ⑤ ★ 2026-09-29 付款方身份 (**链下登记**, 不是链上事实) —— 只报「几行带已验签的付款方身份」。
-      //   为什么必须就近标「链下登记」: 这一句和上面四段 (链上转入/任务/索引起止) 同处一行,
-      //   不标就会被读成链上事实 (它是本机绑定库在加载时重验后的**短写名字**)。
-      //   0 行也要说清是哪种 0 (库空 / 有库但本轮没匹配上 / 库读不到 —— 后者带 reason)。
-      var ps = view.payerScope;
-      if (ps) {
-        var piN = num(ps.rows_with_identity);
-        var piV = num(ps.verified);
-        if (piN != null && piN > 0) {
-          parts.push(en
-            ? 'payer identity: ' + piN + ' row(s) from off-chain registration (verifiable offline)'
-            : '付款方身份 ' + piN + ' 行（链下登记·可离线验签）');
-        } else if (piV != null && piV > 0) {
-          parts.push(en
-            ? 'payer identity: 0 rows matched (' + piV + ' verified registration(s) on this node)'
-            : '付款方身份 0 行匹配（本机登记库有 ' + piV + ' 条已验签）');
-        } else {
-          var why = typeof ps.reason === 'string' && ps.reason ? '（' + ps.reason.slice(0, 80) + '）' : '';
-          parts.push(en
-            ? 'payer identity: none — no verified registration on this node' + (why ? ' (' + why + ')' : '')
-            : '付款方身份：本机没有已验签的登记' + why);
-        }
-      }
-      if (!parts.length) {
-        text(el.chainLine, '');
-        if (el.chainLine.setAttribute) el.chainLine.setAttribute('hidden', '');
-        return;
-      }
-      text(el.chainLine, parts.join(' · '));
-      if (el.chainLine.removeAttribute) el.chainLine.removeAttribute('hidden');
     }
 
     /**
@@ -1513,21 +1416,19 @@ var BOLLOON_IPNS = (function () {
     function clearData() {
       view.payload = null; view.snapAt = 0; view.rows = []; view.actSource = ''; view.rawFeed = []; view.notes = []; view.sites = []; view.tasks = []; view.sourceKind = null;
       view.actTotals = null; view.chainScope = null; view.totalsScope = null; view.totalsFields = null;
-      view.transferTotals = null; view.x402Ledger = null; view.indexScope = null;
       view.tasksPage = 0;    // 快照读不到 → 页码归零 (分栏偏好是读者的选择, 保留)
       view.actPage = 0;      // 同上: 活动表页码归零 (没有行可翻时不留着一个越界的页码)
       text(el.nodes, '—'); text(el.agents, '—'); text(el.active, '—'); text(el.h24, '—');
       setOptCount(el.tasks, null); setOptCount(el.tasksCompleted, null); setOptCount(el.tasksVerified, null);
       setOptCount(el.tasksSettled, null);
-      // 2026-09-29: 新增的链上计数 + 合计金额 + 口径句一起清 (读不到快照时不留上一份的旧数)
+      // 2026-09-29: 新增的链上计数 + 合计金额一起清 (读不到快照时不留上一份的旧数)
       setOptCount(el.tasksRefunded, null); setOptCount(el.tasksDisputed, null);
       setOptCount(el.paymentsIn, null); setOptCount(el.paymentsX402, null);
       if (el.paymentTotal) text(el.paymentTotal, '');
-      if (el.chainLine) { text(el.chainLine, ''); if (el.chainLine.setAttribute) el.chainLine.setAttribute('hidden', ''); }
       setOptCount(el.signatures, null);
       renderScopeTags();
       text(el.snapTime, '—'); text(el.snapAgo, ''); text(el.snapAge, '');
-      renderActivity(); renderActivityTx(); renderActivityTotals(); renderChainLine(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderScope();
+      renderActivity(); renderActivityTx(); renderActivityTotals(); renderFeed(); renderNotes(); renderSites(); renderTasks(); renderScope();
     }
 
     function applyPayload(payload, state, kind) {
@@ -1608,17 +1509,9 @@ var BOLLOON_IPNS = (function () {
       view.chainScope = (cis && typeof cis === 'object') ? cis : null;
       var ts = payload.totals_scope;
       view.totalsScope = (ts && typeof ts === 'object') ? ts : null;
-      // ★ 2026-09-29: 链上转入分桶 / x402 台账取数状态 / 覆盖口径 (起止块 · 落后多少块)
-      //   —— 三块都只读快照; 缺哪块就不说哪块 (老快照没有 → null → 那一句不出现)
-      var tt = payload.transfer_totals;
-      view.transferTotals = (tt && typeof tt === 'object') ? tt : null;
-      var xl = payload.x402_ledger;
-      view.x402Ledger = (xl && typeof xl === 'object') ? xl : null;
-      var isc = payload.index_scope;
-      view.indexScope = (isc && typeof isc === 'object') ? isc : null;
-      // ★ 2026-09-29 付款方身份的**取数口径** (链下登记): 只读快照; 缺 (老快照) → null → 那句话不出现
-      var pis = payload.payer_identity_scope;
-      view.payerScope = (pis && typeof pis === 'object') ? pis : null;
+      // 2026-09-29: 原来在 totals_scope 之后还要解析 transfer_totals / x402_ledger / index_scope /
+      //   payer_identity_scope —— 那四块的**唯一**消费者是已撤下的可见口径句 ⇒ 连同解析一起撤。
+      //   快照里这四个字段**一个都没删** (机器面仍可核: 覆盖口径 / 索引起止 / 落后块数 / 付款方身份行数)。
       // ★ 逐字段口径 (2026-09-24): 快照没给 (老快照) → null → 页面不写任何口径标记、也不编
       view.totalsFields = (ts && typeof ts === 'object' && ts.fields && typeof ts.fields === 'object') ? ts.fields : null;
       // 活动流: 与 kind 无关 —— 只认服务端 text {zh,en} (新 kind 直用后端文案, 前端不再造一套)。
@@ -1697,7 +1590,6 @@ var BOLLOON_IPNS = (function () {
       }
       setFieldCount(el.tasksVerified, t.tasks_verified, fieldScopeOf(tf, 'tasks_verified'));
       setFieldCount(el.signatures, t.signatures, fieldScopeOf(tf, 'signatures'));
-      renderChainLine();
       renderScopeTags();
       renderSnapTime();
       setState(state);

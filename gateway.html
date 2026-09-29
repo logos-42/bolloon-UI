@@ -171,18 +171,28 @@
     <li><b data-pulse-total="payments_in_x402">—</b><span data-zh="其中经 x402 流程" data-en="via x402 flow">其中经 x402 流程</span><i class="pulse-scope-tag" data-pulse-scope-tag="payments_in_x402"></i></li>
   </ul>
 
-  <!-- ★ 一行的口径句 (2026-09-29 leo:「顶部计数合并到同一区, 一行说清 … 口径与索引起止块 + 落后块数
-       照旧写在同区」): 由 app.js 用快照字段拼 (数字全部取快照, 前端不自己数), 内容 =
-       链上转入 N 笔 · 合计 X USDC · 其中经 x402 流程 M 笔(或「未知 + 原因」) · 任务 T 个
-       (已完成 A / 已退款 B / 争议中 C) · 本索引覆盖什么 + 起止块 + 落后多少块。
-       一句话里既有数又有口径 —— 这是这一区**唯一**允许出现的解释文案 (不写「收入/成交额」这种词)。 -->
-  <p class="pulse-chain-line" data-pulse-chain-line hidden></p>
+  <!-- ★ 2026-09-29: **一行的口径句整段从 UI 撤下** (leo 逐字:「这段信息不用出现在 UI 里面」)。
+       撤掉的那个元素 = 原来那条挂在 pulse-chain-line 类上、由 data-pulse 钩子驱动的一行 <p>
+       (app.js 的 renderChainLine() 把「链上转入 N 笔(合计 X) · 其中经 x402 流程 M 笔 · 任务 T 个
+       (已完成…/已退款…/争议中…) · 本索引覆盖 Base 主网…的全部交互 · 索引起止 from → to ·
+       落后真链 head H L 块 · 付款方身份 N 行」拼成一句; 那个渲染函数与那个钩子已一并从 app.js 删除 ——
+       本文件里连属性名都不再出现, 好让「它确实不在」能被一条 grep 直接查)。
+       **不是**因为那几个数不重要, 而是因为那一句把 7 个数的口径、覆盖范围、索引起止/落后块数、
+       以及「链下登记」的付款方身份全塞进同一条 200+ 字的句子 ⇒ 读者读到的是「一段解释」而不是「一屏数字」。
+       撤下后**一个链上数字都没改口径、没改小**(计数格 / 表格 / 类型列 / 金额列 / 付款方短名全部照旧),
+       诚实性改由这三处承接 (每一处都由 scripts/verify-site.mjs 钉住):
+         ① 每个数**就近**带自己的口径短标记 (i.pulse-scope-tag ← 快照 totals_scope.fields[*].short);
+         ② 付款行悬停 title 仍写「链下登记(地址↔DID 双侧签名的声明, 可离线验签) —— 不是链上事实」(app.js 写);
+         ③ 覆盖口径 / 索引起止 / 落后块数 / 付款方身份口径 **仍在快照里逐字段可核**
+            (network-pulse.json 的 index_scope · payer_identity_scope · totals_scope · transfer_totals
+             —— 机器面一个字段都没删, 任何人仍可自己读 JSON 核口径)。 -->
 
   <!-- 作用域短标记 (2026-09-23 立 / 2026-09-24 细到每个数 / 2026-09-29 改口径):
        统计区现在**只有链上交互** (本机 24h 指标已整排下线) ⇒ 这一行不再是「观察窗口 24h」,
        而是这一区的**链上口径**: 「链上索引 · 全量 · 逐行可核验」。每个数各自的来源仍由上面每项
-       自带的 pulse-scope-tag 就近标注 (链上索引·全量 / 经 x402 台账 / 未接入);
-       完整覆盖口径 (覆盖什么 · 起止块 · 落后多少块) 由上面那行口径句 data-pulse-chain-line 承担。 -->
+       自带的 pulse-scope-tag 就近标注 (链上索引·全量 / 经 x402 台账 / 未接入)。
+       2026-09-29 起, 完整的覆盖口径 (覆盖什么 · 起止块 · 落后多少块) **页面上不再复述** ——
+       它是机器面字段 (快照 index_scope), 不再由 UI 承接。 -->
   <p class="pulse-caveat" data-zh="链上索引 · 全量 · 逐行可核验" data-en="chain index · whole · every row verifiable">链上索引 · 全量 · 逐行可核验</p>
 
   <!-- 待接单任务 (2026-09-23 / 2026-09-24): 快照 open_tasks[] = 本节点公告板上**未认领且未过期**的公告。
@@ -229,6 +239,13 @@
        口径行 (本表下方那两行: 行数/不同任务 + 合计口径) 仍留在**框外**下方 —— 它们是「这批行算什么」的诚实标记,
        不许跟着行一起被滚走. -->
   <div class="pulse-table-wrap">
+    <!-- ★ 2026-09-29 区块小标题 (极短小字): 那条 200+ 字的可见口径句撤下后, 「哪些是链上事实 /
+         哪些属于链下登记」这条分界由这一行**极短标记**就地承接, 不写成整段解释。
+         它刻意**放在表框外面** (.pulse-table-scroll 的兄弟节点) —— 表框高度按「caption + 表头 +
+         十五行」量死 (--pulse-activity-h), 往里塞字会把那条高度等式顶开。
+         它是静态文案 (不来自快照、也不替快照说话): 「链上事实」= 这张表里的行都是链上事实,
+         「含链下登记」= 付款行那个付款方名不是链上事实 (悬停 title 里写全)。 -->
+    <p class="pulse-table-note" data-zh="链上事实 · 含链下登记" data-en="on-chain facts · off-chain registration included">链上事实 · 含链下登记</p>
     <div class="pulse-table-scroll" data-pulse-activity-scroll>
       <table class="pulse-table" data-pulse-activity>
         <caption class="pulse-table-cap" data-zh="已确认的链上交互（任务事件 + 地址集内 USDC 转账 · 逐行可核验）" data-en="Confirmed on-chain interactions (task events + USDC transfers in the watched address set · every row verifiable)">已确认的链上交互（任务事件 + 地址集内 USDC 转账 · 逐行可核验）</caption>

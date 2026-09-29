@@ -292,7 +292,18 @@ const pulseProbe = (rootSel) => `(() => {
     paymentsIn: t('[data-pulse-total="payments_in"]'),
     paymentsX402: t('[data-pulse-total="payments_in_x402"]'),
     paymentTotal: t('[data-pulse-payment-total]'),
-    chainLine: t('[data-pulse-chain-line]'),
+    // ★ 2026-09-29: 那条**可见口径句** (data-pulse-chain-line) 已被产品决定从 UI 撤下
+    //   (leo 逐字:「这段信息不用出现在 UI 里面」) ⇒ 探针从「量那一行写了什么」改成「量它确实不在」:
+    //   元素不存在 + **页面真渲染出来的文本**里搜不到那段特征串 (不是只看某个元素, 是整页 innerText)。
+    //   数字与表格一行没动 —— 「数字仍在」由下面 [6e] 的链上计数同源断言承接。
+    chainLineGone: (function () {
+      const has = !!q('[data-pulse-chain-line]');
+      const txt = document.body.innerText || '';
+      return { el: has,
+        coverage: /本索引覆盖|This index covers/.test(txt),
+        lag: /落后真链 head|blocks behind head/.test(txt),
+        range: /索引起止|index range/.test(txt) };
+    })(),
     signatures: t('[data-pulse-total="signatures"]'),
     tasksHidden: { tasks: hid('tasks'), done: hid('tasks_completed'), settled: hid('tasks_settled'), verified: hid('tasks_verified'), sig: hid('signatures'),
       refunded: hid('tasks_refunded'), disputed: hid('tasks_disputed'), paymentsIn: hid('payments_in'), paymentsX402: hid('payments_in_x402') },
@@ -476,6 +487,10 @@ const KILLED_PROSE = [
   '观察窗口内计数', 'counts within the observation window',
   '不是数据丢了', 'not lost data', '另一套口径',
   '链上数据源：', 'on-chain data source:',
+  // ★ 2026-09-29: 那条**可见口径句** (data-pulse-chain-line) 被产品决定整段撤下后, 它的两段特征串
+  //   进「不许回来的长文案」名单 —— 撤下的是那段解释, 不是数据; 一旦有人把整句塞回可见文案, 门当场判红。
+  //   (覆盖口径 / 索引起止 / 落后块数仍在快照 index_scope 里逐字段可核, 由 [6e] 的两条形状门钉着。)
+  '本索引覆盖', '落后真链 head',
   '列表为空', 'list means none were published',
   '没有 did', 'no did', '没有 peerid', 'no peerid',
 ];
@@ -2342,27 +2357,63 @@ async function main() {
     JSON.stringify({ rows: real.act.rowCount, tasks: real.tasks, stats: realMarks.stats, table: realMarks.table }));
   check('★ 真快照: 脉冲区文案不写整句、且都在长度上限内 (口径行/数据源行/caveat) —— 长解释删掉后页面不靠新长句补回来',
     proseBudgetOk(real).length === 0, JSON.stringify(proseBudgetOk(real)));
-  // ★ 2026-09-29 新增 (这条抓到过一个真 bug): 那一行**链上口径句** (data-pulse-chain-line) 里的数字
-  //   必须真取到快照 —— 不是「拼出来就算」:
-  //     ① 「链上转入 N 笔（合计 X USDC）」= transfer_totals 真值;
-  //     ② 「其中经 x402 流程 M 笔」+「任务 T 个(已完成…/已退款…/争议中…/已释放…)」= totals 同源值;
-  //     ③ 「索引起止 from → to」= index_scope 真值。
-  //   真踩到的 bug (2026-09-29): 渲染函数读的是 `view.totals` —— 那个键**从来没被赋值** ⇒ 该函数里
-  //   `t = {}` ⇒ ② 段永远走「未知 + 原因」分支、③ 段整段消失 (快照明明给了 `payments_in_x402=2` /
-  //   `tasks=5`)。门当场判红 → 修法 = 读 `payload.totals` (页面不再读一个不存在的键)。
-  //   快照缺哪块就不要求哪块 (老快照 / 降级态), 但**给了就必须用上**。
-  const cl = real.chainLine || '';
+  // ★ 2026-09-29 (产品决定, 不是放宽门): **那条可见口径句 (data-pulse-chain-line) 整段从 UI 撤下**
+  //   —— leo 逐字:「这段信息不用出现在 UI 里面」。撤下的是把 7 个数的口径 + 覆盖范围 + 索引起止 +
+  //   落后块数 + 付款方身份行数全塞进一句的那条 200+ 字长句。**为什么这不叫放宽门**:
+  //     ① 链上数字一个没改口径、没改小: 计数格 / 表格 / 类型列 / 金额列 / 付款方短名全部照旧,
+  //        它们各自的同源断言 (顶部计数 = activity_totals · 表行数 = 快照行数 · 付款行短写) 一条没动;
+  //     ② 撤的是**一段解释**, 不是数据 —— 覆盖口径 / 索引起止 / 落后块数 / 付款方身份口径
+  //        **仍在快照里逐字段可核**, 下面新增两条门钉住那两块字段仍在且形状合法 (机器面不许被连坐删掉);
+  //     ③ 「这行必须存在」类断言删掉, 换成**更强**的三条: 元素必须不在 + 整页真渲染文本里搜不到那段
+  //        特征串 + 撤句后 7 个链上数字一个不少 (逐格与快照同源)。其余门一条没动。
   const rtt = (realObj && realObj.transfer_totals) || {};
   const rtot = (realObj && realObj.totals) || {};
   const ris = (realObj && realObj.index_scope) || {};
-  const clWant = [];
-  if (rtt.configured === true && typeof rtt.inbound === 'number') clWant.push('链上转入 ' + rtt.inbound + ' 笔');
-  if (typeof rtot.payments_in_x402 === 'number') clWant.push('其中经 x402 流程 ' + rtot.payments_in_x402 + ' 笔');
-  if (typeof rtot.tasks === 'number') clWant.push('任务 ' + rtot.tasks + ' 个');
-  if (typeof ris.from_block === 'number' && typeof ris.last_scanned_block === 'number') clWant.push('索引起止 ' + ris.from_block + ' → ' + ris.last_scanned_block);
-  check(`★ 真快照: 链上口径句里的数字真取到快照 (${clWant.join(' · ')}), 不是拼了就算/不是拿「未知」顶真值`,
-    clWant.length >= 3 && clWant.every((s) => cl.includes(s)),
-    JSON.stringify({ line: cl.slice(0, 220), want: clWant }));
+  const clGone = real.chainLineGone || null;
+  check('★ 真快照: 那条可见口径句 (data-pulse-chain-line) 已从 UI 撤下 —— 页面上不再有这个元素',
+    !!clGone && clGone.el === false, JSON.stringify(clGone));
+  check('★ 真快照: 整页真渲染文本里搜不到那段口径句的特征串 (「本索引覆盖…」/「落后真链 head」/「索引起止」)',
+    !!clGone && !clGone.coverage && !clGone.lag && !clGone.range, JSON.stringify(clGone));
+  // 再钉一层 (静态面): 交付出去的 gateway.html 里连那个钩子名都不再出现 —— 「它确实不在」不靠 DOM 一条腿。
+  check('★ 网关页静态 HTML 里 chain-line 钩子的出现次数 = 0 (连注释里都没有这个属性名, 「撤下了」可以直接 grep 复核)',
+    (gwHtml.match(/data-pulse-chain-line/g) || []).length === 0,
+    `出现 ${(gwHtml.match(/data-pulse-chain-line/g) || []).length} 次`);
+  check('★ app.js 源码里 chain-line 钩子与那个渲染函数都不再出现 (页面不再有任何代码路径能画出那句口径)',
+    !/data-pulse-chain-line/.test(appSrc) && !/renderChainLine/.test(appSrc),
+    JSON.stringify({ hook: /data-pulse-chain-line/.test(appSrc), fn: /renderChainLine/.test(appSrc) }));
+  const clNumPairs = [
+    ['链上转入', real.paymentsIn, rtot.payments_in],
+    ['其中经 x402', real.paymentsX402, rtot.payments_in_x402],
+    ['任务', real.tasks, rtot.tasks],
+    ['已完成', real.tasksDone, rtot.tasks_completed],
+    ['已释放', real.tasksSettled, rtot.tasks_settled],
+    ['已退款', real.tasksRefunded, rtot.tasks_refunded],
+    ['争议中', real.tasksDisputed, rtot.tasks_disputed],
+  ].filter(([, dom, snap]) => typeof snap === 'number');
+  check(`★ 真快照: 撤掉整句后**链上数字一个不少** —— 计数行里 ${clNumPairs.length} 个链上计数仍逐格与快照同源 (${clNumPairs.map(([k, d]) => k + ' ' + d).join(' · ')}) + 「链上转入」那格仍带合计金额 ${String(real.paymentTotal).trim()}`,
+    real.state === 'live' && clNumPairs.length >= 6 && clNumPairs.every(([, dom, snap]) => dom === String(snap)) &&
+    /USDC/.test(String(real.paymentTotal)) && String(real.paymentTotal).includes(String(rtot.payments_in_total_usdc || '')),
+    JSON.stringify({ dom: clNumPairs.map(([k, d]) => k + '=' + d), snap: clNumPairs.map(([k, , s]) => k + '=' + s), total: real.paymentTotal }));
+  // 快照机器面: 口径撤出 UI **不等于**口径没了 —— 这两块字段必须仍在且形状合法 (任何人读 network-pulse.json 都能核)
+  const risShape = !!ris && typeof ris === 'object' &&
+    typeof ris.from_block === 'number' && typeof ris.last_scanned_block === 'number' &&
+    !!ris.coverage && typeof ris.coverage.zh === 'string' && typeof ris.coverage.en === 'string' &&
+    (typeof ris.lag_blocks === 'number' || typeof ris.head_block_live === 'number');
+  check('★ 快照机器面没被连坐删掉: index_scope 仍在且形状合法 (coverage 中英双语 + from_block/last_scanned_block 是数 + 落后块数/head 至少给一个) —— 覆盖口径与索引起止仍可从 JSON 核',
+    risShape, JSON.stringify(ris).slice(0, 320));
+  const rpis2 = (realObj && realObj.payer_identity_scope) || null;
+  const rpisShape = !!rpis2 && typeof rpis2 === 'object' &&
+    typeof rpis2.rows_with_identity === 'number' && typeof rpis2.verified === 'number' &&
+    typeof rpis2.loaded === 'number' && rpis2.source === 'off-chain-signed' &&
+    !!rpis2.label && typeof rpis2.label.zh === 'string' && typeof rpis2.label.en === 'string';
+  check('★ 快照机器面没被连坐删掉: payer_identity_scope 仍在且形状合法 (rows_with_identity/verified/loaded 是数 + source=off-chain-signed + label 中英双语) —— 「链下登记」的口径仍可从 JSON 核',
+    rpisShape, JSON.stringify(rpis2).slice(0, 320));
+  // 三件套最后一件: 撤句后「这批行算什么」仍就近可读 —— 统计区那条极短口径标记必须还在 (见上面 caveat 断言),
+  //   表区新加的区块小标题「链上事实 · 含链下登记」必须真渲染出来 (静态文案, 不来自快照)。
+  const tblNote = await evalJs(`(() => { const n = document.querySelector('#pulse .pulse-table-note'); return n ? { text: n.textContent.trim(), vis: getComputedStyle(n).display !== 'none' } : null; })()`);
+  check('★ 真快照: 表区区块小标题仍就近说着「链上事实 · 含链下登记」(整句撤下后的极短承接, 只有 8 个字 · 不是整段)',
+    !!tblNote && tblNote.vis === true && tblNote.text === '链上事实 · 含链下登记',
+    JSON.stringify(tblNote));
 
   // ★ 2026-09-29 第四段: 付款方智能体名 (`payer_identity`) —— **链下登记**短写。
   //   验的是三件事 (快照给了就**必须**显示, 但不许显示超过快照给的东西):
@@ -2382,6 +2433,7 @@ async function main() {
       return { n: els.length, texts: els.map((e) => e.textContent),
         dids: els.map((e) => e.getAttribute('data-payer-did') || ''),
         attrs: els.map((e) => e.getAttribute('data-payer') || ''),
+        titles: els.map((e) => e.getAttribute('title') || ''),
         srcs: els.map((e) => e.getAttribute('data-payer-source') || '') };
     })()`);
     check(`★ 真快照: 付款行的**付款方智能体名**真渲染出来 (快照 ${rpiRows.length} 行带已验签身份 → 页面上 ${(piDom && piDom.n) || 0} 个 .pulse-payer-word)`,
@@ -2396,9 +2448,15 @@ async function main() {
       piDom.srcs.every((s) => s === 'off-chain-signed') &&
       piDom.dids.every((d) => !/did:/i.test(d) && !/^0x/i.test(d)),
       JSON.stringify(piDom));
-    check(`★ 真快照: 链上口径句就地标了「链下登记」(不与链上事实混为一类表述) —— 实测句: ${JSON.stringify(cl.slice(-120))}`,
-      cl.includes('链下登记') && cl.includes('付款方身份'),
-      JSON.stringify({ line: cl.slice(0, 260) }));
+    // ★ 2026-09-29: 那条整句口径 (data-pulse-chain-line) 撤下后, 「付款方名来自**链下登记**、
+    //   不是链上事实」这条**就近提示**改由付款行自己的悬停 title 承担 —— 原来这条断言查的是那条已撤下的句子,
+    //   现在换成查 title。**判据不降**: 仍要求同时出现「链下登记」「可离线验签」「不是链上事实」三个短语,
+    //   且每个名字仍带 data-payer-source=off-chain-signed (就地标记一个字都没少)。
+    const piTitles = (piDom && piDom.titles) || [];
+    check(`★ 真快照: 付款行的**悬停提示**仍写「链下登记(可离线验签) —— 不是链上事实」(整句撤下后这条就近提示不许跟着消失 · 实测 ${piTitles.length} 条 title)`,
+      piTitles.length >= 1 && piTitles.every((t) => /链下登记/.test(t) && /可离线验签/.test(t) && /不是链上事实/.test(t)) &&
+      (piDom.srcs || []).every((s) => s === 'off-chain-signed'),
+      JSON.stringify({ titles: piTitles, srcs: piDom && piDom.srcs }));
   }
 
   // ⑥‴★★★ 同一概念不变量门 (2026-09-24 leo:「数量怎么对不上, 尤其是后面的任务和钱包」):

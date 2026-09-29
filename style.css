@@ -564,9 +564,14 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 /* ① 小结行里「链上转入」那格的合计金额 (跟随数字的字重, 但不抢主数字) */
 .pulse-amount { font-family: var(--mono); font-style: normal; font-size: 11px; letter-spacing: 0.4px; color: var(--ink-3); }
 .pulse-amount:empty { display: none; }
-/* ② 一行口径句 (覆盖什么 · 起止块 · 落后多少块): 与口径行同一套视觉, 只是更靠上、紧贴计数行 */
-.pulse-chain-line { border-left: 2px solid var(--lime-deep); padding-left: 12px; margin: 2px 0 14px; font-family: var(--mono); font-size: 11.5px; line-height: 1.7; color: var(--ink-3); max-width: 62em; }
-.pulse-chain-line[hidden] { display: none; }
+/* ② (2026-09-29 撤下: 原来这里有一行可见口径句 .pulse-chain-line —— leo「这段信息不用出现在 UI 里面」。
+     撤掉的是那条 200+ 字的整句; 口径改由「每格就近短标记 + 付款行悬停 title + 快照机器面字段」承接。
+     原来那两条规则 (.pulse-chain-line / [hidden]) 一并删掉, 不留死样式。) */
+/* ②′ 区块小标题 (2026-09-29 新增): 表框外面那一行极短小字「链上事实 · 含链下登记」——
+     与口径行同一套视觉语言 (左边一条 lime 短竖线 + mono 小字), 但只有 8 个字, 不成句、不复述整段。
+     刻意放在 .pulse-table-scroll **外面**: 表框高度按「caption + 表头 + 十五行」量死 (--pulse-activity-h),
+     往里塞字会顶破那条高度等式 (由 verify-site.mjs 的 [15] 门量着)。 */
+.pulse-table-note { margin: 0 0 10px; border-left: 2px solid var(--lime-deep); padding-left: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2px; line-height: 1.6; color: var(--ink-3); }
 /* ③ 表里新增的两列: 类型 (任务/付款) 与 金额 (付款行 = USDC; 任务行没有就 —) */
 .pulse-td-type, .pulse-td-amount { white-space: nowrap; }
 .pulse-td-amount { font-family: var(--mono); font-size: 11.5px; }
