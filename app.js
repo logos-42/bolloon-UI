@@ -1028,7 +1028,12 @@ var BOLLOON_IPNS = (function () {
     function renderChainLine() {
       if (!el.chainLine) return;
       var en = lang() === 'en';
-      var t = view.totals || {};
+      // ★ 2026-09-29 修 (线上真 bug, 门当场判红): 这里原来读 `var t = view.totals` —— `view` 字面量里
+      //   **根本没有 `totals` 这个键**, 也没人在别处赋值 ⇒ `t` 恒为 `{}` ⇒ 这句话里的
+      //   「其中经 x402 流程 M 笔」**永远走「未知 + 原因」分支**、「任务 T 个 (已完成…/已退款…/争议中…)」
+      //   **整段消失** —— 而同一份快照明明给了 `payments_in_x402` / `tasks` (计数格里那两个数也真显示出来了,
+      //   因为那条路径读的是 `payload.totals`)。快照是唯一来源 ⇒ 这里也读快照 (view.payload 就是它)。
+      var t = (view.payload && view.payload.totals) || {};
       var tt = view.transferTotals;
       var xl = view.x402Ledger;
       var isc = view.indexScope;

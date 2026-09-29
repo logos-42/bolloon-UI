@@ -2342,6 +2342,27 @@ async function main() {
     JSON.stringify({ rows: real.act.rowCount, tasks: real.tasks, stats: realMarks.stats, table: realMarks.table }));
   check('★ 真快照: 脉冲区文案不写整句、且都在长度上限内 (口径行/数据源行/caveat) —— 长解释删掉后页面不靠新长句补回来',
     proseBudgetOk(real).length === 0, JSON.stringify(proseBudgetOk(real)));
+  // ★ 2026-09-29 新增 (这条抓到过一个真 bug): 那一行**链上口径句** (data-pulse-chain-line) 里的数字
+  //   必须真取到快照 —— 不是「拼出来就算」:
+  //     ① 「链上转入 N 笔（合计 X USDC）」= transfer_totals 真值;
+  //     ② 「其中经 x402 流程 M 笔」+「任务 T 个(已完成…/已退款…/争议中…/已释放…)」= totals 同源值;
+  //     ③ 「索引起止 from → to」= index_scope 真值。
+  //   真踩到的 bug (2026-09-29): 渲染函数读的是 `view.totals` —— 那个键**从来没被赋值** ⇒ 该函数里
+  //   `t = {}` ⇒ ② 段永远走「未知 + 原因」分支、③ 段整段消失 (快照明明给了 `payments_in_x402=2` /
+  //   `tasks=5`)。门当场判红 → 修法 = 读 `payload.totals` (页面不再读一个不存在的键)。
+  //   快照缺哪块就不要求哪块 (老快照 / 降级态), 但**给了就必须用上**。
+  const cl = real.chainLine || '';
+  const rtt = (realObj && realObj.transfer_totals) || {};
+  const rtot = (realObj && realObj.totals) || {};
+  const ris = (realObj && realObj.index_scope) || {};
+  const clWant = [];
+  if (rtt.configured === true && typeof rtt.inbound === 'number') clWant.push('链上转入 ' + rtt.inbound + ' 笔');
+  if (typeof rtot.payments_in_x402 === 'number') clWant.push('其中经 x402 流程 ' + rtot.payments_in_x402 + ' 笔');
+  if (typeof rtot.tasks === 'number') clWant.push('任务 ' + rtot.tasks + ' 个');
+  if (typeof ris.from_block === 'number' && typeof ris.last_scanned_block === 'number') clWant.push('索引起止 ' + ris.from_block + ' → ' + ris.last_scanned_block);
+  check(`★ 真快照: 链上口径句里的数字真取到快照 (${clWant.join(' · ')}), 不是拼了就算/不是拿「未知」顶真值`,
+    clWant.length >= 3 && clWant.every((s) => cl.includes(s)),
+    JSON.stringify({ line: cl.slice(0, 220), want: clWant }));
 
   // ⑥‴★★★ 同一概念不变量门 (2026-09-24 leo:「数量怎么对不上, 尤其是后面的任务和钱包」):
   //   验收对象 = **页面真渲染出来的字**: 顶部「任务/已完成/已结算」与同屏表格里的同概念数必须相等。
