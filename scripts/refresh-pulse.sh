@@ -86,7 +86,10 @@ python3 "$UI_REPO/scripts/pulse-privacy-check.py" "$OUT"
 
 python3 scripts/deploy-pages.py 2>&1 | tail -3
 
-# 4) 唯一对外通道 = CF Pages (bolloon.pages.dev)。备案主机 (阿里云 ECS /var/www/bolloon.cn) **不在验收范围** ——
+# 4) 唯一对外通道 = CF Pages (bolloon.pages.dev / 自定义域 bolloon.cn)。备案主机 (阿里云 ECS /var/www/bolloon.cn)
+#    **已退役 (2026-09-30)**: bolloon.cn/www 现由 Cloudflare 直接承载(解析 104.21.94.53 / 172.67.220.37,
+#    响应头 server=cloudflare + cf-ray), 那份静态拷贝已无 DNS 指向 = 孤儿副本, 且 refresh-pulse-cron.sh 里的
+#    同步块已删除 ⇒ **别再把它当第二条通道**
 #    2026-09-24 leo 拍板「bolloon.pages.dev 的更新就行」, 故这里不做第二条 rsync (它的目标/凭据也不该落进仓库)。
 #    别再往这个脚本里加第二通道: 一次刷新只认一个「已发布」, 免得又出现「A 通道新、B 通道旧」的假绿。
 
