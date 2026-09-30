@@ -82,11 +82,20 @@ def mirror() -> list[pathlib.Path]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-deploy", action="store_true", help="只生成 build-site/")
+    ap.add_argument("--allow-no-apk", action="store_true",
+                    help="dl/ 为空时也允许部署（默认拒：一次没有 dl/ 的部署会把这个站点的 APK 镜像整个抹掉）")
     args = ap.parse_args()
 
-    mirror()
+    apks = mirror()
     if args.no_deploy:
         return 0
+
+    # 2026-09-30 事故: 另一次并行 session 用别的方式部署过一次**不含 dl/** 的站点 → 它成了
+    #   canonical 部署 ⇒ 站点主按钮 (bolloon.cn/dl/*.apk) 直接 404、install.html 也回退到旧版。
+    #   CF Pages 每次部署都是**整站快照**，所以「没有 dl/」= 把镜像删掉，不是「不改动它」。
+    if not apks and not args.allow_no_apk:
+        sys.exit("[deploy-pages] 拒绝部署: dl/ 里没有 .apk —— 本次部署会让站点失去同域镜像"
+                 "（主按钮 404）。先放一份 APK 进 dl/，或确属有意为之再加 --allow-no-apk。")
 
     exe = shutil.which("wrangler") or shutil.which("wrangler.cmd")
     if not exe:
