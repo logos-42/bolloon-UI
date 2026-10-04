@@ -40,7 +40,7 @@
  *      并带阴性对照 (把这一格塞回页面 → 必红, 见 docs/wiki/log.md)。
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=36 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=37 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -2091,7 +2091,8 @@ async function main() {
   await cdp('Emulation.setEmulatedMedia', { features: [] });
 
   // 手机宽度: 小结行纵向堆叠 + 表格在容器里横向滚动 (且表格不贡献页面横向溢出)
-  // 注: 390px 下页面本身有 ~155px 横向溢出, 但那是顶栏 (nav-menu / mast-meta) 的老问题,
+  // 注: 390px 下顶栏曾长期横向溢出 ~155px (nav-menu / mast-meta 挤不进一行), 2026-10-01 已收口:
+//     手机断点让版本徽标让位 + 缩字号字距 ⇒ 顶栏不再贡献横向溢出, 下面 [12b] 真量它。
   //     与活动表无关 —— 这里用「把表格藏起来前后, 页面溢出不变」把责任划清。
   await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await sleep(350);
@@ -3369,17 +3370,59 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=36 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=36 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=37 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  // ★ 站内锚点全解析 (2026-10-01): 门以前只查页面存在, 不管 #锚点是否真有落点 ——
+  //   实测漏掉过 4 个悬空链接(导航下拉指向 docs.html#quickstart 这种不存在的节)。
+  //   跨页与页内两种都查; 只认 id=, 不认 name=。
+  // ★ 文档页 390 宽: 整页不许横向溢出 (2026-10-01)
+  //   背景: 门原先只在 2094 行注一句「390 下顶栏是老问题」——注掉不算修。
+  //   实测两处真溢出: ① 顶栏 155px(已收口) ② 新命令表 23px(改为框内横滚)。这条门把两者钉住。
+  {
+    await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: false });
+    await cdp('Page.navigate', { url: `${BASE}/docs.html` });
+    await new Promise((r) => setTimeout(r, 1200));
+    const of = await evalJs(`(() => {
+      const de = document.documentElement;
+      const t = document.querySelector('.doc-table.compact');
+      return { vw: window.innerWidth, sw: de.scrollWidth, over: de.scrollWidth - window.innerWidth,
+               tableScrolls: !!t && t.scrollWidth > t.clientWidth };
+    })()`);
+    check(`文档页 390 宽: 整页无横向溢出 (实测 视口 ${of && of.vw} · 内容 ${of && of.sw} · 溢出 ${of && of.over}px)`,
+      !!of && of.vw === 390 && of.over <= 1, JSON.stringify(of));
+    check('文档页 390 宽: 宽表改为框内横滚 (列不被压扁)', !!of && of.tableScrolls === true, JSON.stringify(of));
+    await cdp('Emulation.clearDeviceMetricsOverride');
+  }
+
+  console.log('\n[9c] 站内锚点全解析 (逐页真拉 HTML, 跨页 + 页内两种)');
+  {
+    const idsOf = {};
+    for (const pg of PAGES) {
+      const html = await fetchText(`${BASE}/${pg}`);
+      idsOf[pg] = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((mm) => mm[1]));
+    }
+    const dangling = [];
+    for (const pg of PAGES) {
+      const html = await fetchText(`${BASE}/${pg}`);
+      for (const mm of html.matchAll(/href="(?:([^":#]+\.html))?#([^"]+)"/g)) {
+        const target = mm[1] || pg;
+        if (!idsOf[target]) continue;
+        if (!idsOf[target].has(mm[2])) dangling.push(`${pg} → ${target}#${mm[2]}`);
+      }
+    }
+    check(`站内锚点全部有落点 (逐页查 id= 落点, 悬空 ${new Set(dangling).size} 个)`,
+      dangling.length === 0, JSON.stringify([...new Set(dangling)].slice(0, 8)));
+  }
+
+  console.log('\n[10] 全站资源 ?v=37 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=36');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=37');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=36/.test(html) || !/app\.js\?v=36/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=37/.test(html) || !/app\.js\?v=37/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=36 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=36 + app.js?v=36 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=37 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=37 + app.js?v=37 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):

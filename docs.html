@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-192x192.png" sizes="192x192">
 <link rel="icon" type="image/png" href="icons/favicon-512x512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=36">
+<link rel="stylesheet" href="style.css?v=37">
 </head>
 <body data-page="docs">
 
@@ -54,15 +54,12 @@
       <div class="nav-item has-menu">
         <a href="docs.html" class="is-active" data-zh="文档" data-en="Docs">文档</a>
         <div class="nav-menu">
-          <a href="#stories" data-zh="用户故事" data-en="Stories">用户故事</a>
-          <a href="#getting-started" data-zh="快速开始" data-en="Getting Started">快速开始</a>
-          <a href="#using" data-zh="使用" data-en="Using">使用</a>
-          <a href="#features" data-zh="功能" data-en="Features">功能</a>
-          <a href="#messaging" data-zh="消息平台" data-en="Messaging">消息平台</a>
-          <a href="#integrations" data-zh="集成" data-en="Integrations">集成</a>
-          <a href="#guides" data-zh="指南" data-en="Guides">指南</a>
-          <a href="#developer" data-zh="开发者" data-en="Developer">开发者</a>
-          <a href="#reference" data-zh="参考" data-en="Reference">参考</a>
+          <a href="#start" data-zh="快速开始" data-en="Getting Started">快速开始</a>
+          <a href="#process" data-zh="跑起来之后" data-en="While it runs">跑起来之后</a>
+          <a href="#commands" data-zh="命令" data-en="Commands">命令</a>
+          <a href="#files" data-zh="落盘位置" data-en="Where things live">落盘位置</a>
+          <a href="#limits" data-zh="边界" data-en="Limits">边界</a>
+          <a href="#build" data-zh="构建" data-en="Build">构建</a>
         </div>
       </div>
             <div class="nav-item has-menu">
@@ -87,10 +84,10 @@
 
 <!-- ◆ 文档序厅（配图，不与产品页重复） -->
 <section class="intro doc-intro" id="intro">
-  <div class="intro-inner">
+  <div class="section-head">
     <p class="kicker" data-zh="Documentation · 文档" data-en="Documentation">Documentation · 文档</p>
-    <h1 class="display"><span class="line" data-zh="文档" data-en="Docs">文档</span></h1>
-    <p class="lede" data-zh="把主动权交还给运行它的那台设备。" data-en="Hand the initiative back to the device that runs it.">把主动权交还给运行它的那台设备。</p>
+    <h1 class="display"><span class="line" data-zh="怎么用" data-en="How to use">怎么用</span></h1>
+    <p class="lede doc-lede" data-zh="装好之后只有一件事要做:把目标说清楚。这一页按顺序讲三件事——三步开始、跑起来之后每一步发生了什么、东西落在哪。" data-en="Once it is installed there is only one thing to do: state the goal clearly. This page covers three things in order — three steps to start, what happens at each step while it runs, and where everything lands.">装好之后只有一件事要做:把目标说清楚。这一页按顺序讲三件事——三步开始、跑起来之后每一步发生了什么、东西落在哪。</p>
   </div>
   <figure class="intro-art" aria-hidden="true">
     <img src="fig/thumbnail_157.jpg" alt="" loading="eager">
@@ -100,117 +97,147 @@
 <div class="doc-layout">
   <aside class="sidenav">
     <p class="sidenav-title" data-zh="目录" data-en="Contents">目录</p>
-    <a href="#stories" data-zh="用户故事与使用场景" data-en="User Stories &amp; Use Cases">用户故事与使用场景</a>
-    <a href="#getting-started" data-zh="快速开始" data-en="Getting Started">快速开始</a>
-    <a href="#using" data-zh="使用 Bolloon" data-en="Using Bolloon">使用 Bolloon</a>
-    <a href="#features" data-zh="功能" data-en="Features">功能</a>
-    <a href="#messaging" data-zh="消息平台" data-en="Messaging Platforms">消息平台</a>
-    <a href="#integrations" data-zh="集成" data-en="Integrations">集成</a>
-    <a href="#guides" data-zh="指南与教程" data-en="Guides &amp; Tutorials">指南与教程</a>
-    <a href="#developer" data-zh="开发者指南" data-en="Developer Guide">开发者指南</a>
-    <a href="#reference" data-zh="参考" data-en="Reference">参考</a>
+    <a href="#start" data-zh="1 · 三步开始" data-en="1 · Three steps">1 · 三步开始</a>
+    <a href="#process" data-zh="2 · 跑起来之后发生了什么" data-en="2 · What happens while it runs">2 · 跑起来之后发生了什么</a>
+    <a href="#commands" data-zh="3 · 命令速查" data-en="3 · Command reference">3 · 命令速查</a>
+    <a href="#files" data-zh="4 · 东西落在哪" data-en="4 · Where things live">4 · 东西落在哪</a>
+    <a href="#limits" data-zh="5 · 边界" data-en="5 · Limits">5 · 边界</a>
+    <a href="#build" data-zh="6 · 自己构建" data-en="6 · Build it yourself">6 · 自己构建</a>
   </aside>
 
   <main class="doc-main">
 
-    <!-- 用户故事与使用场景 -->
-    <section class="doc" id="stories">
-      <div class="section-head"><p class="kicker">— 01</p><h2 class="section-title" data-zh="用户故事与使用场景" data-en="User Stories &amp; Use Cases">用户故事与使用场景</h2></div>
-      <p class="doc-body" data-zh="在你的设备上运行一个本地智能体，并让它与网络中的其他节点协作。" data-en="Run a local agent on your own device and let it collaborate with other nodes in the network.">在你的设备上运行一个本地智能体，并让它与网络中的其他节点协作。</p>
-      <p class="doc-body" data-zh="常见场景：个人助手、文档整理、代码分析、多设备 P2P 协作。" data-en="Common scenarios: personal assistant, document organization, code analysis, and multi-device P2P collaboration.">常见场景：个人助手、文档整理、代码分析、多设备 P2P 协作。</p>
-    </section>
-
-    <!-- 快速开始 -->
-    <section class="doc" id="getting-started">
-      <div class="section-head"><p class="kicker">— 02</p><h2 class="section-title" data-zh="快速开始" data-en="Getting Started">快速开始</h2></div>
-      <p class="doc-body" data-zh="先安装（见安装页），然后直接运行：" data-en="Install first (see the install page), then run:">先安装（见安装页），然后直接运行：</p>
-      <div class="cmd-line">
-        <span class="prompt">$</span><code class="cmd">bolloon</code>
-        <button class="copy" data-copy="start1" aria-label="复制命令">复制</button>
+    <!-- 1 · 三步开始:只给能跑的东西 -->
+    <section class="doc" id="start">
+      <div class="section-head"><p class="kicker">— 01</p><h2 class="section-title" data-zh="三步开始" data-en="Three steps to start">三步开始</h2>
+        <p class="doc-body doc-lede-sm" data-zh="需要 Node.js 18 以上。第三步换成你自己的目标就行。" data-en="Node.js 18 or newer. In step three, put your own goal in.">需要 Node.js 18 以上。第三步换成你自己的目标就行。</p>
       </div>
-      <p class="doc-body" data-zh="首次启动自动配置 LLM，需设置一个环境变量（见配置）。" data-en="First launch auto-configures the LLM; set an environment variable (see Configuration).">首次启动自动配置 LLM，需设置一个环境变量（见配置）。</p>
-    </section>
-
-    <!-- 使用 Bolloon -->
-    <section class="doc" id="using">
-      <div class="section-head"><p class="kicker">— 03</p><h2 class="section-title" data-zh="使用 Bolloon" data-en="Using Bolloon">使用 Bolloon</h2></div>
       <div class="cmd-grid">
-        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="CLI 交互模式（默认）" data-en="CLI interactive (default)">CLI 交互模式（默认）</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon</code><button class="copy" data-copy="start1">复制</button></div></article>
-        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="Web UI 模式" data-en="Web UI mode">Web UI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --web</code><button class="copy" data-copy="start2">复制</button></div></article>
-        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="强制 CLI 模式" data-en="Force CLI mode">强制 CLI 模式</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --cli</code><button class="copy" data-copy="start4">复制</button></div></article>
-        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="查看全部命令" data-en="All commands">查看全部命令</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon --help</code><button class="copy" data-copy="start3">复制</button></div></article>
-        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="配置向导（首次运行也会自动进入）" data-en="Setup wizard (also runs on first launch)">配置向导（首次运行也会自动进入）</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon setup</code><button class="copy" data-copy="setup">复制</button></div></article>
-        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="切换／配模型供应商" data-en="Switch / configure a provider">切换／配模型供应商</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon model</code><button class="copy" data-copy="model">复制</button></div></article>
-        <article class="cmd-plate mini"><h3 class="cmd-title" data-zh="微支付信息（浏览／验真）" data-en="Paid information (browse / verify)">微支付信息（浏览／验真）</h3><div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon x402 list</code><button class="copy" data-copy="x402">复制</button></div></article>
+        <article class="cmd-plate mini">
+          <div class="cmd-meta"><span class="cmd-badge">1</span><h3 class="cmd-title" data-zh="装" data-en="Install">装</h3></div>
+          <div class="cmd-line"><span class="prompt">$</span><code class="cmd">npm i -g @bolloon/bolloon-agent</code></div>
+        </article>
+        <article class="cmd-plate mini">
+          <div class="cmd-meta"><span class="cmd-badge">2</span><h3 class="cmd-title" data-zh="跑" data-en="Run">跑</h3></div>
+          <div class="cmd-line"><span class="prompt">$</span><code class="cmd">bolloon</code></div>
+          <p class="cmd-note" data-zh="首次启动会问你用哪家模型,密钥只写进本机 ~/.bolloon/llm-config.json。" data-en="First launch asks which model provider you use; the key is written only to ~/.bolloon/llm-config.json on your machine.">首次启动会问你用哪家模型,密钥只写进本机 ~/.bolloon/llm-config.json。</p>
+        </article>
+        <article class="cmd-plate mini">
+          <div class="cmd-meta"><span class="cmd-badge">3</span><h3 class="cmd-title" data-zh="说一句目标" data-en="State a goal">说一句目标</h3></div>
+          <div class="cmd-line"><span class="prompt">&gt;</span><code class="cmd">把 src/web 里所有硬编码的端口号收成一个常量,改完跑类型检查</code></div>
+          <p class="cmd-note" data-zh="不用写步骤、不用挑工具——它自己拆。下面是它接下来会做的事。" data-en="No steps to write, no tools to pick — it breaks the goal down itself. What follows is what it does next.">不用写步骤、不用挑工具——它自己拆。下面是它接下来会做的事。</p>
+        </article>
       </div>
+      <p class="doc-body" data-zh="要在浏览器里看:`bolloon --web` → http://127.0.0.1:54188" data-en="To watch it in a browser: `bolloon --web` → http://127.0.0.1:54188">要在浏览器里看:<code>bolloon --web</code> → http://127.0.0.1:54188</p>
     </section>
 
-    <!-- 功能 -->
-    <section class="doc" id="features">
-      <div class="section-head"><p class="kicker">— 04</p><h2 class="section-title" data-zh="功能" data-en="Features">功能</h2></div>
-      <ol class="cap-list">
-        <li><span class="cap-no">01</span><div class="cap-body"><h3 data-zh="AI 对话" data-en="AI Chat">AI 对话</h3><p data-zh="本地运行的智能体，支持多轮对话与流式回复。" data-en="A local agent with multi-turn conversation and streaming replies.">本地运行的智能体，支持多轮对话与流式回复。</p></div></li>
-        <li><span class="cap-no">02</span><div class="cap-body"><h3 data-zh="P2P 网络" data-en="P2P Network">P2P 网络</h3><p data-zh="通过 DHT 自动发现并连接其他节点。" data-en="Auto-discover and connect to other nodes via DHT.">通过 DHT 自动发现并连接其他节点。</p></div></li>
-        <li><span class="cap-no">03</span><div class="cap-body"><h3 data-zh="文档处理" data-en="Documents">文档处理</h3><p data-zh="接收和管理文档，支持 DID 签名验证。" data-en="Receive and manage documents with DID signature verification.">接收和管理文档，支持 DID 签名验证。</p></div></li>
-        <li><span class="cap-no">04</span><div class="cap-body"><h3 data-zh="工具调用" data-en="Tool Calls">工具调用</h3><p data-zh="shell、文件、精确补丁、代码执行、真浏览器、桌面操作与 git，由安全闸门守卫。" data-en="Shell, files, exact patches, code execution, a real browser, desktop control and git — guarded by a safety gate.">shell、文件、精确补丁、代码执行、真浏览器、桌面操作与 git，由安全闸门守卫。</p></div></li>
-        <li><span class="cap-no">05</span><div class="cap-body"><h3 data-zh="自我改进" data-en="Self-Improvement">自我改进</h3><p data-zh="自动检查更新、质量门控。" data-en="Automatic update checks and quality gating.">自动检查更新、质量门控。</p></div></li>
-        <li><span class="cap-no">06</span><div class="cap-body"><h3 data-zh="微支付信息 (x402)" data-en="Paid Information (x402)">微支付信息 (x402)</h3><p data-zh="把数据、技能、商品信息与作品标价提供；买方按 x402 付款后拿到带 Ed25519 签名的信封，验真分四档 (verified / self-attested / content-only / unverified)，来源与内容哈希都可核对。" data-en="Price data, skills, listings and artwork; after x402 payment the buyer gets an Ed25519-signed envelope with a four-tier verdict (verified / self-attested / content-only / unverified) so source and content hash can be checked.">把数据、技能、商品信息与作品标价提供；买方按 x402 付款后拿到带 Ed25519 签名的信封，验真分四档 (verified / self-attested / content-only / unverified)，来源与内容哈希都可核对。</p></div></li>
-        <li><span class="cap-no">07</span><div class="cap-body"><h3 data-zh="人机问答" data-en="Clarify">人机问答</h3><p data-zh="关键处智能体停下来问人 (CLI 下一行即答 / Web 弹层)，超时如实返回 expired，不伪造答案。" data-en="At decision points the agent stops and asks (answer on the next CLI line, or a prompt in the Web UI); timeouts return expired rather than a fabricated answer.">关键处智能体停下来问人 (CLI 下一行即答 / Web 弹层)，超时如实返回 expired，不伪造答案。</p></div></li>
-        <li><span class="cap-no">08</span><div class="cap-body"><h3 data-zh="技能沉淀与互传" data-en="Skills: Persist &amp; Share">技能沉淀与互传</h3><p data-zh="技能打包 → IPFS CID → bolloon://skill/&lt;cid&gt; 链接，自己留存也发给别的节点；安装带版本门、覆盖前备份、包内路径校验。" data-en="Pack a skill → IPFS CID → a bolloon://skill/&lt;cid&gt; link you can keep or send to another node; installs are version-gated, backed up before overwrite, and path-checked.">技能打包 → IPFS CID → bolloon://skill/&lt;cid&gt; 链接，自己留存也发给别的节点；安装带版本门、覆盖前备份、包内路径校验。</p></div></li>
-        <li><span class="cap-no">09</span><div class="cap-body"><h3 data-zh="勿扰时钟" data-en="Clock &amp; Do-Not-Disturb">勿扰时钟</h3><p data-zh="定时任务带跨进程 tick 锁、执行记录与熔断；主任务进行中后台 tick 让路并记 deferred，人忙完自动补跑。" data-en="Scheduled jobs with a cross-process tick lock, execution log and circuit breaker; while you are in a session background ticks defer and then catch up.">定时任务带跨进程 tick 锁、执行记录与熔断；主任务进行中后台 tick 让路并记 deferred，人忙完自动补跑。</p></div></li>
+    <!-- 2 · 过程:这一节是这一页的重点 -->
+    <section class="doc" id="process">
+      <div class="section-head"><p class="kicker">— 02</p><h2 class="section-title" data-zh="跑起来之后发生了什么" data-en="What happens while it runs">跑起来之后发生了什么</h2>
+        <p class="doc-body doc-lede-sm" data-zh="每一步都写成两行:你会看到什么,它同时在做什么。" data-en="Each step is written in two lines: what you see, and what it is doing at the same time.">每一步都写成两行:你会看到什么,它同时在做什么。</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <h3 data-zh="先拆步骤,每一步都带一个能核对的出口" data-en="It breaks the goal down, and every step ends in something checkable">先拆步骤,每一步都带一个能核对的出口</h3>
+          <p data-zh="你会看到一行行「这一步在做什么」——例如 「🔧 查看 git 状态 · git_status 327ms」,不刷思维流。它把目标拆成小步,每步都对应一个能验证的结果:命令退出码、测试是否通过、文件里到底是什么。" data-en="You see one line per action — e.g. “🔧 check git status · git_status 327ms” — not a stream of thinking. It splits the goal into small steps, each tied to something verifiable: an exit code, a passing test, what a file actually contains.">你会看到一行行「这一步在做什么」——例如 「🔧 查看 git 状态 · git_status 327ms」,不刷思维流。它把目标拆成小步,每步都对应一个能验证的结果:命令退出码、测试是否通过、文件里到底是什么。</p>
+        </li>
+        <li>
+          <h3 data-zh="动手就当场验证,不拿「命令跑完」当「活干好了」" data-en="It verifies as it works — a command finishing is not a task finished">动手就当场验证,不拿「命令跑完」当「活干好了」</h3>
+          <p data-zh="改完代码先跑类型检查;写文件过写入门;工具回报成功之后它会读回确认一次。有明确的收尾判据才算完成——这也是它敢说自己干完了的依据。" data-en="After editing code it runs the type check; file writes pass through a write gate; when a tool reports success it reads back to confirm. A task counts as done only against a stated finishing criterion.">改完代码先跑类型检查;写文件过写入门;工具回报成功之后它会读回确认一次。有明确的收尾判据才算完成——这也是它敢说自己干完了的依据。</p>
+        </li>
+        <li>
+          <h3 data-zh="卡住不硬顶:换一条路,或停下来告诉你" data-en="When stuck it does not force it: it changes approach, or stops and tells you">卡住不硬顶:换一条路,或停下来告诉你</h3>
+          <p data-zh="退出码不是零不等于失败(钩子经常非零退出而动作已经生效)——它先核事实再下结论;命令被策略拦住,它换一条路而不是绕到更危险的做法;错误会先分类,再给出对应的下一步。" data-en="A non-zero exit code is not taken as failure (hooks often exit non-zero after the action already took effect) — it checks the facts first. If a command is blocked by policy it finds another route instead of a more dangerous one, and errors are classified before a next step is proposed.">退出码不是零不等于失败(钩子经常非零退出而动作已经生效)——它先核事实再下结论;命令被策略拦住,它换一条路而不是绕到更危险的做法;错误会先分类,再给出对应的下一步。</p>
+        </li>
+        <li>
+          <h3 data-zh="该你拍板的地方,它会停下来问" data-en="Where the decision is yours, it stops and asks">该你拍板的地方,它会停下来问</h3>
+          <p data-zh="你会看到一个问题加几个选项。发布、改生产环境、删除、花钱这类不可逆的取舍,它不替你做主。" data-en="You see one question with a few options. For irreversible choices — publishing, touching production, deleting, spending — it does not decide for you.">你会看到一个问题加几个选项。发布、改生产环境、删除、花钱这类不可逆的取舍,它不替你做主。</p>
+        </li>
+        <li>
+          <h3 data-zh="干完必复盘,教训进库里(而且可以回滚)" data-en="Every task ends in a review, and lessons go into a rollbackable library">干完必复盘,教训进库里(而且可以回滚)</h3>
+          <p data-zh="你会看到一行 「📚 复盘: …」,后面是这一轮真正学到的东西。教训写进技能库与判断力库;技能每次改动都进账本、可以单条回滚;自审只治理它自己造出来的技能,你点名要的归你。" data-en="You see a line “📚 review: …” followed by what this round actually learned. Lessons go into the skill library and the judgement store; every skill change is ledgered and can be rolled back one entry at a time.">你会看到一行 「📚 复盘: …」,后面是这一轮真正学到的东西。教训写进技能库与判断力库;技能每次改动都进账本、可以单条回滚;自审只治理它自己造出来的技能,你点名要的归你。</p>
+        </li>
+        <li>
+          <h3 data-zh="长活可以离开现场:后台跑、派出去、被别的节点接手" data-en="Long work can run without you watching: in the background, delegated, or picked up by another node">长活可以离开现场:后台跑、派出去、被别的节点接手</h3>
+          <p data-zh="后台任务与服务的台账在本机(重启后会懒恢复并探活);派出去的子智能体不等它跑完,结果会回到下一轮;接进网络之后,别的节点可以按能力找到它、把活派给它——见网关页。" data-en="Background tasks and services are ledgered on your machine (restarted lazily and liveness-checked). Delegated sub-agents are not waited on; their results come back in the next round. Once it joins the network, other nodes can find it by capability and hand it work — see the gateway page.">后台任务与服务的台账在本机(重启后会懒恢复并探活);派出去的子智能体不等它跑完,结果会回到下一轮;接进网络之后,别的节点可以按能力找到它、把活派给它——见网关页。</p>
+        </li>
       </ol>
     </section>
 
-    <!-- 消息平台 -->
-    <section class="doc" id="messaging">
-      <div class="section-head"><p class="kicker">— 05</p><h2 class="section-title" data-zh="消息平台" data-en="Messaging Platforms">消息平台</h2></div>
-      <p class="doc-body" data-zh="通过消息平台与你的节点对话，让智能体驻留在你常用的入口。具体接入方式见仓库。" data-en="Talk to your node through messaging platforms, keeping your agent where you live. See the repo for integration details.">通过消息平台与你的节点对话，让智能体驻留在你常用的入口。具体接入方式见仓库。</p>
-    </section>
-
-    <!-- 集成 -->
-    <section class="doc" id="integrations">
-      <div class="section-head"><p class="kicker">— 06</p><h2 class="section-title" data-zh="集成" data-en="Integrations">集成</h2></div>
-      <p class="doc-body" data-zh="Bolloon 通过环境变量接入不同 LLM 提供商，并通过 DIAP 与世界其他节点互连。" data-en="Bolloon plugs into different LLM providers via env vars and connects to other nodes through DIAP.">Bolloon 通过环境变量接入不同 LLM 提供商，并通过 DIAP 与世界其他节点互连。</p>
-      <p class="doc-body" data-zh="提供方：OpenAI / DeepSeek / Anthropic。首次运行会进配置向导，密钥写入 ~/.bolloon/llm-config.json（不入仓库），也可随时用 bolloon model 切换。" data-en="Providers: OpenAI / DeepSeek / Anthropic. First launch runs a setup wizard; keys are written to ~/.bolloon/llm-config.json (never committed) and can be switched any time with bolloon model.">提供方：OpenAI / DeepSeek / Anthropic。首次运行会进配置向导，密钥写入 ~/.bolloon/llm-config.json（不入仓库），也可随时用 bolloon model 切换。</p>
-    </section>
-
-    <!-- 指南与教程 -->
-    <section class="doc" id="guides">
-      <div class="section-head"><p class="kicker">— 07</p><h2 class="section-title" data-zh="指南与教程" data-en="Guides &amp; Tutorials">指南与教程</h2></div>
-      <p class="doc-body" data-zh="从源码构建、接入 LLM、发现并连接节点——逐步指南见仓库 README 与 docs。" data-en="Build from source, connect an LLM, discover and join nodes — step-by-step guides live in the repo README and docs.">从源码构建、接入 LLM、发现并连接节点——逐步指南见仓库 README 与 docs。</p>
-    </section>
-
-    <!-- 开发者指南 -->
-    <section class="doc" id="developer">
-      <div class="section-head"><p class="kicker">— 08</p><h2 class="section-title" data-zh="开发者指南" data-en="Developer Guide">开发者指南</h2></div>
-      <div class="cmd-plate">
-        <div class="cmd-meta"><span class="cmd-badge">Build</span><h3 class="cmd-title" data-zh="克隆并构建" data-en="Clone &amp; build">克隆并构建</h3></div>
-        <div class="cmd-line"><span class="prompt">$</span><code class="cmd">git clone https://github.com/logos-42/bolloon.git &amp;&amp; cd bolloon &amp;&amp; npm install &amp;&amp; npm run build:all &amp;&amp; npm start</code><button class="copy" data-copy="build">复制</button></div>
-      </div>
-      <p class="doc-body" data-zh="核心代码：src/agents（智能体）、src/cli（Ink 界面）、src/network（P2P）、src/web（Web UI）。" data-en="Core code: src/agents (agent), src/cli (Ink UI), src/network (P2P), src/web (Web UI).">核心代码：src/agents（智能体）、src/cli（Ink 界面）、src/network（P2P）、src/web（Web UI）。</p>
-    </section>
-
-    <!-- 参考 -->
-    <section class="doc" id="reference">
-      <div class="section-head"><p class="kicker">— 09</p><h2 class="section-title" data-zh="参考" data-en="Reference">参考</h2></div>
-      <table class="doc-table">
-        <thead><tr><th data-zh="变量" data-en="Variable">变量</th><th data-zh="说明" data-en="Description">说明</th></tr></thead>
+    <!-- 3 · 命令速查:两张表,不铺卡片 -->
+    <section class="doc" id="commands">
+      <div class="section-head"><p class="kicker">— 03</p><h2 class="section-title" data-zh="命令速查" data-en="Command reference">命令速查</h2></div>
+      <h3 class="sub-h" data-zh="在终端里" data-en="In the terminal">在终端里</h3>
+      <table class="doc-table compact">
+        <thead><tr><th data-zh="命令" data-en="Command">命令</th><th data-zh="做什么" data-en="What it does">做什么</th></tr></thead>
         <tbody>
-          <tr><td><code>OPENAI_API_KEY</code></td><td data-zh="OpenAI 提供商（可选）" data-en="OpenAI provider (optional)">OpenAI 提供商（可选）</td></tr>
-          <tr><td><code>DEEPSEEK_API_KEY</code></td><td data-zh="DeepSeek 提供商（可选）" data-en="DeepSeek provider (optional)">DeepSeek 提供商（可选）</td></tr>
-          <tr><td><code>ANTHROPIC_API_KEY</code></td><td data-zh="Anthropic 提供商（可选）" data-en="Anthropic provider (optional)">Anthropic 提供商（可选）</td></tr>
-          <tr><td><code>BOLLOON_LLM_PROVIDER</code></td><td data-zh="指定 LLM 提供商" data-en="Select the LLM provider">指定 LLM 提供商</td></tr>
-          <tr><td><code>~/.bolloon/llm-config.json</code></td><td data-zh="密钥与默认模型落盘位置（向导/ bolloon model 写入，不入仓库）" data-en="Where keys and the default model are stored (written by the wizard / bolloon model; never committed)">密钥与默认模型落盘位置（向导/ bolloon model 写入，不入仓库）</td></tr>
-          <tr><td><code>bolloon setup</code></td><td data-zh="配置向导（首次运行自动进入）" data-en="Setup wizard (auto-runs on first launch)">配置向导（首次运行自动进入）</td></tr>
-          <tr><td><code>bolloon model [key &lt;provider&gt;]</code></td><td data-zh="切换模型供应商 / 配置密钥" data-en="Switch provider / configure an API key">切换模型供应商 / 配置密钥</td></tr>
-          <tr><td><code>bolloon x402 list|show|buy|verify</code></td><td data-zh="微支付信息：浏览 / 详情 / 购买并验真" data-en="Paid information: browse / inspect / buy &amp; verify">微支付信息：浏览 / 详情 / 购买并验真</td></tr>
-          <tr><td><code>BOLLOON_CRON=0</code></td><td data-zh="关闭后台时钟（勿扰时钟总开关）" data-en="Disable the background clock (DND master switch)">关闭后台时钟（勿扰时钟总开关）</td></tr>
-          <tr><td><code>BOLLOON_VERSION</code></td><td data-zh="安装脚本：指定版本" data-en="Install script: pinned version">安装脚本：指定版本</td></tr>
-          <tr><td><code>BOLLOON_INSTALL_DIR</code></td><td data-zh="安装目录，默认 /usr/local/bin" data-en="Install dir, default /usr/local/bin">安装目录，默认 /usr/local/bin</td></tr>
+          <tr><td><code>bolloon</code></td><td data-zh="启动,进入交互会话" data-en="Start, enter an interactive session">启动,进入交互会话</td></tr>
+          <tr><td><code>bolloon --web</code></td><td data-zh="浏览器界面(本机 54188)" data-en="Browser UI on local port 54188">浏览器界面(本机 54188)</td></tr>
+          <tr><td><code>bolloon --help</code></td><td data-zh="全部命令" data-en="All commands">全部命令</td></tr>
+          <tr><td><code>bolloon setup status</code></td><td data-zh="看配置与连通性状态" data-en="Configuration and connectivity status">看配置与连通性状态</td></tr>
+          <tr><td><code>bolloon model key &lt;provider&gt;</code></td><td data-zh="配或换模型密钥" data-en="Set or change a provider key">配或换模型密钥</td></tr>
+          <tr><td><code>bolloon x402 list</code></td><td data-zh="微支付信息:浏览 / 详情 / 购买 / 验真" data-en="Paid information: browse / inspect / buy / verify">微支付信息:浏览 / 详情 / 购买 / 验真</td></tr>
         </tbody>
       </table>
-      <p class="doc-body" data-zh="延伸：" data-en="Links:">延伸：</p>
-      <p class="doc-body"><a href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub 仓库</a> · <a href="https://github.com/logos-42/bolloon/blob/master/README.md" target="_blank" rel="noopener" data-zh="README · 中文" data-en="README">README · 中文</a> · <a href="install.html" data-zh="安装页" data-en="Install page">安装页</a></p>
+      <h3 class="sub-h" data-zh="在对话里(直接发,以 / 开头)" data-en="In the conversation (type them, they start with /)">在对话里(直接发,以 / 开头)</h3>
+      <table class="doc-table compact">
+        <thead><tr><th data-zh="指令" data-en="Command">指令</th><th data-zh="做什么" data-en="What it does">做什么</th></tr></thead>
+        <tbody>
+          <tr><td><code>/goal</code></td><td data-zh="立一个目标,让它自己往下推进" data-en="Set a goal and let it push forward on its own">立一个目标,让它自己往下推进</td></tr>
+          <tr><td><code>/plan</code> · <code>/queue</code></td><td data-zh="看计划 / 排队的活" data-en="See the plan / queued work">看计划 / 排队的活</td></tr>
+          <tr><td><code>/trace</code></td><td data-zh="看这一步在做什么(执行描述)" data-en="See what each step is doing">看这一步在做什么(执行描述)</td></tr>
+          <tr><td><code>/skills</code> · <code>/memory</code></td><td data-zh="技能库 / 记忆" data-en="Skill library / memory">技能库 / 记忆</td></tr>
+          <tr><td><code>/tools</code></td><td data-zh="它手上有什么工具" data-en="What tools it has">它手上有什么工具</td></tr>
+          <tr><td><code>/p2p</code> · <code>/net</code></td><td data-zh="网络与邻居节点" data-en="Network and peer nodes">网络与邻居节点</td></tr>
+          <tr><td><code>/session</code> · <code>/sessions</code></td><td data-zh="会话历史" data-en="Session history">会话历史</td></tr>
+          <tr><td><code>/wallet</code> · <code>/payments</code></td><td data-zh="钱包与支付" data-en="Wallet and payments">钱包与支付</td></tr>
+          <tr><td><code>/help</code></td><td data-zh="全部指令" data-en="All in-conversation commands">全部指令</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 4 · 东西落在哪:过程中产生的每样东西都有去处 -->
+    <section class="doc" id="files">
+      <div class="section-head"><p class="kicker">— 04</p><h2 class="section-title" data-zh="东西落在哪" data-en="Where things live">东西落在哪</h2>
+        <p class="doc-body doc-lede-sm" data-zh="全在本机 ~/.bolloon/ 下,不上传。" data-en="All of it stays under ~/.bolloon/ on your machine.">全在本机 ~/.bolloon/ 下,不上传。</p>
+      </div>
+      <table class="doc-table compact">
+        <thead><tr><th data-zh="路径" data-en="Path">路径</th><th data-zh="里面是什么" data-en="What is in it">里面是什么</th></tr></thead>
+        <tbody>
+          <tr><td><code>llm-config.json</code></td><td data-zh="模型供应商与密钥(不入任何仓库)" data-en="Model provider and keys (never in a repo)">模型供应商与密钥(不入任何仓库)</td></tr>
+          <tr><td><code>logs/tool-calls.jsonl</code></td><td data-zh="每一次工具调用:名称、参数摘要、耗时" data-en="Every tool call: name, argument summary, duration">每一次工具调用:名称、参数摘要、耗时</td></tr>
+          <tr><td><code>logs/experience-review.log</code></td><td data-zh="每轮复盘的过程与结果" data-en="Each task review, start to result">每轮复盘的过程与结果</td></tr>
+          <tr><td><code>skills/</code></td><td data-zh="技能库(本机现在 1351 个)" data-en="Skill library (1351 on this machine today)">技能库(本机现在 1351 个)</td></tr>
+          <tr><td><code>human-values/</code></td><td data-zh="判断力:判据与用法记录" data-en="Judgement store: criteria and usage">判断力:判据与用法记录</td></tr>
+          <tr><td><code>processes.json</code></td><td data-zh="后台任务与服务台账(重启后懒恢复)" data-en="Background task and service ledger (restored lazily)">后台任务与服务台账(重启后懒恢复)</td></tr>
+          <tr><td><code>sessions/</code></td><td data-zh="会话历史" data-en="Session history">会话历史</td></tr>
+          <tr><td><code>wallet-signatures.jsonl</code></td><td data-zh="钱包签名记录" data-en="Wallet signature records">钱包签名记录</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 5 · 边界:短的,诚实的 -->
+    <section class="doc" id="limits">
+      <div class="section-head"><p class="kicker">— 05</p><h2 class="section-title" data-zh="边界" data-en="Limits">边界</h2></div>
+      <div class="limits">
+        <div><h3 data-zh="已经稳" data-en="Stable">已经稳</h3>
+          <p data-zh="终端交互 · 技能库与提炼 · 工具调用与类型门 · 后台任务与服务 · 链上任务与结算 · 节点发现与委派。" data-en="Terminal session · skill library and distillation · tool calling and type gate · background tasks and services · on-chain tasks and settlement · peer discovery and delegation.">终端交互 · 技能库与提炼 · 工具调用与类型门 · 后台任务与服务 · 链上任务与结算 · 节点发现与委派。</p></div>
+        <div><h3 data-zh="还在早期" data-en="Early">还在早期</h3>
+          <p data-zh="智能体之间的经济闭环(谁付钱、怎么分账、争议怎么裁)只有最基础的一层;「一万个智能体」是方向,不是你今天打开就能看到的数量。" data-en="The economics between agents — who pays, how it splits, how disputes resolve — is only the first layer. “Ten thousand agents” is a direction, not a number you will see on day one.">智能体之间的经济闭环(谁付钱、怎么分账、争议怎么裁)只有最基础的一层;「一万个智能体」是方向,不是你今天打开就能看到的数量。</p></div>
+        <div><h3 data-zh="不会承诺" data-en="Not claimed">不会承诺</h3>
+          <p data-zh="全自动无人照看 · 链上记录可撤销 · 超过你所接模型的能力。" data-en="Fully unattended operation · reversible on-chain records · capability beyond the model you plug in.">全自动无人照看 · 链上记录可撤销 · 超过你所接模型的能力。</p></div>
+      </div>
+    </section>
+
+    <!-- 6 · 自己构建 -->
+    <section class="doc" id="build">
+      <div class="section-head"><p class="kicker">— 06</p><h2 class="section-title" data-zh="自己构建" data-en="Build it yourself">自己构建</h2></div>
+      <div class="cmd-plate">
+        <div class="cmd-meta"><span class="cmd-badge">Build</span><h3 class="cmd-title" data-zh="从源码到本机可跑" data-en="Source to a running CLI">从源码到本机可跑</h3></div>
+        <div class="cmd-line"><span class="prompt">$</span><code class="cmd">git clone https://github.com/logos-42/bolloon.git &amp;&amp; cd bolloon &amp;&amp; npm install &amp;&amp; npm run build:all &amp;&amp; npm start</code></div>
+      </div>
+      <p class="doc-body" data-zh="核心代码:src/agents(智能体循环与工具)、src/cli(终端界面)、src/network(节点与发现)、src/web(Web UI)。" data-en="Core code: src/agents (the agent loop and tools), src/cli (terminal UI), src/network (peers and discovery), src/web (web UI).">核心代码:src/agents(智能体循环与工具)、src/cli(终端界面)、src/network(节点与发现)、src/web(Web UI)。</p>
+      <p class="doc-body" data-zh="延伸:<a href=&quot;install.html&quot;>安装页</a> · <a href=&quot;gateway.html&quot;>接进网络</a> · <a href=&quot;skill.html&quot;>技能索引</a> · <a href=&quot;https://github.com/logos-42/bolloon&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>GitHub 仓库</a> · <a href=&quot;privacy.html&quot;>隐私政策</a>" data-en="More: <a href=&quot;install.html&quot;>install</a> · <a href=&quot;gateway.html&quot;>join the network</a> · <a href=&quot;skill.html&quot;>skill index</a> · <a href=&quot;https://github.com/logos-42/bolloon&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>GitHub repo</a> · <a href=&quot;privacy.html&quot;>privacy</a>">延伸:<a href="install.html">安装页</a> · <a href="gateway.html">接进网络</a> · <a href="skill.html">技能索引</a> · <a href="https://github.com/logos-42/bolloon" target="_blank" rel="noopener">GitHub 仓库</a> · <a href="privacy.html">隐私政策</a></p>
     </section>
 
   </main>
@@ -228,6 +255,6 @@
   <span class="foot-right" data-zh="◍ 由节点与节点相连" data-en="◍ Connected node to node">◍ 由节点与节点相连</span>
 </footer>
 
-<script src="app.js?v=36"></script>
+<script src="app.js?v=37"></script>
 </body>
 </html>
