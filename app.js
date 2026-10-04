@@ -1720,3 +1720,47 @@ var BOLLOON_IPNS = (function () {
     }
   } catch (e) { /* noop */ }
 })();
+
+/* ── 文档页: 每条命令一个复制按钮 (2026-10-01, leo:「复制粘贴的功能很少」) ──
+   纪律: 只挂在 body[data-page="docs"]; 命令文本**从 DOM 现读**(不在 HTML 里再存一份 ⇒ 不会漂);
+        不用动画; 失败要有兜底; 标签在 复制 → 已复制 → 复制 之间切换。 */
+function initCopyButtons() {
+  if (document.body.getAttribute('data-page') !== 'docs') return;
+  if (document.body.dataset.copyReady === '1') return;
+  document.body.dataset.copyReady = '1';
+
+  const copyText = async (txt) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(txt); return true; }
+    } catch (e) { /* 落到下面兜底 */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  };
+
+  document.querySelectorAll('[data-copy]').forEach((wrap) => {
+    const code = wrap.querySelector('code');
+    if (!code || wrap.querySelector('.copy-btn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = '复制';
+    btn.setAttribute('data-zh', '复制'); btn.setAttribute('data-en', 'Copy');
+    btn.setAttribute('aria-label', '复制命令');
+    btn.addEventListener('click', async () => {
+      const txt = code.innerText.replace(/\u00a0/g, ' ').trim();
+      const ok = await copyText(txt);
+      btn.textContent = ok ? '已复制' : '复制失败';
+      btn.classList.toggle('is-done', ok);
+      window.setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('is-done'); }, 1200);
+    });
+    wrap.appendChild(btn);
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initCopyButtons);
+else initCopyButtons();

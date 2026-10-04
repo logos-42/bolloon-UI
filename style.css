@@ -935,67 +935,58 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 .dev-fold > summary:hover { color: var(--ink); }
 .dev-fold[open] > .cap-list { margin-top: 18px; }
 
-/* ── 文档页重做 (2026-10-01, leo:「这个文档……不好看, 能不能变得更加紧凑和整齐」「要教用户怎么使用,
-      以及整个过程当中发生了什么事情」) ──
-   纪律: 只限定 body[data-page="docs"], 不动其它页; 用既有令牌; 发丝线不用卡片; 段距收紧但不贴死。
-   结构: 9 节卡片墙 → 6 节, 核心是 02「跑起来之后发生了什么」(用户可见 → 它在做什么, 两条一组)。 */
+/* ── 文档页 (2026-10-01 重做): 工具页不是展台 ──
+   leo 原话:「不需要这么美观的设计,文档页面应该整体简洁,不应该有很多动态效果」
+            「内容太过于空泛,信息的噪声太大……应该是直接展示一个页面」
+   纪律: 文档页关掉入场动效; 表格化, 一行一条; 每条命令一个复制按钮; 段距紧凑; 不加卡片/阴影。 */
 
-body[data-page="docs"] .doc { padding-top: clamp(26px, 4.4vh, 50px); }
-body[data-page="docs"] .section-head { margin-bottom: 24px; }
-body[data-page="docs"] .section-head .kicker { margin-bottom: 9px; }
-body[data-page="docs"] .doc-lede { color: var(--ink-2); max-width: 52em; margin-top: 16px; font-size: 1.02rem; line-height: 1.75; }
-body[data-page="docs"] .doc-lede-sm { max-width: 50em; margin-bottom: 0; }
-body[data-page="docs"] .doc-body { margin-bottom: 14px; }
-
-/* 三步开始: 三块并排, 不铺成一竖列 */
-body[data-page="docs"] .cmd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 14px; align-items: start; }
-body[data-page="docs"] .cmd-note { color: var(--ink-3); font-size: 12.5px; line-height: 1.65; margin-top: 9px; }
-
-/* 过程: 编号时间线(每条 = 你看到什么 + 它在做什么 两行) */
-body[data-page="docs"] .steps { list-style: none; counter-reset: step; margin-top: 6px; }
-body[data-page="docs"] .steps > li {
-  counter-increment: step;
-  display: grid; grid-template-columns: 34px 1fr; column-gap: 14px;
-  border-top: 1px solid var(--hairline);
-  padding: 15px 0 13px;
+/* 关动效(只管文档页) */
+body[data-page="docs"] .reveal,
+body[data-page="docs"] .reveal.in { opacity: 1 !important; transform: none !important; transition: none !important; }
+body[data-page="docs"] .intro { padding-top: clamp(26px, 3.6vh, 44px); }
+body[data-page="docs"] .doc-h1 { font-size: 1.85rem; font-weight: 400; color: var(--ink); margin: 0; letter-spacing: .01em; }
+body[data-page="docs"] .doc-introline { color: var(--ink-2); font-size: .98rem; line-height: 1.7; margin: 10px 0 0; max-width: 52em; }
+body[data-page="docs"] .doc { padding-top: clamp(22px, 3.2vh, 36px); }
+body[data-page="docs"] .section-head { margin-bottom: 12px; }
+body[data-page="docs"] .doc-h2 { font-size: 1.2rem; font-weight: 500; color: var(--ink); margin: 0; }
+body[data-page="docs"] .doc-h3 {
+  font-family: var(--mono); font-size: .78rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); margin: 20px 0 6px;
 }
-body[data-page="docs"] .steps > li:first-child { border-top: none; padding-top: 2px; }
-body[data-page="docs"] .steps > li::before {
-  content: counter(step, decimal-leading-zero);
-  font-family: var(--mono); font-size: 12px; color: var(--lime); letter-spacing: .06em;
-  padding-top: 5px;
+body[data-page="docs"] .note { color: var(--ink-2); font-size: .9rem; line-height: 1.72; margin: 0 0 10px; max-width: 54em; }
+
+/* 行表: 一行一条, 发丝线分隔, 不复用花哨卡片 */
+body[data-page="docs"] .rt { width: 100%; border-collapse: collapse; font-size: .88rem; }
+body[data-page="docs"] .rt th {
+  text-align: left; font-weight: 400; color: var(--ink-3); font-family: var(--mono);
+  font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase;
+  padding: 0 16px 7px 0; border-bottom: 1px solid var(--hairline);
 }
-body[data-page="docs"] .steps > li > h3 { grid-column: 2; margin: 0 0 6px; font-size: 1.03rem; font-weight: 500; color: var(--ink); }
-body[data-page="docs"] .steps > li > p { grid-column: 2; margin: 0; color: var(--ink-2); font-size: .95rem; line-height: 1.78; max-width: 48em; }
-
-/* 命令速查 / 落盘: 表格加密 */
-body[data-page="docs"] .sub-h {
-  font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-3); margin: 26px 0 8px;
+body[data-page="docs"] .rt td {
+  vertical-align: top; color: var(--ink-2); line-height: 1.66;
+  padding: 9px 16px 9px 0; border-bottom: 1px solid var(--hairline);
 }
-body[data-page="docs"] .doc-table.compact th,
-body[data-page="docs"] .doc-table.compact td { padding-top: 9px; padding-bottom: 9px; }
-body[data-page="docs"] .doc-table.compact td:first-child { white-space: nowrap; }
+body[data-page="docs"] .rt code,
+body[data-page="docs"] .note code { font-family: var(--mono); font-size: .88em; color: var(--ink); }
 
-/* 边界: 三栏短句 */
-body[data-page="docs"] .limits { display: grid; grid-template-columns: repeat(auto-fit, minmax(238px, 1fr)); gap: 24px; margin-top: 4px; }
-body[data-page="docs"] .limits h3 { font-size: .95rem; font-weight: 500; color: var(--ink); margin: 0 0 7px; }
-body[data-page="docs"] .limits p { margin: 0; color: var(--ink-2); font-size: .9rem; line-height: 1.72; }
+/* 命令 + 复制 */
+body[data-page="docs"] .cmd-pair { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; }
+body[data-page="docs"] .cmd-pair code { color: var(--ink); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+body[data-page="docs"] .cmd-pair code::-webkit-scrollbar { display: none; }
+body[data-page="docs"] .copy-btn {
+  flex: none; font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+  color: var(--ink-3); background: none; border: 1px solid var(--hairline); border-radius: 2px;
+  padding: 1px 6px; cursor: pointer; transition: none;
+}
+body[data-page="docs"] .copy-btn:hover { color: var(--ink); border-color: var(--hairline-strong); }
+body[data-page="docs"] .copy-btn.is-done { color: var(--lime); border-color: var(--lime-deep); }
 
-/* 侧栏收紧 */
-body[data-page="docs"] .sidenav a { padding-top: 6px; padding-bottom: 6px; font-size: .9rem; }
+body[data-page="docs"] .sidenav a { padding-top: 5px; padding-bottom: 5px; font-size: .88rem; }
 
 @media (max-width: 820px) {
-  body[data-page="docs"] .cmd-grid,
-  body[data-page="docs"] .limits { grid-template-columns: 1fr; }
-  body[data-page="docs"] .steps > li { grid-template-columns: 26px 1fr; column-gap: 10px; }
-  /* 命令表按站点既有约定: 框内横滚, 列不被压扁 (与链上活动表同一套做法);
-     实测: 不这么做时 390 宽下宽表会把整页撑出 23px 横向溢出。 */
-  body[data-page="docs"] .doc-table.compact {
-    display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
-  }
-  body[data-page="docs"] .doc-table.compact tbody,
-  body[data-page="docs"] .doc-table.compact thead { display: table; width: 100%; }
+  body[data-page="docs"] .rt { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  body[data-page="docs"] .rt thead, body[data-page="docs"] .rt tbody { display: table; width: 100%; }
+  body[data-page="docs"] .doc-h3 { margin-top: 16px; }
 }
 /* ── 窄屏顶栏收口 (2026-10-01, leo:「能不能变得更加紧凑和整齐」) ──
    背景: 门自己在 2094 行记着「390px 下页面本身有 ~155px 横向溢出, 但那是顶栏的老问题」——
@@ -1010,4 +1001,35 @@ body[data-page="docs"] .sidenav a { padding-top: 6px; padding-bottom: 6px; font-
   .version-badge { display: none; }
   .lang-toggle button { padding: 1px 6px; font-size: 11px; }
   .brand-word { font-size: 15px; }
+}
+/* 文档页: 教程与操作指南的编号列表 + 流程块(纯静态, 无动效) */
+body[data-page="docs"] .tut, body[data-page="docs"] .how { list-style: none; counter-reset: n; margin: 4px 0 0; padding: 0; }
+body[data-page="docs"] .tut > li, body[data-page="docs"] .how > li {
+  counter-increment: n; display: grid; grid-template-columns: 30px 1fr; column-gap: 12px;
+  border-top: 1px solid var(--hairline); padding: 12px 0 10px;
+}
+body[data-page="docs"] .tut > li:first-child, body[data-page="docs"] .how > li:first-child { border-top: none; padding-top: 2px; }
+body[data-page="docs"] .tut > li::before, body[data-page="docs"] .how > li::before {
+  content: counter(n, decimal-leading-zero); font-family: var(--mono); font-size: 11.5px; color: var(--lime); padding-top: 3px;
+}
+/* 关键: 网格项默认不能收缩, 长命令会把它撑破 ⇒ 必须 min-width:0 (2026-10-01 实测溢出 210px) */
+body[data-page="docs"] .tut > li > *, body[data-page="docs"] .how > li > * { grid-column: 2; min-width: 0; }
+body[data-page="docs"] .tut > li > .cmd-pair,
+body[data-page="docs"] .how > li > .cmd-pair,
+body[data-page="docs"] .rt .cmd-pair { min-width: 0; max-width: 100%; }
+body[data-page="docs"] .tut > li > .cmd-pair code,
+body[data-page="docs"] .how > li > .cmd-pair code { overflow-x: auto; }
+body[data-page="docs"] .note { overflow-wrap: anywhere; }
+body[data-page="docs"] .tut > li > h3 { margin: 0 0 4px; font-size: .96rem; font-weight: 500; color: var(--ink); }
+body[data-page="docs"] .tut > li > .cmd-pair,
+body[data-page="docs"] .how > li > .cmd-pair { display: inline-flex; margin: 4px 0; }
+body[data-page="docs"] .tut > li > .note, body[data-page="docs"] .how > li > .note { margin: 2px 0 0; font-size: .87rem; }
+body[data-page="docs"] .flow {
+  max-width: 100%;
+  font-family: var(--mono); font-size: .8rem; line-height: 1.85; color: var(--ink-2);
+  border-left: 1px solid var(--lime); padding: 8px 0 8px 14px; margin: 10px 0 12px;
+  overflow-x: auto; white-space: pre;
+}
+@media (max-width: 820px) {
+  body[data-page="docs"] .tut > li, body[data-page="docs"] .how > li { grid-template-columns: 24px 1fr; column-gap: 8px; }
 }
