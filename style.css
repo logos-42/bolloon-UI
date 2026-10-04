@@ -844,3 +844,93 @@ section { padding: clamp(60px, 10vh, 130px) clamp(24px, 6vw, 80px); max-width: 1
 @media (prefers-reduced-motion: reduce) {
   .pulse-dot { animation: none !important; }
 }
+
+/* ── 序厅主题句 + 「来源」区块 (2026-10-01, leo: 「第一屏先回答为什么用」+「把来源设计清楚」) ──
+   纪律: 只用既有令牌 · 发丝线不用卡片 · 圆角 ≤3px · 小字走 mono · 不加阴影/渐变 */
+
+.thesis {
+  font-family: var(--serif, serif);
+  font-size: clamp(1.6rem, 1.1rem + 2.4vw, 2.9rem);
+  line-height: 1.28;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  margin: 26px 0 22px;
+  max-width: 22ch;
+}
+.lede .lede-a { display: inline; color: var(--ink-2); }
+.lede { max-width: 46em; }
+
+.provenance { border-top: 1px solid var(--hairline); }
+.provenance .section-lede {
+  color: var(--ink-2);
+  max-width: 44em;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  margin-top: 12px;
+}
+.prov-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.prov-table th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--ink-3);
+  font-family: var(--mono, monospace);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 18px 12px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.prov-table td {
+  vertical-align: top;
+  color: var(--ink-2);
+  padding: 16px 18px 16px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.prov-table td:first-child { color: var(--ink); white-space: nowrap; }
+.prov-table td code,
+.prov-cmd code {
+  font-family: var(--mono, monospace);
+  font-size: 0.8em;
+  color: var(--ink);
+  background: none;
+}
+.prov-notes { margin-top: 30px; max-width: 44em; }
+.prov-notes p { color: var(--ink-2); font-size: 0.85rem; line-height: 1.7; margin-bottom: 14px; }
+.prov-check { color: var(--ink-3); font-family: var(--mono, monospace); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.prov-cmd {
+  border-left: 1px solid var(--lime);
+  padding: 10px 0 10px 16px;
+  overflow-x: auto;
+  color: var(--ink-2);
+}
+@media (max-width: 820px) {
+  .prov-table, .prov-table thead, .prov-table tbody, .prov-table tr, .prov-table td { display: block; }
+  .prov-table thead { display: none; }
+  .prov-table tr { border-bottom: 1px solid var(--hairline); padding: 14px 0; }
+  .prov-table td { border: none; padding: 4px 0; }
+  .prov-table td:first-child { white-space: normal; }
+}
+
+/* ── 网关页首屏 + 开发者折叠 (2026-10-01, leo:「网关页面那里有些太过混乱」) ──
+   纪律: 主路径只留一个动作(拿接入命令) + 一个次要链接; 技术细节收进折叠 */
+.gateway-hero .section-lede { color: var(--ink-2); max-width: 46em; font-size: 1rem; line-height: 1.75; margin-top: 12px; }
+.gateway-hero-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin: 26px 0 14px; }
+.gateway-hero-second { color: var(--ink-2); font-size: 0.9rem; text-decoration: none; border-bottom: 1px solid var(--hairline); }
+.gateway-hero-second:hover { color: var(--ink); border-bottom-color: var(--lime); }
+.gateway-hero-fact { color: var(--ink-3); font-family: var(--mono, monospace); font-size: 0.72rem; letter-spacing: 0.06em; }
+.dev-fold { margin-top: 8px; }
+.dev-fold > summary {
+  cursor: pointer; color: var(--ink-2); font-size: 0.85rem;
+  padding: 12px 0; border-bottom: 1px solid var(--hairline); list-style: none;
+}
+.dev-fold > summary::-webkit-details-marker { display: none; }
+.dev-fold > summary::before { content: "▸ "; color: var(--lime); }
+.dev-fold[open] > summary::before { content: "▾ "; }
+.dev-fold > summary:hover { color: var(--ink); }
+.dev-fold[open] > .cap-list { margin-top: 18px; }

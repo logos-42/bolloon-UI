@@ -40,7 +40,7 @@
  *      并带阴性对照 (把这一格塞回页面 → 必红, 见 docs/wiki/log.md)。
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=35 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=36 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -1776,8 +1776,8 @@ async function main() {
     !!region && region.legacy === 0, String(region && region.legacy));
   check('网关页已去掉「加入网络」序厅 (页面里没有大字 h1 占屏)',
     !!region && !/加入网络/.test(region.h1), JSON.stringify(region && region.h1));
-  check('页面顺序: 链上活动 → 加入方式 → 如何加入 → manifest → 端点 → 开发者',
-    !!region && JSON.stringify(region.order) === JSON.stringify(['pulse', 'skills', 'join', 'manifest', 'endpoints', 'developer']),
+  check('页面顺序: 网关序厅 → 链上活动 → 一条命令接入 → 接入四步 → 它怎么知道别人会什么 → 端点与协议 → 开发者',
+    !!region && JSON.stringify(region.order) === JSON.stringify(['gateway-intro', 'pulse', 'skills', 'join', 'manifest', 'endpoints', 'developer']),
     JSON.stringify(region && region.order));
   check('链上活动区在「加入方式 / 如何加入」之前 (仪表盘入口先给数据)',
     !!region && region.pulseFirst === true, JSON.stringify(region && region.pulseFirst));
@@ -3369,17 +3369,17 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=35 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
-  console.log('\n[10] 全站资源 ?v=35 一致 (7 页原始 HTML)');
+  // ⑪ 全站资源版本 ?v=36 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  console.log('\n[10] 全站资源 ?v=36 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=35');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=36');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=35/.test(html) || !/app\.js\?v=35/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=36/.test(html) || !/app\.js\?v=36/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=35 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=35 + app.js?v=35 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=36 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=36 + app.js?v=36 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):
@@ -3566,13 +3566,13 @@ async function main() {
   })()`, (v) => v && v.sameParent === true && v.pulseBeforeSkills === true && v.pulseState !== 'loading');
   check('gateway.html: #pulse 与 #skills 是同一个容器 (.gateway-row) 的两个子项 (两栏版式的地基)',
     !!duo && duo.sameParent && duo.rowIsDiv && /gateway-row/.test(duo.rowClass), JSON.stringify(duo && { same: duo.sameParent, cls: duo.rowClass }));
-  check('gateway.html: 文档顺序仍是 pulse → skills (锚点 / 导航下拉 / 分节顺序都不变)',
+  check('gateway.html: 文档顺序仍是 序厅 → pulse → skills (锚点 / 导航下拉 / 分节顺序都不变)',
     !!duo && duo.pulseBeforeSkills === true &&
-    JSON.stringify(duo.ids) === JSON.stringify(['pulse', 'skills', 'join', 'manifest', 'endpoints', 'developer']),
+    JSON.stringify(duo.ids) === JSON.stringify(['gateway-intro', 'pulse', 'skills', 'join', 'manifest', 'endpoints', 'developer']),
     JSON.stringify(duo && duo.ids));
-  check('gateway.html: 编号语义自洽 (左 01 链上活动 · 右 02 加入方式, 左→右即阅读顺序)',
+  check('gateway.html: 编号语义自洽 (左 01 链上活动 · 右 02 一条命令接入, 左→右即阅读顺序)',
     !!duo && /01/.test(duo.pulseKicker || '') && /02/.test(duo.skillsKicker || '') &&
-    duo.pulseTitle === '链上活动' && duo.skillsTitle === '加入方式',
+    duo.pulseTitle === '链上活动' && duo.skillsTitle === '一条命令接入',
     JSON.stringify(duo && [duo.pulseKicker, duo.pulseTitle, duo.skillsKicker, duo.skillsTitle]));
 
   // ★ 顶栏横线只能有**一条** (2026-09-24 leo:「网关页面怎么有两个顶栏横线」): 两栏子项原本各自都是 .doc、
@@ -3617,6 +3617,21 @@ async function main() {
   check(`网关页顺序: 待接单任务区块在链上活动表**上面** (待接单 y ${orderOk && orderOk.tasksTop}–${orderOk && orderOk.tasksBottom} · 表 y ${orderOk && orderOk.tableTop}–${orderOk && orderOk.tableBottom})`,
     !!orderOk && !orderOk.missing && orderOk.docOrder === true && orderOk.tasksBottom <= orderOk.tableTop + 1,
     JSON.stringify(orderOk));
+
+  // ★ 量几何前先等入场动画收尾 (2026-10-01): .js .reveal 未进场时带 translateY(26px),
+  //   门若在动画中间量, 会把"左栏还在滑入"读成"两栏不同行" ⇒ 694/668 的假红。
+  //   几何只许量终态 —— 这条比"量到哪个数字"重要。(CDP 的媒体仿真是跨导航失效的, 不能指望前面的 reduce 还在。)
+  // 硬保证 (2026-10-01): CDP 的媒体仿真是**跨导航失效**的, 而这一段之前页面已跳转过多次,
+  //   所以这里必须**重新**打开 reduce —— 站点 CSS 在 reduce 下把 .reveal 的 translateY 关掉,
+  //   两栏的顶边才是终态; 否则读到 668+26=694 这种"动画中间态", 报出"不同行"的假红。
+  await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await waitStable(`(() => {
+    const p = document.getElementById('pulse'), s = document.getElementById('skills');
+    if (!p || !s) return false;
+    const settled = (el) => { const c = getComputedStyle(el);
+      return (c.transform === 'none' || c.transform === 'matrix(1, 0, 0, 1, 0, 0)') && c.opacity === '1'; };
+    return settled(p) && settled(s);
+  })()`, (v) => v === true);
 
   // 桌面 1440: 两区同一行, 加入方式在右 (真测量, 等稳定)
   await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
