@@ -40,7 +40,7 @@
  *      并带阴性对照 (把这一格塞回页面 → 必红, 见 docs/wiki/log.md)。
  *   ⑫ 智能体私有站 (IPNS): agent_sites[] 三种形态归一化 + 空数组诚实提示 + 非法条目不渲染链接
  *   ⑬ IPNS 粘贴框: 真 input + 真按钮, 合法才开新窗口 (真新标签页), 非法就地报错且输入不进 innerHTML
- *   ⑭ 全站资源 ?v=39 一致 (逐页抓原始 HTML)
+ *   ⑭ 全站资源 ?v=40 一致 (逐页抓原始 HTML)
  *   ⑮ 小结行的钱包签名钩子 (data-pulse-total="signatures") 必列 + 字段缺失整行隐藏
  *   ⑯ 表格枚举容错: 认不出的 kind/state/finality 原样显示 (不猜不吞不报错),
  *      task 与 tx 都空的条目根本不画 (不留空行)
@@ -3370,7 +3370,7 @@ async function main() {
   check('首页脉冲区内部节点一律用 data-pulse-* 钩子 (无 id, 天然不撞)',
     !!hookCheck && hookCheck.roots >= 1 && hookCheck.ids.length === 0, JSON.stringify(hookCheck));
 
-  // ⑪ 全站资源版本 ?v=39 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
+  // ⑪ 全站资源版本 ?v=40 一致 (逐页抓原始 HTML —— 只看一页会被漏改骗过)
   // ★ 站内锚点全解析 (2026-10-01): 门以前只查页面存在, 不管 #锚点是否真有落点 ——
   //   实测漏掉过 4 个悬空链接(导航下拉指向 docs.html#quickstart 这种不存在的节)。
   //   跨页与页内两种都查; 只认 id=, 不认 name=。
@@ -3467,16 +3467,16 @@ async function main() {
       dangling.length === 0, JSON.stringify([...new Set(dangling)].slice(0, 8)));
   }
 
-  console.log('\n[10] 全站资源 ?v=39 一致 (7 页原始 HTML)');
+  console.log('\n[10] 全站资源 ?v=40 一致 (7 页原始 HTML)');
   const vStale = [], vMissing = [];
   for (const pg of ALL_PAGES) {
     const html = await fetchText(`${BASE}/${pg}`);
-    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=39');
+    const vs = (html.match(/\?v=\d+/g) || []).filter((v) => v !== '?v=40');
     if (vs.length) vStale.push(`${pg}:${vs.join(',')}`);
-    if (pg !== 'skill.html' && (!/style\.css\?v=39/.test(html) || !/app\.js\?v=39/.test(html))) vMissing.push(pg);
+    if (pg !== 'skill.html' && (!/style\.css\?v=40/.test(html) || !/app\.js\?v=40/.test(html))) vMissing.push(pg);
   }
-  check('7 页都没有 ?v=39 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
-  check('6 个带外链资源的页 = style.css?v=39 + app.js?v=39 (skill.html 自包含, 无外链)',
+  check('7 页都没有 ?v=40 之外的版本号 (逐页 grep 一致, 无旧版残留)', vStale.length === 0, JSON.stringify(vStale));
+  check('6 个带外链资源的页 = style.css?v=40 + app.js?v=40 (skill.html 自包含, 无外链)',
     vMissing.length === 0, JSON.stringify(vMissing));
 
   // ⑫ 命名与可见文本审计 (2026-09-22 语义收窄):

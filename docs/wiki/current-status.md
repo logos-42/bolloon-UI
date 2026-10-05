@@ -2,15 +2,16 @@
 title: bolloon-UI 当前状态
 source: session
 created: 2026-09-09
-last_confirmed: 2026-09-24
+last_confirmed: 2026-10-05
 audience: self
 stage: draft
-tags: [status, privacy-policy-page, footer-compliance, icons-store-specs, on-chain-activity, scoped-counts, copy-lean, pulse-tasks-fixed-height-paging, pulse-activity-15row-paging, ctl-copy-clarity, bolloon-lime-controls, pulse-budget-atomic-conversion, tasks-before-activity-table, single-row-top-rule, skills-cli-parity, gateway-join-v1.4.0, network-v1.3.0, render-vs-raw-h2-gate, announce-board-docs]
+tags: [status, privacy-policy-page, footer-compliance, icons-store-specs, on-chain-activity, scoped-counts, copy-lean, pulse-tasks-fixed-height-paging, pulse-activity-15row-paging, ctl-copy-clarity, bolloon-lime-controls, pulse-budget-atomic-conversion, tasks-before-activity-table, single-row-top-rule, skills-cli-parity, gateway-join-v1.4.0, network-v1.3.0, render-vs-raw-h2-gate, announce-board-docs, theme-redesign-2026-10-05, agent-distribution-network, one-world-stepping-in]
 status: current
 ---
 
 ## 最近更新
 
+- (2026-10-05) **产品主题定位升级: 「一万个智能体，为你工作」→「一万个智能体的世界，走进你的世界」· 保留「一万」数字 · 三页序厅 + meta + 设计母本同步 · 版本对表 0.6.1→0.6.3 · 缓存 v=39→v=40 · 本机 448/0/0 · 未部署**：leo（第二阶段）「现在的核心并不是让这个有 1 万个智能体，而是有 1 万个智能体所在的世界进入你的世界」+「1 万数字其实蛮好的，你不用去掉」→ **保留「一万」，改语义**：不是「一万个智能体为你打工」，而是**一万个智能体所在的世界，走进你的世界**。① `index.html`：meta/kicker/thesis/lede 第三段/capabilities 引导/about 段统一到「多终端 Agent 分发网络 · 一万个智能体的世界走进你的世界」（保留三终端分发 PC 创建/手机发现 + 本地优先闭环）；② `install.html`/`docs.html` 同步；③ `docs/design.md` §1 唯一主题句 + §6 更新；④ `bolloon-network.md` 现况行 0.6.1→0.6.3（npm 真值，预存漂移非本轮引入）；⑤ 缓存 v=39→v=40（7 页 12 处 + verify-site.mjs 字面量同步）；⑥ 门 **448 passed / 0 failed / 6 skipped**。**如实**：未虚构终端（眼镜未入页面）；skill.html/gateway-join 技术描述保留；未部署。
 - (2026-09-30) **托管变更：`bolloon.cn` / `www.bolloon.cn` 已从备案主机切到 Cloudflare Pages** —— 两条记录改为 `CNAME → bolloon.pages.dev`（proxied），并挂成 Pages 项目 `bolloon` 的自定义域 ⇒ **CF Pages 部署即全通道生效**（不再依赖 `tar|ssh` 同步）。`pay.bolloon.cn` / `efficode.bolloon.cn` 仍是备案主机 ECS 直出（未动）。备案主机独有的 `/network-pulse.json` 已由 `deploy-pages.py` 的 `fetch_pulse()` 在部署时从 ECS 拉取并带上（站点该路径仍是 200 JSON）。备案口径风险（域名已 ICP 备案、接入 IP 与该 IP 不一致）已向用户明示、用户选择该方案。
 - (2026-09-30) **Android 0.5.3 发布（与 npm 0.5.3 同版本）**：`bolloon-0.5.3.apk` 19,983,237 B = 19.06 MiB / sha256 `0792a36e27de80ee…` / **versionCode 503 · versionName 0.5.3** / 包名 `com.hibs.bolloon`（CN=Bolloon，full flavor）。版本号四处对齐（npm 0.5.3 ↔ Android 503 ↔ iOS 0.5.3/503），仓内门 `scripts/check-native-artifacts.mjs` 四项全绿。已发：GitHub Release `android-v0.5.3-signed` + CF Pages 通道（`bolloon.pages.dev/dl/bolloon-0.5.3.apk`）+ `install.html`。**仍缺备案主机通道**：`bolloon.cn` 由备案主机 nginx（A → 120.26.82.43）直出、需 `tar|ssh` 同步，本机无该通道 ⇒ 该域上仍是旧版、APK 404。
 - (2026-09-29) **Android 0.5.2 发布（原生壳跟上产品版本）**：`bolloon-0.5.2.apk` 19,983,237 B = 19.06 MiB / sha256 `9d9924055425e023…` / **versionCode 502 · versionName 0.5.2** / 包名 `com.hibs.bolloon`（CN=Bolloon，full flavor）。版本对齐有仓内门把关（`scripts/check-native-artifacts.mjs`：npm ↔ Android ↔ iOS 三项全绿）。发布：GitHub Release `android-v0.5.2-signed` + CF Pages 通道（`bolloon.pages.dev/dl/bolloon-0.5.2.apk`）+ `install.html`。**通道差异（重要）**：`bolloon.cn` 已不是 CF Pages，而是**备案主机 nginx**（A → 120.26.82.43，同机还有 pay./efficode. 子域），该机站点由 `tar|ssh` 同步；本机（Windows）无该通道 ⇒ **bolloon.cn 上的 APK 与 install.html 仍在 0.4.28，需备案主机侧同步**。
