@@ -1,3 +1,4 @@
+| 2026-10-07 | **Android 0.6.5 对话框模式（任务 tab 重构）**：任务 tab 由「网络/任务」页内子切换改为**对话框模式**（仪表盘栏 + 消息流 + 底部派活输入框），网络收成仪表盘「🌐 网络」工具栏按钮（覆盖层面板，保留全部网络/审批/A2UI 入口）；首页 = 世界机会流双栏 + 底部输入框。源码 `src/web/mobile.{html,js,css}` 已提交 bolloon 仓 b52e4ae 并 push；重建 APK `bolloon-0.6.5.apk` 20,286,097 B / sha256 `40b9ef339407…`（versionCode 605 · 0.6.5 · CN=Bolloon full flavor），**包内 mobile.html 已含 task-dash ×8 / 无旧 network tab**。CF Pages 部署 `245e2d1d.bolloon.pages.dev`；验收 bolloon.cn / www / pages.dev 三通道 APK Content-Type + Content-Length 20,286,097 + sha256 与本地逐字节一致；github.io 待 push 重建。根因：`npx cap sync android` 之前没重跑 → APK 打包的是旧 assets。 | `src/web/mobile.html` · `src/web/mobile.js` · `src/web/mobile.css` · `scripts/deploy-pages.py` |
 # Wiki 日志
 
 | 日期 | 事件 | 内容 |

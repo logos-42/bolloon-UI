@@ -2,7 +2,7 @@
 title: bolloon-UI 当前状态
 source: session
 created: 2026-09-09
-last_confirmed: 2026-10-05
+last_confirmed: 2026-10-07
 audience: self
 stage: draft
 tags: [status, privacy-policy-page, footer-compliance, icons-store-specs, on-chain-activity, scoped-counts, copy-lean, pulse-tasks-fixed-height-paging, pulse-activity-15row-paging, ctl-copy-clarity, bolloon-lime-controls, pulse-budget-atomic-conversion, tasks-before-activity-table, single-row-top-rule, skills-cli-parity, gateway-join-v1.4.0, network-v1.3.0, render-vs-raw-h2-gate, announce-board-docs, theme-redesign-2026-10-05, agent-distribution-network, one-world-stepping-in]
@@ -11,6 +11,7 @@ status: current
 
 ## 最近更新
 
+- (2026-10-07) **Android 0.6.5 对话框模式（任务 tab 重构）**：任务 tab 从「网络/任务」页内子切换改为**对话框模式**（仪表盘栏 + 消息流 + 底部派活输入框），网络收成仪表盘「🌐 网络」工具栏按钮（覆盖层面板保留全部网络入口）。源码 bolloon 仓 b52e4ae 已 push；重建 APK `bolloon-0.6.5.apk` 20,286,097 B / sha256 `40b9ef33…` / 605·0.6.5 / CN=Bolloon，**包内已验证含 task-dash、无旧 network tab**。CF Pages 部署 `245e2d1d` ⇒ bolloon.cn / www / pages.dev 三通道 APK Content-Type + sha256 与本地一致；github.io 待 push 重建。根因教训：cap sync 没重跑导致 APK 打包旧 assets。
 - (2026-10-06) **Android 0.6.5 更新（世界面板交互修复，四通道全对齐 e1314200）**：`bolloon-0.6.5.apk` sha `e131420089633d2…` / 605·0.6.5 / CN=Bolloon。web：世界输入发消息回显「✍ 你告诉世界」+ toast、`/world` `/chat` 终端命令、顶栏按钮加宽、意图栏右置可折叠、去刷新按钮、去 IPFS 提示、修左侧导航收起后无恢复条（补 fixed 窄条+展开按钮，机会流保持卡片）。CLI：`/world` `/chat` 命令 + `opportunity list/scan` ASCII 表格。发布 GitHub Release + CF Pages `400873dd` ⇒ 三通道 0.6.5 对齐，github.io 待重建。验收 sha 线上/本地/GitHub 三处一致。
 - (2026-10-06) **Android 0.6.5 发布（四通道全对齐）**：`bolloon-0.6.5.apk` 19,993,833 B / sha256 `468aefba677e13fa…` / **versionCode 605 · versionName 0.6.5**（package.json 0.6.5 ↔ gradle 605/0.6.5，对齐门全绿）/ 包名 `com.hibs.bolloon`（CN=Bolloon，full flavor）。Release `android-v0.6.5-signed` + CF Pages 部署 `693ea3a6` ⇒ **四通道（bolloon.cn / www / pages.dev / github.io）同时 0.6.5**。线上实测：apk 直链 200 / apk content-type / 19,993,833 B / 整包 sha256 与本地逐字节一致。新功能：机会信箱（验签入库）、AI 主动上网搜机会、世界输入即主动搜索 + 限流降级。
 - (2026-09-30) **Android 0.6.4 发布（手机端壳）**：`bolloon-0.6.4.apk` 19,992,233 B = 19.07 MiB / sha256 `c6e9fca3640563a3…` / **versionCode 604 · versionName 0.6.4** / 包名 `com.hibs.bolloon`（CN=Bolloon，full flavor）。版本对齐门（`check-native-artifacts`）四项全绿；Release `android-v0.6.4-signed` + CF Pages 部署 `ce89bd6b` ⇒ **四通道（bolloon.cn / www / pages.dev / github.io）同时 0.6.4**。线上实测：安装页 Android 栏目标注 v0.6.4 · 19.1 MB、SHA-256 c6e9fca3…；页面内 HEAD=200 / apk content-type / 19,992,233 B，Range=206 且首字节 `PK`（真包）；整包 sha256 与本地一致。
