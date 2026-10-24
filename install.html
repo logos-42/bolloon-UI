@@ -107,6 +107,7 @@
     <div class="install-tabs" role="tablist" aria-label="安装方式">
       <button class="install-tab is-active" data-pane="script" role="tab" aria-selected="true">一键脚本</button>
       <button class="install-tab" data-pane="npm" role="tab" aria-selected="false">npm</button>
+      <button class="install-tab" data-pane="desktop" role="tab" aria-selected="false">桌面应用</button>
       <button class="install-tab" data-pane="android" role="tab" aria-selected="false">Android</button>
       <button class="install-tab" data-pane="ios" role="tab" aria-selected="false">iOS</button>
     </div>
@@ -130,6 +131,16 @@
         <span class="prompt">$</span>
         <code class="cmd">npm install -g @bolloon/bolloon-agent</code>
         <button class="copy" data-copy="npm-cmd" aria-label="复制命令">复制</button>
+      </div>
+    </div>
+
+    <!-- 栏目：桌面应用 (Windows / Linux / macOS) — v0.6.9 -->
+    <div class="install-pane" data-pane="desktop" role="tabpanel">
+      <div class="android-actions">
+        <a class="quiet-cta" href="https://github.com/logos-42/bolloon/releases/download/v0.6.9/Bolloon%20Agent-0.6.9-mac-x64.dmg" target="_blank" rel="noopener">macOS 桌面版 · 下载 .dmg ↗</a>
+        <a class="quiet-cta" href="https://github.com/logos-42/bolloon/releases/latest" target="_blank" rel="noopener">Windows 桌面版 · 下载 .exe ↗</a>
+        <a class="quiet-cta" href="https://github.com/logos-42/bolloon/releases/latest" target="_blank" rel="noopener">Linux 桌面版 · 下载 .AppImage ↗</a>
+        <span class="intro-note" id="desktop-note">v0.6.9 · macOS 直接下载; Windows / Linux 请在 Releases 页选择对应安装包</span>
       </div>
     </div>
 

@@ -30,7 +30,6 @@ BUILD = ROOT / "build-site"
 DL = ROOT / "dl"
 PROJECT = "bolloon"
 BRANCH = "main"
-ECS_IP = "120.26.82.43"   # 备案主机 (阿里云 ECS, nginx): pay./efficode. 子域与 network-pulse.json 的来源
 MAX_FILE = 25 * 1024 * 1024  # CF Pages 单文件硬上限 25 MiB
 
 # 不镜像进站点的东西（部署产物/本地状态/仓库内部）
@@ -65,15 +64,14 @@ def mirror() -> list[pathlib.Path]:
             apks.append(apk)
     print(f"[deploy-pages] mirrored {copied} top-level entries → build-site/")
 
-    # 2026-09-30: bolloon.cn 从备案主机切到 CF Pages 后, 备案主机独有的机器面文件
-    #   /network-pulse.json (观察层静态签名快照, 由 ECS 上的节点定期重写) 会丢 —— 站点上那条
-    #   同源回退路径就 404。这里在部署时**从 ECS 的 bolloon.cn vhost 拉一份**塞进站点根:
-    #   * 迁就 DNS 已经指向 CF 的事实 → 用 curl --resolve 直接打到 ECS, 不走解析;
+    # 2026-10-08: bolloon.cn 已完全由 CF Pages 托管（备案主机不存任何内容）—— 站点上那条
+    #   同源回退路径的 /network-pulse.json 唯一事实源就是线上 CF Pages 本身。部署时从线上
+    #   抓一份塞进站点根:
     #   * 拉不到只打警告、不拦部署 (站点其余部分照旧); 文件是带 fresh_until 的签名快照,
     #     页面本来就按新鲜度判过期, 所以「一份稍旧的快照」比 404 好。
     pulse = fetch_pulse()
     if pulse:
-        print(f"[deploy-pages]   network-pulse.json  {pulse.stat().st_size/1024:.1f} KB (取自备案主机)")
+        print(f"[deploy-pages]   network-pulse.json  {pulse.stat().st_size/1024:.1f} KB (取自线上 CF Pages)")
 
     for apk in apks:
         print(f"[deploy-pages]   dl/{apk.name}  ({apk.stat().st_size/1048576:.2f} MiB)")
@@ -92,34 +90,28 @@ def mirror() -> list[pathlib.Path]:
 
 
 def fetch_pulse() -> pathlib.Path | None:
-    """把备案主机 (ECS) 上的 /network-pulse.json 抓一份放进 build-site/ 根。
+    """把线上当前这份 /network-pulse.json 抓进 build-site/ 根（回退路径用）。
 
-    为什么用 --resolve: bolloon.cn 的 DNS 已经指到 CF Pages, 而这份快照只在 ECS 的
-    bolloon.cn vhost 上 —— 所以绕过解析直接打到 ECS IP (证书仍是 bolloon.cn, 走 https 校验)。
-    拉不到就返回 None (只警告, 不拦部署)。
+    2026-10-08: 备案主机不再存任何站点内容 —— network-pulse.json 的唯一事实源就是
+    CF Pages 线上那份。直接抓线上, 不再 --resolve 到备案主机。拉不到只警告, 不拦部署。
     """
     dst = BUILD / "network-pulse.json"
-    url = "https://bolloon.cn/network-pulse.json"
-    attempts = [
-        ["curl", "-sS", "--resolve", f"bolloon.cn:443:{ECS_IP}", "--max-time", "20", "-o", str(dst), url],
-        ["curl", "-sS", "--max-time", "20", "-o", str(dst), url],   # 兜底: DNS 还在 ECS 时也能用
-    ]
-    for cmd in attempts:
+    url = "https://bolloon.pages.dev/network-pulse.json"
+    cmd = ["curl", "-sS", "--max-time", "20", "-o", str(dst), url]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+    except OSError as e:
+        print(f"[deploy-pages]   ⚠️ network-pulse.json 抓取失败({e}) —— 站点将没有这条同源快照")
+        return None
+    if r.returncode == 0 and dst.exists() and dst.stat().st_size > 0:
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True)
-        except OSError as e:
-            print(f"[deploy-pages]   ⚠️ network-pulse.json 抓取失败({e}) —— 站点将没有这条同源快照")
-            return None
-        if r.returncode == 0 and dst.exists() and dst.stat().st_size > 0:
-            try:
-                if not (dst.read_bytes()[:1] == b"{"):
-                    continue
-            except OSError:
-                continue
-            return dst
+            if dst.read_bytes()[:1] == b"{":
+                return dst
+        except OSError:
+            pass
     if dst.exists():
         dst.unlink()
-    print("[deploy-pages]   ⚠️ network-pulse.json 抓不到 (备案主机不可达?) —— 站点将没有这条同源快照")
+    print("[deploy-pages]   ⚠️ network-pulse.json 抓不到 —— 站点将没有这条同源快照")
     return None
 
 
