@@ -1,0 +1,11 @@
+{
+  "version": "0.6.13-1",
+  "notes": "0.6.13.1: 受治理动态配置 + 旁路经济层 + 国内可用自动更新",
+  "pub_date": "2026-10-29T06:43:31.278Z",
+  "platforms": {
+    "darwin-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROE0vQjFRK2NzUGFyUGZ1T0xpZ1cxSWtEbno5VjFwOE52UVh4NGVNTG5VaFFBL1B0dThBODRNRGpXTzdHNE5iS3pUNEVuaE9hWHlPQThrRktoNU1vcDIyZXQycU9PY0FvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMjU2MTI3CWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6ClFqRVo1M3RiUER3UWs2ampUR3Z0Q2ZGdXlGWFNCWjFHKzdDUElrTW9wbklGaWRlQlNndW9hREtiUDdDT21TMWR3MkZMS3RuMG5hTUZVN2Z2VkpYdUF3PT0K",
+      "url": "https://bolloon.cn/update/macos/Bolloon.app.tar.gz"
+    }
+  }
+}
