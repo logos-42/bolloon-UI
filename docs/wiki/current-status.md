@@ -11,6 +11,8 @@ status: current
 
 ## 最近更新
 
+- (2026-10-29) **Android 0.7.0 — Rust/Tauri 手机端首包**：`bolloon-0.7.0.apk` 25,809,106 B / sha256 `c7ec6ccb883240c3…` / vCode 700 · v0.7.0 / CN=Bolloon / `com.hibs.bolloon` / arm64。构建链改为 origin/Rust 分支（Tauri 2 + 内嵌 axum），手机端为底部四 tab（首页/好友/网络/设置）。GitHub `android-v0.7.0-signed` + CF Pages 三域名已上线；GitHub Pages 待 push。TS/Capacitor 链不再维护。
+
 - (2026-10-10) **Android 0.6.5 重发（当前 master 真构建）**：`bolloon-0.6.5.apk` 21,311,679 B = 20.32 MiB / sha256 `1a48da96afa0b459…` / versionCode 605 · versionName 0.6.5 / 包名 `com.hibs.bolloon`（CN=Bolloon，full flavor）。GitHub Release `android-v0.6.5-signed` 资产已换新；CF Pages canonical = `a4386aaa`；四通道 install.html 均指 0.6.5；bolloon.cn 整包 sha256 与本地一致。（注：曾有并行会话从旧 commit `a2c1afc` 部署抢走生产，已重新部署覆盖并记录教训。）
 - (2026-10-07) **Android 0.6.5 图标主题化更新**：APK 重建 `bolloon-0.6.5.apk` 20,287,073 B / sha256 `41948bfa6bb4…` / 605·0.6.5 / CN=Bolloon，**Android adaptive icon 补 monochrome 单色层**（OpenCV 抠轮廓矢量）+ **iOS AppIcon 加 dark/tinted 变体**。源码 bolloon 仓 `b3562b6` 已 push；GitHub Release 资产换新 + CF Pages 部署 `92cf0613`；GitHub/CF 直链/bolloon.cn 三处 sha256 一致。⚠ 备案服务器后台自动部署（旧 commit 3421c2f）会周期覆盖 CF Pages 生产，需 ECS 侧停/更新。
 - (2026-10-07) **Android 0.6.5 对话框模式（任务 tab 重构）**：任务 tab 从「网络/任务」页内子切换改为**对话框模式**（仪表盘栏 + 消息流 + 底部派活输入框），网络收成仪表盘「🌐 网络」工具栏按钮（覆盖层面板保留全部网络入口）。源码 bolloon 仓 b52e4ae 已 push；重建 APK `bolloon-0.6.5.apk` 20,286,097 B / sha256 `40b9ef33…` / 605·0.6.5 / CN=Bolloon，**包内已验证含 task-dash、无旧 network tab**。CF Pages 部署 `245e2d1d` ⇒ bolloon.cn / www / pages.dev 三通道 APK Content-Type + sha256 与本地一致；github.io 待 push 重建。根因教训：cap sync 没重跑导致 APK 打包旧 assets。
