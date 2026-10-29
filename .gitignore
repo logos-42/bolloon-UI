@@ -20,3 +20,6 @@ up.json
 # 公开观察入口的动态快照 (每次刷新由 scripts/refresh-pulse.sh 重新生成, 不进 git 免噪音)
 network-pulse.json
 network-pulse.json.prev
+
+# 更新包本体 (12MB 级二进制): 部署脚本按文件系统镜像上传, 不进 git
+update/macos/*

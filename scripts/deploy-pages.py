@@ -57,11 +57,19 @@ def mirror() -> list[pathlib.Path]:
     if DL.exists():
         out = BUILD / "dl"
         out.mkdir()
-        for apk in sorted(DL.glob("*.apk")):
-            if apk.stat().st_size > MAX_FILE:
-                sys.exit(f"[deploy-pages] {apk.name} 超过 CF Pages 单文件上限 25 MiB，拒绝上传")
-            shutil.copy2(apk, out / apk.name)
-            apks.append(apk)
+        # 2026-10-29: 同域镜像不再只有 APK —— 桌面安装包 (dmg/exe/AppImage) 也走同一条
+        #   路径。理由与 APK 完全一样: 国内直连 GitHub Release 会超时, 主按钮 404。
+        #   CF Pages 单文件硬上限 25 MiB, 超了就直接拒(不当场截断)。
+        for f in sorted(DL.iterdir()):
+            if not f.is_file():
+                continue
+            if f.suffix.lower() not in {".apk", ".dmg", ".exe", ".appimage", ".msi", ".zip", ".tar", ".gz"}:
+                continue
+            if f.stat().st_size > MAX_FILE:
+                sys.exit(f"[deploy-pages] {f.name} 超过 CF Pages 单文件上限 25 MiB，拒绝上传")
+            shutil.copy2(f, out / f.name)
+            if f.suffix.lower() == ".apk":
+                apks.append(f)
     print(f"[deploy-pages] mirrored {copied} top-level entries → build-site/")
 
     # 2026-10-08: bolloon.cn 已完全由 CF Pages 托管（备案主机不存任何内容）—— 站点上那条
@@ -73,10 +81,10 @@ def mirror() -> list[pathlib.Path]:
     if pulse:
         print(f"[deploy-pages]   network-pulse.json  {pulse.stat().st_size/1024:.1f} KB (取自线上 CF Pages)")
 
-    for apk in apks:
-        print(f"[deploy-pages]   dl/{apk.name}  ({apk.stat().st_size/1048576:.2f} MiB)")
+    for f in sorted((BUILD / "dl").iterdir()) if (BUILD / "dl").exists() else []:
+        print(f"[deploy-pages]   dl/{f.name}  ({f.stat().st_size/1048576:.2f} MiB)")
     if not apks:
-        print("[deploy-pages]   (dl/ 里没有 apk —— 站点将不带同域镜像)")
+        print("[deploy-pages]   (dl/ 里没有 apk —— 站点将不带 APK 同域镜像)")
     # 指纹: 让「部署产物陈旧 / 部署没生效」在日志里就能看出来 ——
     # build-site/ 每次都是从仓库根重建 (mirror() 先 rmtree), 所以这里的哈希应当与仓库根逐字一致;
     # 一旦不一致就是拷贝环节出了问题 (而不是线上缓存)。部署后可用同一条 curl 对齐线上文件。
