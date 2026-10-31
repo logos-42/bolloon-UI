@@ -11,6 +11,8 @@ status: current
 
 ## 最近更新
 
+- (2026-10-31) **0.7.3 重发（LTO 压缩）**：APK 19,420,994 B / `f901a49f…` / 703·0.7.3 / arm64；Windows exe 14,319,616 B / `cfe79a10…`（29 MB→13.7 MB）。两者均走 bolloon.cn/dl 同域直链 + GitHub 备用。
+
 - (2026-10-29) **Android 0.7.0 — Rust/Tauri 手机端首包**：`bolloon-0.7.0.apk` 25,809,106 B / sha256 `c7ec6ccb883240c3…` / vCode 700 · v0.7.0 / CN=Bolloon / `com.hibs.bolloon` / arm64。构建链改为 origin/Rust 分支（Tauri 2 + 内嵌 axum），手机端为底部四 tab（首页/好友/网络/设置）。GitHub `android-v0.7.0-signed` + CF Pages 三域名已上线；GitHub Pages 待 push。TS/Capacitor 链不再维护。
 
 - (2026-10-10) **Android 0.6.5 重发（当前 master 真构建）**：`bolloon-0.6.5.apk` 21,311,679 B = 20.32 MiB / sha256 `1a48da96afa0b459…` / versionCode 605 · versionName 0.6.5 / 包名 `com.hibs.bolloon`（CN=Bolloon，full flavor）。GitHub Release `android-v0.6.5-signed` 资产已换新；CF Pages canonical = `a4386aaa`；四通道 install.html 均指 0.6.5；bolloon.cn 整包 sha256 与本地一致。（注：曾有并行会话从旧 commit `a2c1afc` 部署抢走生产，已重新部署覆盖并记录教训。）
