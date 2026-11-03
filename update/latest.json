@@ -1,11 +1,11 @@
 {
-  "version": "0.7.0-1",
-  "notes": "0.7.0.1: Rust 正式版 — 内核整体迁到 rust/crates (kernel/harness/agent/llm/p2p/econ)，Node 只剩薄入口；新增旁路经济层（默认关闭，影子模式）；国内可用自动更新",
-  "pub_date": "2026-10-29T11:27:49.987Z",
+  "version": "0.7.6",
+  "notes": "0.7.6: 换签名密钥(90ED1F41) + 更新链修复",
+  "pub_date": "2026-11-03T23:00:41.291Z",
   "platforms": {
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTNld2UlhlTnFMdTg5L3dPaE1WSVFReFlFRUlWN1lwTzlLc1BkcXlnRTFFZ1o0VVlLS1FnSmUvaWg1eHNvREsxSGlBZkIxQlZGQ1l2SFV3b3EyVEtWVzdxUFZBSkpMOXdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMjczMjYyCWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CXZlcnNpb246MC43LjAtMQpGeDlTU2IweS9TNkNYMGJBOFVnTmFON09OWkg0MDQ1Z2ludnJ6aDEyc2RsNWd3RktEU3BNekQzejBaemRkTkdXMEQxQ3YvbThKbnFPbGJkck8zY09CZz09Cg==",
-      "url": "https://bolloon.cn/update/Bolloon.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0JXQ09UallyNjhNNDFyckVscHJ4cFlYckxsbTY4Zk90bDNYVzBBRFdLTURHTmRWamRvV3IwMnNQcVladENubDlqWFJLOVlxblhmT2Nibm1lb1dtTGdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNzQ2Nzc4CWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CXZlcnNpb246MC43LjYKbWxYaE81K3JKdnAyLzAxTkU2N082YVJIQmpiWm1ONG9NbVY2Y3dibG9OcjRBdldzNldUby9yVWJKZ0o2cTRtbFptaGtFME90UWdpRzd5eWpmdUh2QlE9PQo=",
+      "url": "https://logos-42.github.io/bolloon-UI/update/macos/Bolloon.app.tar.gz"
     }
   }
 }
