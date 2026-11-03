@@ -1,11 +1,11 @@
 {
-  "version": "0.7.6",
-  "notes": "0.7.6: 修复桌面模式启动崩溃(智能体页空白/历史不见) + 换签名密钥(90ED1F41)",
-  "pub_date": "2026-11-03T23:15:04.948Z",
+  "version": "0.7.7",
+  "notes": "0.7.7: 修复桌面模式启动崩溃(智能体页空白/历史不见)；好友授权改为选择式；换签名密钥",
+  "pub_date": "2026-11-03T23:32:15.069Z",
   "platforms": {
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a05qMHJUdWFpL1RqUzZhem9ueVlRRHJmNGlsN24zeDVQYWJua2E5Mytvd2hFQ1NodzcyQWtwTlVtM3J5SGdvdXhTcFhPekcrLzhMb0NRcUsrZW4vQ2dnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNzQ3NTU3CWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CXZlcnNpb246MC43LjYKZWtIOEZ6T0xFSW1WNUtzU3d0QzE2cEJ0dVl1bmlrekc3Rmw5TFJjQjZBMHhpZHRsZzFZaWh6QlRoSUM5ajNFelR5dFZDeGorMGhrRjd3ZFhYTEk4QXc9PQo=",
-      "url": "https://logos-42.github.io/bolloon-UI/update/macos/Bolloon.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0xGbVNGVUc0N2pPdjlMb3M0dzRMRGpOTXJnR1FZbkNNc0V4OERWYUJlWTBhSkdQTXZybmxINnUvbUF2ckxtNEh4Wjh1NnNDbS9tN3d4aDI1ZEcyTEFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNzQ4NzMzCWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CXZlcnNpb246MC43LjcKZ3daM2lPWTV0Q0tyY1k5R2swNXhBQ3JkR0Q5NFJwSTV0SWN6M3lGSGtQa0VYb0d1dTgvL1BnZC9UOTlBdnVCamxNNk1nazBnR3ZhR2NrTjg5aWpZQXc9PQo=",
+      "url": "https://bolloon.cn/update/macos/0.7.7/Bolloon.app.tar.gz"
     }
   }
 }
