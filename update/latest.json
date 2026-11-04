@@ -5,7 +5,7 @@
   "platforms": {
     "darwin-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a09wVHpVTG9BL0wyY08yRFNjZ0V5V2tIUmZQQXNjTkU2MEZHTUdxQXIrQjhPbmFqS1g1T2FIc1NlNHZ1VkF5MEkra20wT3V6TGN2TE90azZQZndMOVF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNzc3MTYzCWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CXZlcnNpb246MC43LjkKZnVjbnVoZFB4MmYwd3dlMGlBbEZrbm03L29CT1U5OGpUK2ZEWk9Zdk85eUhrZlE4SXo2ZFNoRE0wOGUwMWRobDAyOFlldC84Wm9aL2MrTTNoaERTQXc9PQo=",
-      "url": "https://logos-42.github.io/bolloon-UI/update/macos/0.7.9/Bolloon.app.tar.gz"
+      "url": "https://bolloon.cn/update/macos/0.7.9/Bolloon.app.tar.gz"
     }
   }
 }
