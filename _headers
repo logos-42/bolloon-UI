@@ -19,3 +19,7 @@
 # ③ 快照必须不缓存(前端 30s 轮询要拿新口径)
 /network-pulse.json
   Cache-Control: no-cache, must-revalidate
+
+# ④ 下载件不缓存: 部署后同名文件会变(重打包), 边缘缓存旧值等于"下载回退"
+/dl/*
+  Cache-Control: no-cache

@@ -18,7 +18,9 @@ https://bolloon.cn/dl/<file>，与 GitHub Release 互为备份。
 from __future__ import annotations
 
 import argparse
+import glob
 import hashlib
+import json
 import os
 import pathlib
 import shutil
@@ -28,6 +30,41 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build-site"
 DL = ROOT / "dl"
+ARTIFACTS = ROOT / "dl-artifacts.json"
+
+
+def sync_dl() -> None:
+    """按 dl-artifacts.json 把 dl/ 里缺的发布件从 GitHub Release 补回。
+
+    2026-11-04 (leo: 站点被反复覆盖 / Windows dl 一直回退):
+    dl/ 是产物目录、不进 git；不同机器/不同 session 的 dl/ 内容不一样，
+    而 CF Pages 每次都是**整站快照** ⇒ 一次缺文件的部署就把别人的安装包抹掉，
+    用户点下载就 404 或落到旧版本。
+    这里在部署前自愈: 缺什么从 Release 的 latest 拉回来(带大小校验)，让任何检出都能部署出完整的站点。
+    """
+    if not ARTIFACTS.exists() or not os.path.isdir(DL):
+        return
+    try:
+        cfg = json.loads(ARTIFACTS.read_text())
+    except Exception as e:
+        print(f"[deploy-pages] 跳过 dl 自愈 (清单读不了: {e})")
+        return
+    repo = cfg.get("release_repo", "")
+    for name in cfg.get("artifacts", []):
+        dst = os.path.join(DL, name)
+        if os.path.exists(dst) and os.path.getsize(dst) > 0:
+            continue
+        url = f"https://github.com/{repo}/releases/latest/download/{name}"
+        print(f"[deploy-pages] dl 自愈: 缺 {name} → {url}")
+        r = subprocess.run(["curl", "-fsSL", "--retry", "3", "--max-time", "600", "-o", dst + ".part", url],
+                           capture_output=True, text=True)
+        if r.returncode != 0 or os.path.getsize(dst + ".part") < 1024:
+            print(f"[deploy-pages] 警告: {name} 取不回来, 本次部署将没有它 ({r.stderr.strip()[:120]})")
+            if os.path.exists(dst + ".part"):
+                os.remove(dst + ".part")
+            continue
+        os.replace(dst + ".part", dst)
+        print(f"[deploy-pages] OK {name} {os.path.getsize(dst) / 1048576:.1f} MiB")
 PROJECT = "bolloon"
 BRANCH = "main"
 MAX_FILE = 25 * 1024 * 1024  # CF Pages 单文件硬上限 25 MiB
@@ -129,8 +166,32 @@ def main() -> int:
     ap.add_argument("--no-deploy", action="store_true", help="只生成 build-site/")
     ap.add_argument("--allow-no-apk", action="store_true",
                     help="dl/ 为空时也允许部署（默认拒：一次没有 dl/ 的部署会把这个站点的 APK 镜像整个抹掉）")
+    ap.add_argument("--allow-no-dmg", action="store_true",
+                    help="dl/ 里没有 .dmg 时也允许部署（默认拒：否则桌面下载镜像被抹掉、主按钮 404）")
+    ap.add_argument("--force", action="store_true",
+                    help="跳过「本地落后 origin/main」的守卫（默认拒：陈旧检出会把整站覆盖回旧版）")
     args = ap.parse_args()
 
+    # 2026-11-04 (leo: 站点被反复覆盖 / Windows dl 一直回退):
+    #   CF Pages 是**整站快照**, 谁部署谁说了算。陈旧检出部署一次就把 install.html / dl/ 打回旧版。
+    #   所以: 落后 origin/main 一律拒（除非 --force）; 并把来源 commit 打出来, 出事可追。
+    def _git(*a: str) -> str:
+        try:
+            return subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, timeout=60).stdout.strip()
+        except Exception:
+            return ""
+    if _git("rev-parse", "--git-dir"):
+        subprocess.run(["git", "fetch", "--quiet", "origin"], cwd=ROOT, timeout=60)
+        behind = _git("rev-list", "--count", "HEAD..origin/main") or "0"
+        dirty = _git("status", "--porcelain")
+        head = _git("rev-parse", "--short", "HEAD") or "?"
+        print(f"[deploy-pages] 源 commit = {head} · 落后 origin/main = {behind} 个提交"
+              + (" · 工作区有未提交改动" if dirty else ""))
+        if behind != "0" and not args.force:
+            sys.exit(f"[deploy-pages] 拒绝部署: 本地落后 origin/main {behind} 个提交 —— "
+                     f"整站快照会把站点覆盖回旧版。先 git pull, 或确认要覆盖再加 --force。")
+
+    sync_dl()
     apks = mirror()
     if args.no_deploy:
         return 0
@@ -138,6 +199,11 @@ def main() -> int:
     # 2026-09-30 事故: 另一次并行 session 用别的方式部署过一次**不含 dl/** 的站点 → 它成了
     #   canonical 部署 ⇒ 站点主按钮 (bolloon.cn/dl/*.apk) 直接 404、install.html 也回退到旧版。
     #   CF Pages 每次部署都是**整站快照**，所以「没有 dl/」= 把镜像删掉，不是「不改动它」。
+    dmgs = [f for f in glob.glob(os.path.join(DL, "*.dmg"))] if os.path.isdir(DL) else []
+    if not dmgs and not args.allow_no_dmg:
+        sys.exit("[deploy-pages] 拒绝部署: dl/ 里没有 .dmg —— 桌面下载镜像会被这次整站快照抹掉。"
+                 "放一份 dmg 或加 --allow-no-dmg。")
+
     if not apks and not args.allow_no_apk:
         sys.exit("[deploy-pages] 拒绝部署: dl/ 里没有 .apk —— 本次部署会让站点失去同域镜像"
                  "（主按钮 404）。先放一份 APK 进 dl/，或确属有意为之再加 --allow-no-apk。")
