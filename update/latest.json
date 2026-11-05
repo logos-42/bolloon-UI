@@ -1,11 +1,11 @@
 {
   "version": "0.7.9",
-  "notes": "0.7.9 换签名密钥版本",
-  "pub_date": "2026-11-04T08:03:28.452Z",
+  "notes": "Bolloon 0.7.9：支付通道（加密钱包多链 / 支付宝 / 微信，人工核销）+ 手机端余额入口；好友事件队列重试。",
+  "pub_date": "2026-11-05T09:24:56.508Z",
   "platforms": {
-    "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0dHaHFyWTlWdVRRUlp1OTdITkROejhnQ0xXQmRTajVDL29xb0tnYjJQRG9xdSt2M3RZZnAycUNXZzErWEI3VDJqQS8zSDArMUNKSEN5b2g4eldIU2djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNzc5MzE3CWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CXZlcnNpb246MC43LjkKdzJ5KytOYzMxTVBWQmdrd3VnRVF2eXNKUjZLQUQxQjdlUWJ4VndtZlJOeTFsViszWjVybU83LzRmWlQ5WkhSZEtndmVPMWtTMzN3clVCVEo1RUl4QkE9PQo=",
-      "url": "https://bolloon.cn/update/macos/0.7.9/Bolloon.app.tar.gz"
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0I1U1h5c3crcjE5ck9KTnBVVllVdzV3V3JSdWh3c1hBSzlDdGlLcjBEWGNDeUp2aytxcjNuRXdBNm50YzRzVVJqOSs0QVlQQ0xXM21OY2JTS3hQT2dZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODcwNjc2CWZpbGU6Qm9sbG9vbl8wLjcuOV94NjQuZXhlCjZyaVBybGl4NG1lY2x6SWgwU3YvaXREbUVKTGZJOGhlK1lvVXRVbWNnbG5BYXFydGtmMkxYQzRIdXJ4RWtIZlY2Ymo5cU0wenJQczY4bGpwdzZDMkJnPT0K",
+      "url": "https://bolloon.cn/dl/Bolloon_0.7.9_x64.exe"
     }
   }
 }

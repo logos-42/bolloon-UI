@@ -63,7 +63,8 @@ def mirror() -> list[pathlib.Path]:
         for f in sorted(DL.iterdir()):
             if not f.is_file():
                 continue
-            if f.suffix.lower() not in {".apk", ".dmg", ".exe", ".appimage", ".msi", ".zip", ".tar", ".gz"}:
+            if f.suffix.lower() not in {".apk", ".dmg", ".exe", ".appimage", ".msi", ".zip", ".tar", ".gz",
+                                        ".jpg", ".jpeg", ".png", ".webp"}:
                 continue
             if f.stat().st_size > MAX_FILE:
                 sys.exit(f"[deploy-pages] {f.name} 超过 CF Pages 单文件上限 25 MiB，拒绝上传")
