@@ -1,11 +1,11 @@
 {
   "version": "0.7.9",
-  "notes": "Bolloon 0.7.9：支付通道（加密钱包多链 / 支付宝 / 微信，人工核销）+ 手机端余额入口；好友事件队列重试。",
-  "pub_date": "2026-11-05T09:24:56.508Z",
+  "notes": "Bolloon 0.7.9：支付通道（ETH/Base/Solana/Tron + 支付宝/微信收款码，人工核销）+ 手机端余额入口。",
+  "pub_date": "2026-11-05T10:35:02.670Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0I1U1h5c3crcjE5ck9KTnBVVllVdzV3V3JSdWh3c1hBSzlDdGlLcjBEWGNDeUp2aytxcjNuRXdBNm50YzRzVVJqOSs0QVlQQ0xXM21OY2JTS3hQT2dZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODcwNjc2CWZpbGU6Qm9sbG9vbl8wLjcuOV94NjQuZXhlCjZyaVBybGl4NG1lY2x6SWgwU3YvaXREbUVKTGZJOGhlK1lvVXRVbWNnbG5BYXFydGtmMkxYQzRIdXJ4RWtIZlY2Ymo5cU0wenJQczY4bGpwdzZDMkJnPT0K",
-      "url": "https://bolloon.cn/dl/Bolloon_0.7.9_x64.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0R0UEs4NVRLUTJPNHJmNWdGR3FwZTArbzl5ZVU5Sys4MzFyNWJwRDh6WDAwakJzdlVLR2UybkVtdWp6UzJYZzE5OHlrQlhTWWxmdFFZWjIreDEzNndBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODc0ODY5CWZpbGU6Qm9sbG9vbl8wLjcuOV94NjRfZW4tVVMubXNpCnV1bE1Nc1ZLM09LcER1dkRyVW9ucjh0KzZGdUMxZzBHdGkwZlh6eTlmVnlZQThOby8zcGIydC9ZK0lnQ0dQR01lbGV4NWY2K05NSGZGVi9VZ3lkRkJRPT0K",
+      "url": "https://bolloon.cn/dl/Bolloon_0.7.9_x64_en-US.msi"
     }
   }
 }
