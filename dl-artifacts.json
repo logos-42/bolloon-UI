@@ -2,6 +2,7 @@
   "_comment": "dl/ 是 gitignore 的产物目录, 但 CF Pages 是整站快照 —— 谁部署谁说了算。缺一次就 404/回退。部署脚本按这份清单把缺的从 GitHub Release 补回来。",
   "release_repo": "logos-42/bolloon",
   "artifacts": [
+    "Bolloon_0.7.10_x64.dmg",
     "Bolloon_0.7.9_x64.dmg",
     "Bolloon_0.7.9_x64_en-US.msi",
     "Bolloon_0.7.9_x64.exe"

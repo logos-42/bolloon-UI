@@ -1,11 +1,11 @@
 {
-  "version": "0.7.9",
-  "notes": "Bolloon 0.7.9：支付通道（ETH/Base/Solana/Tron + 支付宝/微信收款码，人工核销）+ 手机端余额入口。",
-  "pub_date": "2026-11-05T10:35:02.670Z",
+  "version": "0.7.10",
+  "notes": "0.7.10: 版本号接管 App 自身(不再显示 0.6.10) · 一次性授权(工具/命令/文件/目录, 三平台一致) · 流光阶段按最新展示 · 中断气泡保留 · 分享智能体走 IPFS · macOS 稳定自签身份",
+  "pub_date": "2026-11-08T05:40:19.000Z",
   "platforms": {
-    "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0R0UEs4NVRLUTJPNHJmNWdGR3FwZTArbzl5ZVU5Sys4MzFyNWJwRDh6WDAwakJzdlVLR2UybkVtdWp6UzJYZzE5OHlrQlhTWWxmdFFZWjIreDEzNndBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODc0ODY5CWZpbGU6Qm9sbG9vbl8wLjcuOV94NjRfZW4tVVMubXNpCnV1bE1Nc1ZLM09LcER1dkRyVW9ucjh0KzZGdUMxZzBHdGkwZlh6eTlmVnlZQThOby8zcGIydC9ZK0lnQ0dQR01lbGV4NWY2K05NSGZGVi9VZ3lkRkJRPT0K",
-      "url": "https://bolloon.cn/dl/Bolloon_0.7.9_x64_en-US.msi"
+    "darwin-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a08yMEpzdDYxMG11bVFVWjlPQm91c2FsYmpHdXVPSS9idnNwMjJzbmFFR1VYZ2xwN1JUU0hJV0l6RzVzcTdPYW8zak1DWncwcnJvOWZTblVGeGlJMndvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0MTE2MzY4CWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CndWZFlFdStoMitneXRsWmlRVUgwODBWdStsLzRxaFV0a253RWdCMWw1T1hkbVgrNmpJV2I5TUlhUko5b3ZHL0hmK0ZxUklHL3JVdlBjeThRVjU0c0JnPT0K",
+      "url": "https://bolloon.cn/update/macos/0.7.10/Bolloon.app.tar.gz"
     }
   }
 }
