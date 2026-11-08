@@ -1,10 +1,10 @@
 {
   "version": "0.7.10",
-  "notes": "0.7.10: 版本号接管 App 自身(不再显示 0.6.10) · 一次性授权(工具/命令/文件/目录, 三平台一致) · 流光阶段按最新展示 · 中断气泡保留 · 分享智能体走 IPFS · macOS 稳定自签身份",
-  "pub_date": "2026-11-08T05:40:19.000Z",
+  "notes": "0.7.10: 前端去掉「模型池」与「勋章分数」入口 · 计费口径改为「连接的公共 API 付费路由」 · 版本号接管 · 一次性授权 · 阶段按最新展示 · 中断气泡保留 · IPFS 分享",
+  "pub_date": "2026-11-08T06:03:11.000Z",
   "platforms": {
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a08yMEpzdDYxMG11bVFVWjlPQm91c2FsYmpHdXVPSS9idnNwMjJzbmFFR1VYZ2xwN1JUU0hJV0l6RzVzcTdPYW8zak1DWncwcnJvOWZTblVGeGlJMndvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0MTE2MzY4CWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CndWZFlFdStoMitneXRsWmlRVUgwODBWdStsLzRxaFV0a253RWdCMWw1T1hkbVgrNmpJV2I5TUlhUko5b3ZHL0hmK0ZxUklHL3JVdlBjeThRVjU0c0JnPT0K",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a05kUmpxMzVid2lFaWxoQkxkT3B0OXJCNktaWUw3Z2JKazNjVmhKalNmc3RZWXhIbXNGMEYzRGt0dS8rb3hrcEhOajBUMVIxazBReUw4QXM3Y1E0akFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0MTE3NzQzCWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6Ckw1WVRVNDU4Mk1vaTFSeE5GNGJLQXE4TTBDejBKYnB6KzgyTldZOXVBZkRwZEZlZHZkaHByVi93WDBVS0VTeGdROWRESHJ2R1grUkNJbGtLbkg5akRRPT0K",
       "url": "https://bolloon.cn/update/macos/0.7.10/Bolloon.app.tar.gz"
     }
   }
