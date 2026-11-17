@@ -1,11 +1,11 @@
 {
-  "version": "0.7.11",
-  "notes": "0.7.11 工程加固：Rust 五层 CI 门禁（fmt/check/单测/集成/安全）+ 全仓 cargo fmt · 无用户可见功能变更",
-  "pub_date": "2026-11-15T14:40:05.655Z",
+  "version": "0.7.12",
+  "notes": "0.7.12 世界模式自动刷新：推荐引擎持续匹配意图/对话，15s 拉取新卡片；跨设备 QUIC/DIAP 同步、唯一 DID 配对、群组会话与会话菜单。",
+  "pub_date": "2026-11-17T17:33:18.993Z",
   "platforms": {
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0Z4YzFvUkpWbUY5YWtqMHE5TFlyNDVlVkRhOFVYRTJzMDZzUk5tMHpNeTE5THhCQ0VWOEZpSDNWN0J1dVNMU0RGbEFBNHRLUWdHRmx6UHlCUS9uZVFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NzUzMDQyCWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6CnJyNEp0UjdGazZaSUMrb3dhUmkxMGxBc2h1ZWRHKzhRMnRhVE5Ic0p6UW13dnZDM0lwR3diMDRGUDdrZEhhRE9rbUxXR1pqcXhXcTdyVU5rYzdySEJBPT0K",
-      "url": "https://bolloon.cn/update/macos/0.7.11/Bolloon.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0g3TnpnalArNkZCdHNvWkNYOVFtZzhBNzdnc0pNRjRQRThBYVh2aWYrMGwwMHN6T0wwbnZrODBvZ1NVbEpBeDV0QWRLSHZHcDNhOFphQmtZQkU0VlFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0OTM2MjE2CWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6ClF3MDNQRm5DaVhHRnkxY1hQMGhzRGgrUFl4emNWSWthM21tYVd1Y0tJamJPR2RWcGc4K1VqNnFkTVhwa3N3cVVGZk9VaVhyTkZPeEFjR1NDZSsrU0FBPT0K",
+      "url": "https://bolloon.cn/update/macos/0.7.12/Bolloon.app.tar.gz"
     }
   }
 }
