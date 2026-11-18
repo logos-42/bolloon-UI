@@ -4,10 +4,8 @@
   "artifacts": [
     "Bolloon_0.7.12_ios_simulator.app.zip",
     "Bolloon_0.7.12_x64.dmg",
-    "Bolloon_0.7.11_x64.dmg",
-    "Bolloon_0.7.10_x64.dmg",
-    "Bolloon_0.7.9_x64.dmg",
-    "Bolloon_0.7.9_x64_en-US.msi",
-    "Bolloon_0.7.9_x64.exe"
+    "Bolloon_0.7.12_x64_en-US.msi",
+    "bolloon-0.7.12.apk",
+    "Bolloon_0.7.12.app.tar.gz"
   ]
 }
