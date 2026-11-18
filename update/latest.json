@@ -1,11 +1,15 @@
 {
   "version": "0.7.12",
   "notes": "0.7.12 世界模式自动刷新：推荐引擎持续匹配意图/对话，15s 拉取新卡片；跨设备 QUIC/DIAP 同步、唯一 DID 配对、群组会话与会话菜单。",
-  "pub_date": "2026-11-17T17:33:18.993Z",
+  "pub_date": "2026-11-18T09:17:13.279Z",
   "platforms": {
     "darwin-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a0g3TnpnalArNkZCdHNvWkNYOVFtZzhBNzdnc0pNRjRQRThBYVh2aWYrMGwwMHN6T0wwbnZrODBvZ1NVbEpBeDV0QWRLSHZHcDNhOFphQmtZQkU0VlFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0OTM2MjE2CWZpbGU6Qm9sbG9vbi5hcHAudGFyLmd6ClF3MDNQRm5DaVhHRnkxY1hQMGhzRGgrUFl4emNWSWthM21tYVd1Y0tJamJPR2RWcGc4K1VqNnFkTVhwa3N3cVVGZk9VaVhyTkZPeEFjR1NDZSsrU0FBPT0K",
       "url": "https://bolloon.cn/update/macos/0.7.12/Bolloon.app.tar.gz"
+    },
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUWFhDa0tRUi90a09XWUI4RHEwdGdoU3NuSCtlUGluZm5MRk1NamJpdWI0di9YMmhmbXRqdWU5V01tUGJHZEVDeWI3clB2dEtJbDVPUzNjZ21JTDNOeDFlczJYZWlnL0FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0OTkzMzI5CWZpbGU6Qm9sbG9vbl8wLjcuMTJfeDY0X2VuLVVTLm1zaQpXeURkN2lsSy9POEdYNWcxSTFoYUxQc2QybW9qOTBjVm5velQvUUZJVmNoSkJqWjlMaVQwYmtwWXRSS0YvRHFMbHJTQkVOSzhKbHA4MnQvbzZIdzNBQT09Cg==",
+      "url": "https://bolloon.cn/dl/Bolloon_0.7.12_x64_en-US.msi"
     }
   }
 }
